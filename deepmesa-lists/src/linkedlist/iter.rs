@@ -57,12 +57,22 @@ macro_rules! iter_reverse {
                     IterDirection::HeadToTail => {
                         if node.ptr == $self.list.head {
                             $self.cursor = $self.list.tail_node();
+                        } else {
+                            $self.cursor = $self.list.prev_node(&node);
+                            if !$self.cursor.is_none() {
+                                $self.cursor = $self.list.prev_node(&$self.cursor.unwrap());
+                            }
                         }
                         $self.dir = IterDirection::TailToHead;
                     }
                     IterDirection::TailToHead => {
                         if node.ptr == $self.list.tail {
                             $self.cursor = $self.list.head_node();
+                        }  else {
+                            $self.cursor = $self.list.next_node(&node);
+                            if !$self.cursor.is_none() {
+                                $self.cursor = $self.list.next_node(&$self.cursor.unwrap());
+                            }
                         }
                         $self.dir = IterDirection::HeadToTail;
                     }
@@ -83,6 +93,45 @@ impl<'a, T> Iter<'a, T> {
     }
 
     iter_reverse!(self);
+    // pub fn reverse(mut self) -> Self {
+    //     match &self.cursor {
+    //         None => match self.dir {
+    //             IterDirection::HeadToTail => {
+    //                 self.dir = IterDirection::TailToHead;
+    //                 self.cursor = self.list.tail_node();
+    //             }
+    //             IterDirection::TailToHead => {
+    //                 self.dir = IterDirection::HeadToTail;
+    //                 self.cursor = self.list.head_node();
+    //             }
+    //         },
+    //         Some(node) => match self.dir {
+    //             IterDirection::HeadToTail => {
+    //                 if node.ptr == self.list.head {
+    //                     self.cursor = self.list.tail_node();
+    //                 } else {
+    //                     self.cursor = self.list.prev_node(&node);
+    //                     if !self.cursor.is_none() {
+    //                         self.cursor = self.list.prev_node(&self.cursor.unwrap());
+    //                     }
+    //                 }
+    //                 self.dir = IterDirection::TailToHead;
+    //             }
+    //             IterDirection::TailToHead => {
+    //                 if node.ptr == self.list.tail {
+    //                     self.cursor = self.list.head_node();
+    //                 } else {
+    //                     self.cursor = self.list.next_node(&node);
+    //                     if !self.cursor.is_none() {
+    //                         self.cursor = self.list.next_node(&self.cursor.unwrap());
+    //                     }
+    //                 }
+    //                 self.dir = IterDirection::HeadToTail;
+    //             }
+    //         },
+    //     }
+    //     self
+    // }
 }
 
 impl<'a, T> IterMut<'a, T> {

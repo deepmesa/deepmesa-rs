@@ -1,8 +1,12 @@
 [package]
 name = "deepmesa-lists"
 version = "0.1.0"
-authors = ["arrsingh"]
+authors = ["Rahul Singh <rsingh@arrsingh.com>"]
 edition = "2018"
+categories = [
+	"data-structures",
+]
+license = "Apache-2.0"
 
 [lib]
 doc = false

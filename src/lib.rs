@@ -1,4 +1,4 @@
-//! A collection of data structures and algorithms in Rust.
+//! A collection of data structures and algorithms designed for performance.
 
 /// A collection of list data structures and algorithms designed for
 /// performance

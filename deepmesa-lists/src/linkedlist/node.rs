@@ -33,7 +33,7 @@ pub(super) struct InternalNode<T> {
 /// A handle to a node in the [`FastLinkedList`](../struct.FastLinkedList.html).
 ///
 /// This struct wraps a raw pointer to memory but does not implement
-/// the `Deref` trait so you cannot dereference that pointer directly.
+/// the [`Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) trait so you cannot dereference that pointer directly.
 /// Handles can be used only by methods of the linkedlist that they
 /// were obtained from. They can be copied and passed around by value
 /// regardless of the lifetime of the linkedlist. Once the element
@@ -41,6 +41,83 @@ pub(super) struct InternalNode<T> {
 /// handle then becomes invalid. Passing an invalid handle into the
 /// linked list is safe since all methods that accept a reference to a
 /// handle return `None` if the handle is invalid.
+///
+
+/// The
+/// [`push_head()`](../struct.FastLinkedList.html#method.push_head),
+/// [`push_tail()`](../struct.FastLinkedList.html#method.push_tail),
+/// [`push_next()`](../struct.FastLinkedList.html#method.push_next)
+/// and
+/// [`push_prev()`](../struct.FastLinkedList.html#method.push_prev)
+/// methods of [`FastLinkedList`](../struct.FastLinkedList.html)
+/// return handles to the nodes pushed to the linked list. Handles can
+/// only be used by passing them as arguments to the
+/// [`next()`](../struct.FastLinkedList.html#method.next),
+/// [`next_mut()`](../struct.FastLinkedList.html#method.next_mut),
+/// [`prev()`](../struct.FastLinkedList.html#method.prev),
+/// [`prev_mut()`](../struct.FastLinkedList.html#method.prev_mut),
+/// [`prev_node()`](../struct.FastLinkedList.html#method.prev_node),
+/// [`next_node()`](../struct.FastLinkedList.html#method.next_node),
+/// [`node()`](../struct.FastLinkedList.html#method.node),
+/// [`node_mut()`](../struct.FastLinkedList.html#method.node_mut),
+/// [`has_next()`](../struct.FastLinkedList.html#method.has_next),
+/// [`has_prev()`](../struct.FastLinkedList.html#method.has_prev),
+/// [`pop_next()`](../struct.FastLinkedList.html#method.pop_next),
+/// [`pop_prev()`](../struct.FastLinkedList.html#method.pop_prev),
+/// [`pop_node()`](../struct.FastLinkedList.html#method.pop_node),
+/// [`push_next()`](../struct.FastLinkedList.html#method.push_next),
+/// [`push_prev()`](../struct.FastLinkedList.html#method.push_prev),
+/// methods of the list. This allows adding, removing and mutating
+/// elements in the middle of the list in O(1) time.
+
+///
+/// Handles can be copied, cloned and passed around by value or
+/// reference without regard to the lifetime of the list. When an
+/// element is removed from the list, the handle associated with that
+/// node becomes invalid forever. Passing an invalid handle to the
+/// list is safe since all methods that accept a reference to a handle
+/// return None if the handle is invalid.
+///
+/// ### Example
+/// ```
+/// use deepmesa::lists::FastLinkedList;
+/// let mut list = FastLinkedList::<u8>::with_capacity(10);
+/// list.push_head(1);
+/// let middle = list.push_head(100);
+/// list.push_head(2);
+///
+/// // get the value of the node in the middle of the list in O(1)
+/// // time.
+/// assert_eq!(list.node(&middle), Some(&100));
+/// // remove the middle node in O(1) time
+/// list.pop_node(&middle);
+/// // once the middle node is removed, the handle is invalid
+/// assert_eq!(list.node(&middle), None);
+/// assert_eq!(list.len(), 2);
+/// ```
+///
+/// [`Node<T>`] implements the [`Default`] trait so you can store
+/// default (invalid) handles in a struct and assign them later.
+/// ### Example
+/// ```
+/// use deepmesa::lists::FastLinkedList;
+/// use deepmesa::lists::linkedlist::Node;
+///
+/// struct MyStruct<T> {
+///    handle: Node<T>
+/// };
+///
+/// let mut s = MyStruct::<u8>{
+///     handle: Node::<u8>::default()
+/// };
+///
+/// let mut list = FastLinkedList::<u8>::with_capacity(10);
+/// // The default handle is invalid
+/// assert_eq!(list.node(&s.handle), None);
+/// // push a new element and store the handle
+/// s.handle = list.push_head(1);
+/// assert_eq!(list.node(&s.handle), Some(&1));
+/// ```
 #[derive(Debug, PartialEq, Eq, Copy)]
 pub struct Node<T> {
     pub(super) cid: usize,
