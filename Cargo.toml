@@ -1,6 +1,6 @@
 [package]
 name = "deepmesa"
-version = "0.1.0"
+version = "0.1.0-dev"
 authors = ["Rahul Singh <rsingh@arrsingh.com>"]
 edition = "2018"
 categories = [
@@ -10,9 +10,12 @@ categories = [
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/deepmesa/deepmesa-rs"
+homepage = "https://www.deepmesa.com"
+documentation = "https://docs.rs/deepmesa"
+description = "This crate provides fast Data Structures and Algorithms in Rust. Every data structure is hand crafted for performance, well tested and has an extensive API."
 
 [dependencies]
-deepmesa-lists = {path = "./deepmesa-lists", version = "0.1.0"}
+deepmesa-lists = {path = "./deepmesa-lists", version = "0.1.0-dev"}
 
 
 [workspace]

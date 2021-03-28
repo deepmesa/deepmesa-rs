@@ -1,12 +1,17 @@
 [package]
 name = "deepmesa-lists"
-version = "0.1.0"
+version = "0.1.0-dev"
 authors = ["Rahul Singh <rsingh@arrsingh.com>"]
 edition = "2018"
 categories = [
 	"data-structures",
 ]
+description = "A collection of list data structures and algorithms designed for performance"
+readme = false
 license = "Apache-2.0"
+documentation = "https://docs.rs/deepmesa-lists"
+homepage = "https://www.deepmesa.com"
+repository = "https://github.com/deepmesa/deepmesa-rs/deepmesa-lists"
 
 [lib]
 doc = false
