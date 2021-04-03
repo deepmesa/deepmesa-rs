@@ -7,7 +7,7 @@ categories = [
 	"data-structures",
 ]
 description = "A collection of list data structures and algorithms designed for performance"
-readme = false
+readme = "README.md"
 license = "Apache-2.0"
 documentation = "https://docs.rs/deepmesa-lists"
 homepage = "https://www.deepmesa.com"

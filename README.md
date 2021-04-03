@@ -5,7 +5,7 @@
 This crate provides fast Data Structures and Algorithms in Rust. Every data structure is hand crafted for performance, well tested and has an extensive API.
 
 ### Lists:
-* [FastLinkedList](https://www.deepmesa.com/software/FastLinkedList): A fast and flexible doubly linked list that allows for *O(1)* inserts, deletes and updates in the middle or at either end of the list.
+* [FastLinkedList](https://www.deepmesa.com/data-structures/fastlinkedlist): A fast and flexible doubly linked list that allows for *O(1)* inserts, deletes and updates in the middle or at either end of the list.
 
 ## Usage
 
