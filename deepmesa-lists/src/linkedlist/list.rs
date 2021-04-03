@@ -30,7 +30,7 @@ macro_rules! nid_inc {
     }};
 }
 
-/// A doubly linked list that owns the nodes and can pre-allocate
+/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/fastlinkedlist/) that owns the nodes and can pre-allocate
 /// memory for performance. This linked list allows pushing and
 /// popping elements at either end or in the middle in constant time.
 ///
@@ -38,8 +38,18 @@ macro_rules! nid_inc {
 /// this list also allows pushing and popping elements from the middle
 /// of the list in constant time.
 ///
-/// This list also vends handles to its nodes that can be used to
-/// mutate the list in constant time.
+/// This list [manages
+/// memory](https://www.deepmesa.com/data-structures/fastlinkedlist/#mem_mgmt)
+/// via an internal freelist of nodes and [capacity is
+/// allocated](https://www.deepmesa.com/data-structures/fastlinkedlist/#cap_realloc)
+/// when the list is full. Capacity is deallocated when the list is
+/// dropped. This list also [vends
+/// handles](https://www.deepmesa.com/data-structures/fastlinkedlist/#handles)
+/// to its nodes that can be used to mutate the list at any node in
+/// constant time. The list provides
+/// [iterators](https://www.deepmesa.com/data-structures/fastlinkedlist/#iterators)
+/// that can use used to traverse the list in either direction by
+/// reversing the iterator at any time.
 ///
 /// # Getting Started
 
@@ -63,173 +73,6 @@ macro_rules! nid_inc {
 ///     println!("{}", e);
 /// }
 /// ```
-/// # Memory Management
-
-/// This list manages memory via an internal freelist of nodes. When a
-/// new element is added to the list, a preallocated node is acquired
-/// from the freelist. When an element is removed from the list, the
-/// node is returned to the freelist. This ensures that memory is not
-/// allocated and deallocated on every push and pop which makes the
-/// list fast.
-///
-/// All memory for the list is allocated on the heap using the default
-/// allocator. Additional memory is allocated by the freelist when a
-/// new elememt is added to the list and the capacity is filled.
-///
-/// When the list is dropped, all memory is deallocated and any
-/// elements stored in the list are dropped. If the [`Drop`] trait on
-/// an element panics the list will deallocate all allocated memory
-/// because elements are removed from the list and dropped only after
-/// all memory is deallocated.
-
-/// # Capacity & Reallocation
-
-/// The capacity of the list is the number of elements it can hold
-/// before allocating new memory. The length of the list is the number
-/// of elements it holds. When the length equals the capacity, and a
-/// new element is added to the list, the list will allocate
-/// additional memory.
-///
-/// The amount of memory allocated when the capacity is exhausted
-/// depends on how the list is constructed. If the list is constructed
-/// using [`new()`](#method.new) or
-/// [`with_capacity()`](#method.with_capacity) with a non-zero capacity
-/// then the capacity is doubled on every allocation.
-///
-/// If the list is constructed using
-/// [`with_capacity()`](#method.with_capacity) with a capacity of
-/// zero, then the list will not preallocate any memory on
-/// construction. In this case, when a new element is added to the
-/// list, additional memory will be allocated for the new elememt
-/// unless the freelist has available memory from previous remove
-/// operations.
-/// ### Example
-/// ```
-/// use deepmesa::lists::FastLinkedList;
-/// // create a list with capacity 0
-/// let mut list = FastLinkedList::<u8>::with_capacity(0);
-/// assert_eq!(list.len(), 0);
-/// assert_eq!(list.capacity(), 0);
-/// // Pushing elements will cause an allocation every time
-/// for i in 0..10 {
-///     assert_eq!(list.len(), i);
-///     assert_eq!(list.capacity(), i);
-///     list.push_head(1);
-/// }
-///
-/// // Removing an element will not cause a deallocation
-/// list.pop_head();
-/// assert_eq!(list.len(), 9);
-/// assert_eq!(list.capacity(), 10);
-///
-/// // Now that capacity exceeds the length of the list no memory will
-/// // be allocated unless existing capacity is exhausted
-/// list.push_head(1);
-/// assert_eq!(list.len(), 10);
-/// assert_eq!(list.capacity(), 10);
-/// // any further additions to the list will again allocate new
-/// // memory for each element added.
-/// list.push_head(1);
-/// assert_eq!(list.len(), 11);
-/// assert_eq!(list.capacity(), 11);
-/// ```
-/// It is recommended to use
-/// [`with_capacity()`](#method.with_capacity)
-/// whenever possible and specify how big the list is expected to get.
-/// # Handles
-/// The [`push_head()`](#method.push_head),
-/// [`push_tail()`](#method.push_tail),
-/// [`push_next()`](#method.push_next) and
-/// [`push_prev()`](#method.push_prev) methods return handles to the
-/// nodes pushed to the linked list. The handles are implemented as
-/// structs of type [`Node<T>`] that wrap a raw pointer to
-/// node. However since [`Node<T>`] does not implement the [`Deref`]
-/// trait, these raw pointers cannot be dereferenced directly. Handles
-/// can only be used by passing them as arguments to the
-/// [`next()`](#method.next), [`next_mut()`](#method.next_mut),
-/// [`prev()`](#method.prev), [`prev_mut()`](#method.prev_mut),
-/// [`prev_node()`](#method.prev_node),
-/// [`next_node()`](#method.next_node),[`node()`](#method.node),[`node_mut()`](#method.node_mut),
-/// [`has_next()`](#method.has_next),
-/// [`has_prev()`](#method.has_prev),
-/// [`pop_next()`](#method.pop_next),
-/// [`pop_prev()`](#method.pop_prev),
-/// [`pop_node()`](#method.pop_node),
-/// [`push_next()`](#method.push_next),
-/// [`push_prev()`](#method.push_prev), methods of the list. This
-/// allows adding, removing and mutating elements in the middle of the
-/// list in O(1) time.
-///
-/// Handles can be copied, cloned and passed around by value or
-/// reference without regard to the lifetime of the list. When an
-/// element is removed from the list, the handle associated with that
-/// node becomes invalid forever. Passing an invalid handle to the
-/// list is safe since all methods that accept a reference to a handle
-/// return None if the handle is invalid.
-///
-/// ### Example
-/// ```
-/// use deepmesa::lists::FastLinkedList;
-/// let mut list = FastLinkedList::<u8>::with_capacity(10);
-/// list.push_head(1);
-/// let middle = list.push_head(100);
-/// list.push_head(2);
-///
-/// // get the value of the node in the middle of the list in O(1)
-/// // time.
-/// assert_eq!(list.node(&middle), Some(&100));
-/// // remove the middle node in O(1) time
-/// list.pop_node(&middle);
-/// // once the middle node is removed, the handle is invalid
-/// assert_eq!(list.node(&middle), None);
-/// assert_eq!(list.len(), 2);
-/// ```
-///
-/// [`Node<T>`] implements the [`Default`] trait so you can store
-/// default (invalid) handles in a struct and assign them later.
-/// ### Example
-/// ```
-/// use deepmesa::lists::FastLinkedList;
-/// use deepmesa::lists::linkedlist::Node;
-///
-/// struct MyStruct<T> {
-///    handle: Node<T>
-/// };
-///
-/// let mut s = MyStruct::<u8>{
-///     handle: Node::<u8>::default()
-/// };
-///
-/// let mut list = FastLinkedList::<u8>::with_capacity(10);
-/// // The default handle is invalid
-/// assert_eq!(list.node(&s.handle), None);
-/// // push a new element and store the handle
-/// s.handle = list.push_head(1);
-/// assert_eq!(list.node(&s.handle), Some(&1));
-/// ```
-/// # Iterators
-
-/// The list supports iterators that can traverse the list in either
-/// direction by reversing the iterator at any time.
-/// ### Examples
-/// ```
-/// use deepmesa::lists::FastLinkedList;
-/// let mut list = FastLinkedList::<u8>::with_capacity(10);
-/// for i in 0..10 {
-///     list.push_head(i);
-/// }
-///
-/// let mut iter = list.iter();
-/// assert_eq!(iter.next(), Some(&9));
-/// assert_eq!(iter.next(), Some(&8));
-/// assert_eq!(iter.next(), Some(&7));
-/// // now reverse the iterator
-/// iter = iter.reverse();
-/// assert_eq!(iter.next(), Some(&8));
-/// assert_eq!(iter.next(), Some(&9));
-/// assert_eq!(iter.next(), None);
-/// ```
-
 #[derive(Debug)]
 pub struct FastLinkedList<T> {
     cid: usize,
@@ -1501,6 +1344,60 @@ impl<T> FastLinkedList<T> {
             },
         }
     }
+
+    /// Moves all nodes from the `other` list to the end of this
+    /// list. After this operation completes, the `other` list is
+    /// empty and all the nodes from that list have been moved into
+    /// this one.
+    ///
+    /// This operation has no effect on the allocated capacity of
+    /// either list. This operation should compute in *O*(1) time
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// list.push_back(0);
+    ///
+    /// let mut list2 = FastLinkedList::<u8>::with_capacity(10);
+    /// list2.push_back(1);
+    /// list2.push_back(2);
+    ///
+    /// list.append(&mut list2);
+    ///
+    /// let mut iter = list.iter();
+    /// assert_eq!(iter.next(), Some(&0));
+    /// assert_eq!(iter.next(), Some(&1));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// assert_eq!(list.len(), 3);
+    /// assert!(list2.is_empty());
+    /// ```
+    pub fn append(&mut self, other: &mut Self) {
+        if self.tail.is_null() {
+            self.head = other.head;
+            self.tail = other.tail;
+            other.head = ptr::null_mut();
+            other.tail = ptr::null_mut();
+
+            self.len = other.len;
+        } else {
+            unsafe {
+                (*self.tail).next = other.head;
+                if !other.head.is_null() {
+                    (*other.head).prev = self.tail;
+                }
+            }
+            self.tail = other.tail;
+            self.len += other.len;
+        }
+
+        other.head = ptr::null_mut();
+        other.tail = ptr::null_mut();
+        other.len = 0;
+    }
 }
 
 #[cfg(test)]
@@ -2004,5 +1901,53 @@ mod test {
         assert_order!(ll, n_node2, 22, node2, 2);
         assert_order!(ll, node3, 3, n_node2, 22);
         assert_order!(ll, n_node3, 33, node3, 3);
+    }
+
+    #[test]
+    fn test_append() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        for i in 0..4 {
+            ll.push_tail(i);
+        }
+        assert_eq!(ll.len(), 4);
+        assert_eq!(ll.capacity(), 4);
+        assert_eq!(ll.fl.len(), 0);
+
+        let mut otherll = FastLinkedList::<u8>::with_capacity(10);
+        for i in 0..10 {
+            otherll.push_tail(i);
+        }
+        assert_eq!(otherll.len(), 10);
+        assert_eq!(otherll.fl.len(), 0);
+        assert_eq!(otherll.capacity(), 10);
+
+        ll.append(&mut otherll);
+        assert_eq!(otherll.len(), 0);
+        assert_eq!(otherll.capacity(), 0);
+        assert_eq!(otherll.fl.len(), 0);
+
+        assert_eq!(ll.len(), 14);
+        assert_eq!(ll.capacity(), 14);
+        assert_eq!(ll.fl.len(), 0);
+        for i in 0..4 {
+            ll.push_tail(i + 100);
+        }
+
+        assert_eq!(ll.len(), 18);
+        assert_eq!(ll.capacity(), 18);
+        assert_eq!(ll.fl.len(), 0);
+        ll.push_head(111);
+        assert_eq!(ll.len(), 19);
+        assert_eq!(ll.capacity(), 26);
+        assert_eq!(ll.fl.len(), 7);
+        //now clear the lists
+        ll.clear();
+        assert_eq!(ll.len(), 0);
+        assert_eq!(ll.capacity(), 26);
+        assert_eq!(ll.fl.len(), 26);
+        otherll.clear();
+        assert_eq!(otherll.len(), 0);
+        assert_eq!(otherll.capacity(), 0);
+        assert_eq!(otherll.fl.len(), 0);
     }
 }
