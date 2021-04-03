@@ -12,3 +12,6 @@ doc:
 
 clean:
     cargo clean
+
+release-minor:
+    cargo release minor --workspace
