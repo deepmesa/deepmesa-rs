@@ -1,6 +1,6 @@
 [package]
 name = "deepmesa-lists"
-version = "0.2.0"
+version = "0.2.1-dev"
 authors = ["Rahul Singh <rsingh@arrsingh.com>"]
 edition = "2018"
 categories = [
