@@ -15,3 +15,6 @@ clean:
 
 release-minor:
     cargo release minor --workspace
+
+release-patch:
+    cargo release patch --workspace
