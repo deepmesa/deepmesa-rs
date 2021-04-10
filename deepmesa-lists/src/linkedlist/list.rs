@@ -1395,6 +1395,108 @@ impl<T> FastLinkedList<T> {
         other.len = 0;
         other.cid = inc_cid();
     }
+
+    /// Moves the specified node to the front (head) of the list. If
+    /// the node is already at the head of the list then this
+    /// operation has no effect.
+    ///
+    /// Returns true if the node is successfully moved to the head of
+    /// the list (or if it was already at the head) and false if the
+    /// specified node is invalid.
+    ///
+    /// This operation should complete in *O*(1) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    ///
+    /// assert_eq!(list.head(), Some(&0));
+    /// list.make_head(&hnd2);
+    /// assert_eq!(list.head(), Some(&2));
+    /// ```
+    pub fn make_head(&mut self, node: &Node<T>) -> bool {
+        match self.node_ptr(node) {
+            None => false,
+            Some(n_ptr) => unsafe {
+                if n_ptr == self.head {
+                    return true;
+                }
+
+                if !(*n_ptr).prev.is_null() {
+                    (*(*n_ptr).prev).next = (*n_ptr).next;
+                }
+                if !(*n_ptr).next.is_null() {
+                    (*(*n_ptr).next).prev = (*n_ptr).prev;
+                }
+
+                if n_ptr == self.tail {
+                    self.tail = (*n_ptr).prev;
+                }
+
+                (*n_ptr).prev = ptr::null_mut();
+                (*n_ptr).next = self.head;
+                (*self.head).prev = n_ptr;
+                self.head = n_ptr;
+                true
+            },
+        }
+    }
+
+    /// Moves the specified node to the back (tail) of the list. If
+    /// the node is already at the tail of the list then this
+    /// operation has no effect.
+    ///
+    /// Returns true if the node is successfully moved to the tail of
+    /// the list (or if it was already at the tail) and false if the
+    /// specified node is invalid.
+    ///
+    /// This operation should complete in *O*(1) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    ///
+    /// assert_eq!(list.tail(), Some(&2));
+    /// list.make_tail(&hnd0);
+    /// assert_eq!(list.tail(), Some(&0));
+    /// ```
+    pub fn make_tail(&mut self, node: &Node<T>) -> bool {
+        match self.node_ptr(node) {
+            None => false,
+            Some(n_ptr) => unsafe {
+                if n_ptr == self.tail {
+                    return true;
+                }
+
+                if !(*n_ptr).prev.is_null() {
+                    (*(*n_ptr).prev).next = (*n_ptr).next;
+                }
+                if !(*n_ptr).next.is_null() {
+                    (*(*n_ptr).next).prev = (*n_ptr).prev;
+                }
+
+                if n_ptr == self.head {
+                    self.head = (*n_ptr).next;
+                }
+
+                (*n_ptr).next = ptr::null_mut();
+                (*n_ptr).prev = self.tail;
+                (*self.tail).next = n_ptr;
+                self.tail = n_ptr;
+                true
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1976,5 +2078,67 @@ mod test {
             assert_eq!(val, &count);
             count += 1;
         }
+    }
+
+    #[test]
+    fn test_make_head() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        assert!(ll.make_head(&hnd1));
+        assert_order!(ll, hnd1, 1, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+
+        assert_node!(ll, hnd1, FIRST, 1, 3);
+        assert_node!(ll, hnd2, MIDDLE, 2, 3);
+        assert_node!(ll, hnd3, LAST, 3, 3);
+
+        assert!(ll.make_head(&hnd2));
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd3, 3);
+
+        assert_node!(ll, hnd2, FIRST, 2, 3);
+        assert_node!(ll, hnd1, MIDDLE, 1, 3);
+        assert_node!(ll, hnd3, LAST, 3, 3);
+
+        assert!(ll.make_head(&hnd3));
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+
+        assert_node!(ll, hnd3, FIRST, 3, 3);
+        assert_node!(ll, hnd2, MIDDLE, 2, 3);
+        assert_node!(ll, hnd1, LAST, 1, 3);
+    }
+
+    #[test]
+    fn test_make_tail() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        assert!(ll.make_tail(&hnd3));
+        assert_order!(ll, hnd1, 1, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+
+        assert_node!(ll, hnd1, FIRST, 1, 3);
+        assert_node!(ll, hnd2, MIDDLE, 2, 3);
+        assert_node!(ll, hnd3, LAST, 3, 3);
+
+        assert!(ll.make_tail(&hnd2));
+        assert_order!(ll, hnd1, 1, hnd3, 3);
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+
+        assert_node!(ll, hnd1, FIRST, 1, 3);
+        assert_node!(ll, hnd3, MIDDLE, 3, 3);
+        assert_node!(ll, hnd2, LAST, 2, 3);
+
+        assert!(ll.make_tail(&hnd1));
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+
+        assert_node!(ll, hnd3, FIRST, 3, 3);
+        assert_node!(ll, hnd2, MIDDLE, 2, 3);
+        assert_node!(ll, hnd1, LAST, 1, 3);
     }
 }
