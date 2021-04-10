@@ -69,6 +69,9 @@ impl<T> FreeList<T> {
         unsafe {
             while count < size {
                 let ptr: *mut InternalNode<T> = alloc(layout) as *mut InternalNode<T>;
+                if ptr.is_null() {
+                    panic!("memory allocation failed!");
+                }
                 self.push_head(ptr);
                 count += 1;
             }

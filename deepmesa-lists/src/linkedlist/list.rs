@@ -111,7 +111,13 @@ impl<'a, T> IntoIterator for &'a mut FastLinkedList<T> {
     }
 }
 
-static mut LL_COUNTER: usize = 0;
+fn inc_cid() -> usize {
+    unsafe {
+        static mut LL_COUNTER: usize = 0;
+        LL_COUNTER += 1;
+        return LL_COUNTER;
+    }
+}
 
 impl<T> FastLinkedList<T> {
     /// Creates an empty linked list with a
@@ -124,17 +130,13 @@ impl<T> FastLinkedList<T> {
     /// let list = FastLinkedList::<u8>::new();
     /// ```
     pub fn new() -> FastLinkedList<T> {
-        unsafe {
-            LL_COUNTER += 1;
-
-            FastLinkedList {
-                cid: LL_COUNTER,
-                nid: 0,
-                len: 0,
-                head: ptr::null_mut(),
-                tail: ptr::null_mut(),
-                fl: fl::FreeList::new(8),
-            }
+        FastLinkedList {
+            cid: inc_cid(),
+            nid: 0,
+            len: 0,
+            head: ptr::null_mut(),
+            tail: ptr::null_mut(),
+            fl: fl::FreeList::new(8),
         }
     }
 
@@ -178,17 +180,13 @@ impl<T> FastLinkedList<T> {
     /// assert_eq!(list.capacity(), 2);
     /// ```
     pub fn with_capacity(capacity: usize) -> FastLinkedList<T> {
-        unsafe {
-            LL_COUNTER += 1;
-
-            FastLinkedList {
-                cid: LL_COUNTER,
-                nid: 0,
-                len: 0,
-                head: ptr::null_mut(),
-                tail: ptr::null_mut(),
-                fl: fl::FreeList::new(capacity),
-            }
+        FastLinkedList {
+            cid: inc_cid(),
+            nid: 0,
+            len: 0,
+            head: ptr::null_mut(),
+            tail: ptr::null_mut(),
+            fl: fl::FreeList::new(capacity),
         }
     }
 
@@ -1350,6 +1348,9 @@ impl<T> FastLinkedList<T> {
     /// empty and all the nodes from that list have been moved into
     /// this one.
     ///
+    /// All handles to nodes previously returned by other list will
+    /// become invalid after this operation completes.
+    ///
     /// This operation has no effect on the allocated capacity of
     /// either list. This operation should compute in *O*(1) time
     ///
@@ -1378,11 +1379,6 @@ impl<T> FastLinkedList<T> {
     pub fn append(&mut self, other: &mut Self) {
         if self.tail.is_null() {
             self.head = other.head;
-            self.tail = other.tail;
-            other.head = ptr::null_mut();
-            other.tail = ptr::null_mut();
-
-            self.len = other.len;
         } else {
             unsafe {
                 (*self.tail).next = other.head;
@@ -1390,13 +1386,14 @@ impl<T> FastLinkedList<T> {
                     (*other.head).prev = self.tail;
                 }
             }
-            self.tail = other.tail;
-            self.len += other.len;
         }
 
+        self.tail = other.tail;
+        self.len += other.len;
         other.head = ptr::null_mut();
         other.tail = ptr::null_mut();
         other.len = 0;
+        other.cid = inc_cid();
     }
 }
 
@@ -1949,5 +1946,35 @@ mod test {
         assert_eq!(otherll.len(), 0);
         assert_eq!(otherll.capacity(), 0);
         assert_eq!(otherll.fl.len(), 0);
+    }
+
+    #[test]
+    fn test_append_handle() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        ll.push_tail(1);
+        ll.push_tail(2);
+        ll.push_tail(3);
+
+        let hnd: Node<u8>;
+        {
+            let mut other = FastLinkedList::<u8>::with_capacity(4);
+            other.push_tail(4);
+            hnd = other.push_tail(5);
+            other.push_tail(6);
+
+            //its a valid handle
+            assert_eq!(other.node(&hnd), Some(&5));
+            ll.append(&mut other);
+            //handle should now be invalid
+            assert_eq!(other.node(&hnd), None);
+            assert_eq!(other.len(), 0);
+            assert!(other.is_empty());
+        }
+        assert_eq!(ll.node(&hnd), None);
+        let mut count = 1;
+        for val in ll.iter() {
+            assert_eq!(val, &count);
+            count += 1;
+        }
     }
 }
