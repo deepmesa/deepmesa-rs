@@ -20,7 +20,7 @@
 */
 
 use crate::linkedlist::{fl, iter::Iter, iter::IterMut, node::InternalNode, node::Node};
-use std::ptr;
+use core::ptr;
 
 macro_rules! nid_inc {
     ($nid: expr) => {{
@@ -443,43 +443,6 @@ impl<T> FastLinkedList<T> {
         }
 
         unsafe { Some(&mut (*self.head).val) }
-    }
-
-    /// Returns a valid raw pointer to the specified Handle or None if
-    /// the handle is invalid.  This method checks the container Id
-    /// (cid) of the handle against the list itself so that handles
-    /// cannot be used across lists. If the container Id matches then
-    /// the node Id is checked against the node Id stored at that
-    /// memory locatiom. If the container Id and the Node Id are a
-    /// match then a flag indicating whether this node is part of the
-    /// freelist is checked.
-
-    /// If the container Id and the node Id match and the node is not
-    /// part of the free list then the raw pointer to the Node is
-    /// returned. If the conditions don't return true this method
-    /// returns None indicating that the raw pointer does not point to
-    /// the node that the handle originally referred to.
-    ///
-    /// It should be noted that the raw pointer returned will always
-    /// point to a valid memory location since that memory is
-    /// allocated and managed by the freelist. However the contents of
-    /// that memory location can change as nodes are pushed and popped
-    /// off the list. When the contents change the handle becomes
-    /// invalid and this method returns None.
-    fn node_ptr(&self, node: &Node<T>) -> Option<*mut InternalNode<T>> {
-        if node.cid != self.cid {
-            return None;
-        }
-        unsafe {
-            if (*node.ptr).nid != node.nid {
-                return None;
-            }
-            if (*node.ptr).fl_node {
-                return None;
-            }
-        }
-
-        Some((*node).ptr)
     }
 
     /// Returns a reference to the value of the node immediately after
@@ -961,35 +924,6 @@ impl<T> FastLinkedList<T> {
     /// ```
     pub fn push_back(&mut self, elem: T) {
         self.push_tail(elem);
-    }
-
-    /// Removes and returns the node pointed to by the specified raw pointer. This
-    /// method will panic if the specified pointer is null.
-    /// The memory is returned to the free list.
-    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
-        if ptr.is_null() {
-            panic!("cannot pop null pointer");
-        }
-
-        unsafe {
-            if !(*ptr).next.is_null() {
-                (*(*ptr).next).prev = (*ptr).prev;
-            }
-
-            if !(*ptr).prev.is_null() {
-                (*(*ptr).prev).next = (*ptr).next;
-            }
-
-            if self.head == ptr {
-                self.head = (*ptr).next;
-            }
-
-            if self.tail == ptr {
-                self.tail = (*ptr).prev;
-            }
-            self.len -= 1;
-            self.fl.release(ptr)
-        }
     }
 
     /// Removes and returns the value at the head (front) of the
@@ -1496,6 +1430,311 @@ impl<T> FastLinkedList<T> {
                 true
             },
         }
+    }
+
+    /// Returns `Some(true)` if the specified node is immediately previous to
+    /// `other` and `Some(false)` otherwise.
+    ///
+    /// If either of the nodes in invalid this method returns None.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_prev(&hnd0, &hnd1), Some(true));
+    /// assert_eq!(list.is_prev(&hnd1, &hnd0), Some(false));
+    /// assert_eq!(list.is_prev(&hnd1, &hnd2), None);
+    /// ```
+    pub fn is_prev(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                unsafe {
+                    if (*n_ptr).next == o_ptr {
+                        return Some(true);
+                    } else {
+                        return Some(false);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Returns `Some(true)` if the specified node is immediately
+    /// after `other` and `Some(false)` otherwise.
+    ///
+    /// If either of the nodes in invalid this method returns None.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_next(&hnd1, &hnd0), Some(true));
+    /// assert_eq!(list.is_next(&hnd0, &hnd1), Some(false));
+    /// assert_eq!(list.is_next(&hnd2, &hnd1), None);
+    /// ```
+    pub fn is_next(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                unsafe {
+                    if (*n_ptr).prev == o_ptr {
+                        return Some(true);
+                    } else {
+                        return Some(false);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Returns `Some(true)` if the specified node is the head of the
+    /// list and `Some(false)` if its not.
+    ///
+    /// If the specified node is invalid then this method returns
+    /// `None`
+    ///
+    /// This method should complete in *O*(1) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_head(&hnd0), Some(true));
+    /// assert_eq!(list.is_head(&hnd1), Some(false));
+    /// assert_eq!(list.is_head(&hnd2), None);
+    /// ```
+    pub fn is_head(&self, node: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if n_ptr == self.head {
+                return Some(true);
+            } else {
+                return Some(false);
+            }
+        }
+        None
+    }
+
+    /// Returns `Some(true)` if the specified node is the tail of the
+    /// list and `Some(false)` if its not.
+    ///
+    /// If the specified node is invalid then this method returns
+    /// `None`
+    ///
+    /// This method should complete in *O*(1) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_tail(&hnd0), Some(false));
+    /// assert_eq!(list.is_tail(&hnd1), Some(true));
+    /// assert_eq!(list.is_tail(&hnd2), None);
+    /// ```
+    pub fn is_tail(&self, node: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if n_ptr == self.tail {
+                return Some(true);
+            } else {
+                return Some(false);
+            }
+        }
+        None
+    }
+
+    /// Swaps the position in the list of the two nodes. If either
+    /// node is invalid then this method returns false and true if the
+    /// positions of the nodes were successfully swapped.
+    ///
+    /// This method should complete in *O*(1) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::FastLinkedList;
+    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.swap_node(&hnd0, &hnd1), true);
+    /// assert_eq!(list.swap_node(&hnd1, &hnd2), false);
+    /// assert_eq!(list.is_head(&hnd1), Some(true));
+    /// assert_eq!(list.is_tail(&hnd0), Some(true));
+    /// ```
+    pub fn swap_node(&mut self, node: &Node<T>, other: &Node<T>) -> bool {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                if n_ptr == o_ptr {
+                    return true;
+                }
+                unsafe {
+                    if (*n_ptr).next == o_ptr {
+                        //n_ptr is after o_pter. Swap them
+                        self.swap_node_adjacent(n_ptr, o_ptr);
+                        return true;
+                    }
+                    if (*o_ptr).next == n_ptr {
+                        //o_ptr is after n_ptr. Swap them
+                        self.swap_node_adjacent(o_ptr, n_ptr);
+                        return true;
+                    }
+                    // n_ptr & o_ptr at disjoint - i.e. have atleast one other node between them
+                    let np_prev = (*n_ptr).prev;
+                    let np_next = (*n_ptr).next;
+                    let op_prev = (*o_ptr).prev;
+                    let op_next = (*o_ptr).next;
+
+                    (*o_ptr).prev = np_prev;
+                    (*o_ptr).next = np_next;
+                    (*n_ptr).prev = op_prev;
+                    (*n_ptr).next = op_next;
+
+                    if np_prev.is_null() {
+                        //n_ptr is at the head. So make o_ptr the head
+                        self.head = o_ptr;
+                    } else {
+                        (*np_prev).next = o_ptr;
+                    }
+
+                    if np_next.is_null() {
+                        //n_ptr is at the tail. So make o_ptr the tail
+                        self.tail = o_ptr;
+                    } else {
+                        (*np_next).prev = o_ptr;
+                    }
+
+                    if op_prev.is_null() {
+                        //o_ptr is at the head. So make n_ptr the head
+                        self.head = n_ptr;
+                    } else {
+                        (*op_prev).next = n_ptr;
+                    }
+
+                    if op_next.is_null() {
+                        //o_ptr is the tail. So make n_ptr the tail
+                        self.tail = n_ptr;
+                    } else {
+                        (*op_next).prev = n_ptr;
+                    }
+
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //Private Helpers
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// Removes and returns the node pointed to by the specified raw pointer. This
+    /// method will panic if the specified pointer is null.
+    /// The memory is returned to the free list.
+    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
+        if ptr.is_null() {
+            panic!("cannot pop null pointer");
+        }
+
+        unsafe {
+            if !(*ptr).next.is_null() {
+                (*(*ptr).next).prev = (*ptr).prev;
+            }
+
+            if !(*ptr).prev.is_null() {
+                (*(*ptr).prev).next = (*ptr).next;
+            }
+
+            if self.head == ptr {
+                self.head = (*ptr).next;
+            }
+
+            if self.tail == ptr {
+                self.tail = (*ptr).prev;
+            }
+            self.len -= 1;
+            self.fl.release(ptr)
+        }
+    }
+
+    /// Returns a valid raw pointer to the specified Handle or None if
+    /// the handle is invalid.  This method checks the container Id
+    /// (cid) of the handle against the list itself so that handles
+    /// cannot be used across lists. If the container Id matches then
+    /// the node Id is checked against the node Id stored at that
+    /// memory locatiom. If the container Id and the Node Id are a
+    /// match then a flag indicating whether this node is part of the
+    /// freelist is checked.
+
+    /// If the container Id and the node Id match and the node is not
+    /// part of the free list then the raw pointer to the Node is
+    /// returned. If the conditions don't return true this method
+    /// returns None indicating that the raw pointer does not point to
+    /// the node that the handle originally referred to.
+    ///
+    /// It should be noted that the raw pointer returned will always
+    /// point to a valid memory location since that memory is
+    /// allocated and managed by the freelist. However the contents of
+    /// that memory location can change as nodes are pushed and popped
+    /// off the list. When the contents change the handle becomes
+    /// invalid and this method returns None.
+    fn node_ptr(&self, node: &Node<T>) -> Option<*mut InternalNode<T>> {
+        if node.cid != self.cid {
+            return None;
+        }
+        unsafe {
+            if (*node.ptr).nid != node.nid {
+                return None;
+            }
+            if (*node.ptr).fl_node {
+                return None;
+            }
+        }
+
+        Some((*node).ptr)
+    }
+
+    unsafe fn swap_node_adjacent(
+        &mut self,
+        n_ptr: *mut InternalNode<T>,
+        o_ptr: *mut InternalNode<T>,
+    ) {
+        // N -> O
+
+        if (*n_ptr).prev.is_null() {
+            //n_ptr is the head
+            self.head = o_ptr;
+        } else {
+            (*(*n_ptr).prev).next = o_ptr;
+        }
+
+        if (*o_ptr).next.is_null() {
+            //o_ptr is the tail
+            self.tail = n_ptr;
+        } else {
+            (*(*o_ptr).next).prev = n_ptr;
+        }
+
+        (*n_ptr).next = (*o_ptr).next;
+        (*o_ptr).prev = (*n_ptr).prev;
+        (*o_ptr).next = n_ptr;
+        (*n_ptr).prev = o_ptr;
     }
 }
 
@@ -2140,5 +2379,104 @@ mod test {
         assert_node!(ll, hnd3, FIRST, 3, 3);
         assert_node!(ll, hnd2, MIDDLE, 2, 3);
         assert_node!(ll, hnd1, LAST, 1, 3);
+    }
+
+    #[test]
+    fn test_is_next() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        ll.pop_tail();
+        assert_eq!(ll.is_next(&hnd1, &hnd1), Some(false));
+        assert_eq!(ll.is_next(&hnd1, &hnd2), Some(false));
+        assert_eq!(ll.is_next(&hnd2, &hnd1), Some(true));
+        assert_eq!(ll.is_next(&hnd2, &hnd3), None);
+        assert_eq!(ll.is_next(&hnd1, &hnd3), None);
+        assert_eq!(ll.is_next(&hnd3, &hnd3), None);
+    }
+
+    #[test]
+    fn test_is_prev() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        ll.pop_tail();
+        assert_eq!(ll.is_prev(&hnd1, &hnd1), Some(false));
+        assert_eq!(ll.is_prev(&hnd1, &hnd2), Some(true));
+        assert_eq!(ll.is_prev(&hnd2, &hnd1), Some(false));
+        assert_eq!(ll.is_prev(&hnd2, &hnd3), None);
+        assert_eq!(ll.is_prev(&hnd1, &hnd3), None);
+        assert_eq!(ll.is_prev(&hnd3, &hnd3), None);
+    }
+
+    #[test]
+    fn test_swap_node() {
+        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let hnd0 = ll.push_tail(0);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+
+        ll.swap_node(&hnd0, &hnd3);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd0, 0);
+
+        ll.swap_node(&hnd1, &hnd2);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
+
+        ll.swap_node(&hnd3, &hnd2);
+        assert_node!(ll, hnd2, FIRST, 2, 4);
+        assert_node!(ll, hnd3, MIDDLE, 3, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+        assert_order!(ll, hnd3, 3, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
+
+        ll.swap_node(&hnd1, &hnd0);
+        assert_node!(ll, hnd2, FIRST, 2, 4);
+        assert_node!(ll, hnd3, MIDDLE, 3, 4);
+        assert_node!(ll, hnd0, MIDDLE, 0, 4);
+        assert_node!(ll, hnd1, LAST, 1, 4);
+
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+        assert_order!(ll, hnd3, 3, hnd0, 0);
+        assert_order!(ll, hnd0, 0, hnd1, 1);
+
+        ll.swap_node(&hnd3, &hnd2);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd0, MIDDLE, 0, 4);
+        assert_node!(ll, hnd1, LAST, 1, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd0, 0);
+        assert_order!(ll, hnd0, 0, hnd1, 1);
+
+        ll.swap_node(&hnd1, &hnd0);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
     }
 }

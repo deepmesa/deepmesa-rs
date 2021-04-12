@@ -19,7 +19,8 @@
    limitations under the License.
 */
 
-use std::ptr;
+use crate::linkedlist::list::FastLinkedList;
+use core::ptr;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct InternalNode<T> {
@@ -156,6 +157,94 @@ impl<T> InternalNode<T> {
 impl<T> Node<T> {
     pub(super) fn new(cid: usize, nid: usize, ptr: *mut InternalNode<T>) -> Node<T> {
         Node { cid, nid, ptr }
+    }
+
+    pub fn is_head(&self, list: &FastLinkedList<T>) -> Option<bool> {
+        list.is_head(self)
+    }
+
+    pub fn is_tail(&self, list: &FastLinkedList<T>) -> Option<bool> {
+        list.is_tail(self)
+    }
+
+    pub fn is_prev(&self, other: &Node<T>, list: &FastLinkedList<T>) -> Option<bool> {
+        list.is_prev(self, other)
+    }
+
+    pub fn is_next(&self, other: &Node<T>, list: &FastLinkedList<T>) -> Option<bool> {
+        list.is_next(self, other)
+    }
+
+    pub fn has_next(&self, list: &FastLinkedList<T>) -> Option<bool> {
+        list.has_next(self)
+    }
+
+    pub fn has_prev(&self, list: &FastLinkedList<T>) -> Option<bool> {
+        list.has_prev(self)
+    }
+
+    pub fn next<'a>(&self, list: &'a FastLinkedList<T>) -> Option<&'a T> {
+        list.next(self)
+    }
+
+    pub fn prev<'a>(&self, list: &'a FastLinkedList<T>) -> Option<&'a T> {
+        list.prev(self)
+    }
+
+    pub fn next_mut<'a>(&self, list: &'a mut FastLinkedList<T>) -> Option<&'a mut T> {
+        list.next_mut(self)
+    }
+
+    pub fn prev_mut<'a>(&self, list: &'a mut FastLinkedList<T>) -> Option<&'a mut T> {
+        list.prev_mut(self)
+    }
+
+    pub fn next_node(&self, list: &FastLinkedList<T>) -> Option<Node<T>> {
+        list.next_node(self)
+    }
+
+    pub fn prev_node(&self, list: &FastLinkedList<T>) -> Option<Node<T>> {
+        list.prev_node(self)
+    }
+
+    pub fn val<'a>(&self, list: &'a FastLinkedList<T>) -> Option<&'a T> {
+        list.node(self)
+    }
+
+    pub fn val_mut<'a>(&self, list: &'a mut FastLinkedList<T>) -> Option<&'a mut T> {
+        list.node_mut(self)
+    }
+
+    pub fn pop_next(&self, list: &mut FastLinkedList<T>) -> Option<T> {
+        list.pop_next(self)
+    }
+
+    pub fn pop_prev(&self, list: &mut FastLinkedList<T>) -> Option<T> {
+        list.pop_prev(self)
+    }
+
+    pub fn pop(&self, list: &mut FastLinkedList<T>) -> Option<T> {
+        list.pop_node(self)
+    }
+
+    pub fn push_next(&self, elem: T, list: &mut FastLinkedList<T>) -> Option<Node<T>> {
+        list.push_next(self, elem)
+    }
+
+    pub fn push_prev(&self, elem: T, list: &mut FastLinkedList<T>) -> Option<Node<T>> {
+        list.push_prev(self, elem)
+    }
+
+    pub fn make_head(&self, list: &mut FastLinkedList<T>) -> bool {
+        list.make_head(self)
+    }
+
+    pub fn make_tail(&self, list: &mut FastLinkedList<T>) -> bool {
+        list.make_tail(self)
+    }
+
+    pub fn swap_node(&self, other: &Node<T>, list: &mut FastLinkedList<T>) -> bool {
+        list.swap_node(self, other)
     }
 }
 
