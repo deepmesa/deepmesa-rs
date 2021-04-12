@@ -191,6 +191,7 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a bidirectional iterator over the list
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -216,6 +217,7 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a bidirectional iterator over the list with mutable
     /// references that allows the value to be modified
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -239,8 +241,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and drops all the elements from this list. This has no
-    /// effect on the allocated capacity of the list. This method
-    /// should complete in *O*(*n*) time.
+    /// effect on the allocated capacity of the list.
+    ///
+    /// This method should complete in *O*(*n*) time.
     ///
     /// # Examples
     /// ```
@@ -267,10 +270,10 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty. This method simply calls
+    /// [`self.head()`](#method.head)
     ///
-    /// This method simply calls [`self.head()`](#method.head)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -286,10 +289,10 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty. This method simply calls
+    /// [`self.tail()`](#method.tail)
     ///
-    /// This method simply calls [`self.tail()`](#method.tail)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -304,11 +307,11 @@ impl<T> FastLinkedList<T> {
         self.tail()
     }
 
-    /// Returns a mutable reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// Returns a mutable reference to the front (head) of the list or
+    /// `None` if the list is empty. This method simply calls
+    /// [`self.head_mut()`](#method.head_mut)
     ///
-    /// This method simply calls [`self.head_mut()`](#method.head_mut)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -328,11 +331,11 @@ impl<T> FastLinkedList<T> {
         self.head_mut()
     }
 
-    /// Returns a mutable reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// Returns a mutable reference to the back (tail) of the list or
+    /// `None` if the list is empty. This method simply calls
+    /// [`self.tail_mut()`](#method.tail_mut)
     ///
-    /// This method simply calls [`self.tail_mut()`](#method.tail_mut)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -353,8 +356,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -374,8 +378,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a mutable reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -399,8 +404,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -420,8 +426,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a mutable reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -448,8 +455,9 @@ impl<T> FastLinkedList<T> {
     /// Returns a reference to the value of the node immediately after
     /// the node associated with the specified handle. If the
     /// specified handle is invalid or there is no next node, this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -480,8 +488,9 @@ impl<T> FastLinkedList<T> {
     /// Returns a mutable reference to the value of the node
     /// immediately after the node associated with the specified
     /// handle. If the specified handle is invalid or if there is no
-    /// next node, this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// next node, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -514,8 +523,9 @@ impl<T> FastLinkedList<T> {
     /// Returns a reference to the value of the node immediately
     /// preceeding the node associated with the specified handle.  If
     /// the specified handle is invalid or if there is no preceeding
-    /// node, this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// node, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -580,7 +590,9 @@ impl<T> FastLinkedList<T> {
     /// Returns a handle to the node immediately preceeding the node
     /// associated with the specified handle. If the specified handle
     /// is invalid or if there is no preceeding node, this method
-    /// returns None. This method should complete in *O*(*1*) time.
+    /// returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -611,7 +623,9 @@ impl<T> FastLinkedList<T> {
     /// Returns a handle to the node immediately preceeding the node
     /// associated with the specified handle. If the handle is invalid
     /// or if there is no preceeding node, this method returns
-    /// None. This method should complete in *O*(*1*) time.
+    /// None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -644,8 +658,9 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a reference to the value of the node associated with
     /// the specified handle.  If the specified handle is invalid this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -668,8 +683,9 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a mutable reference to the value of the node associated with
     /// the specified handle.  If the specified handle is invalid this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -694,8 +710,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a handle to the head (front) of the list or None if
-    /// the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -720,8 +737,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a handle to the tail (back) of the list or None if the
-    /// list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -746,8 +764,9 @@ impl<T> FastLinkedList<T> {
 
     /// Returns true if the node associated with the specified handle
     /// has a next node and false if it does not. If the specified
-    /// handle is invalid this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// handle is invalid this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -779,8 +798,9 @@ impl<T> FastLinkedList<T> {
 
     /// Returns true if the node associated with the specified handle
     /// has a previous node and false if it does not. If the specified
-    /// handle is invalid this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// handle is invalid this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -810,8 +830,9 @@ impl<T> FastLinkedList<T> {
         }
     }
 
-    /// Returns true if the list is empty. This method should
-    /// complete in *O*(*1*) time.
+    /// Returns true if the list is empty and false otherwise.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -828,6 +849,8 @@ impl<T> FastLinkedList<T> {
 
     /// Returns true if the list has a head node and false if the list
     /// is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -846,6 +869,8 @@ impl<T> FastLinkedList<T> {
     /// Returns true if the list has a tail node and false if the list
     /// is empty.
     ///
+    /// This method should complete in *O*(*1*) time.
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -862,6 +887,7 @@ impl<T> FastLinkedList<T> {
 
     /// Returns the number of elements the list can hold without
     /// before new memory is allocated.
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -873,6 +899,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns the number of elements in the list
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -886,11 +915,10 @@ impl<T> FastLinkedList<T> {
         self.len
     }
 
-    /// Adds an element to the front (head) of the list. This
-    /// operation should complete in O(1) time.
+    /// Adds an element to the front (head) of the list. This method
+    /// simply calls [`self.push_head()`](#method.push_head)
     ///
-    /// This method simply calls
-    /// [`self.push_head()`](#method.push_head)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -906,11 +934,10 @@ impl<T> FastLinkedList<T> {
         self.push_head(elem);
     }
 
-    /// Adds an element to the back (tail) of the list. This
-    /// operation should complete in O(1) time.
+    /// Adds an element to the back (tail) of the list. This method
+    /// simply calls [`self.push_tail()`](#method.push_tail)
     ///
-    /// This method simply calls
-    /// [`self.push_tail()`](#method.push_tail)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -927,8 +954,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the head (front) of the
-    /// list or None if the list is empty. This operation should
-    /// complete in O(1) time
+    /// list or None if the list is empty.
+    ///
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
@@ -950,8 +978,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the tail (back) of the
-    /// list or None if the list is empty. This operation should
-    /// complete in O(1) time
+    /// list or None if the list is empty.
+    ///
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
@@ -974,10 +1003,10 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the front (head) of the list
-    /// or None if the list is empty. This operation should complete
-    /// in O(1) time.
+    /// or None if the list is empty. This method simply calls
+    /// [`self.pop_head()`](#method.pop_head)
     ///
-    /// This method simply calls [`self.pop_head()`](#method.pop_head)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -996,10 +1025,10 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the back (tail) of the list
-    /// or None if the list is empty. This operation should complete
-    /// in O(1) time
+    /// or None if the list is empty. This method simply calls
+    /// [`self.pop_tail()`](#method.pop_tail)
     ///
-    /// This method simply calls [`self.pop_tail()`](#method.pop_tail)
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
@@ -1021,6 +1050,8 @@ impl<T> FastLinkedList<T> {
     /// the node associated with the specified handle. If the
     /// specified handle is invalid or there is no next node, then
     /// this method returns None.
+    ///
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
@@ -1051,6 +1082,8 @@ impl<T> FastLinkedList<T> {
     /// the specified handle is invalid or there is no previous node,
     /// then this method returns None.
     ///
+    /// This operation should complete in *O*(*1*) time
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -1080,6 +1113,8 @@ impl<T> FastLinkedList<T> {
     /// specified handle. If the specified handle is invalid then this
     /// method returns None.
     ///
+    /// This operation should complete in *O*(*1*) time
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::lists::FastLinkedList;
@@ -1097,7 +1132,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Adds an element to the head (front) of the list and returns a
-    /// handle to it. This operation should complete in O(1) time.
+    /// handle to it.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1129,7 +1166,9 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Adds an element to the tail (back) of the list and returns a
-    /// handle to it. This operation should complete in O(1) time.
+    /// handle to it.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1161,6 +1200,8 @@ impl<T> FastLinkedList<T> {
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
     ///
+    /// This operation should complete in *O*(*n*) time
+    ///
     /// # Examples
     ///
     /// ```
@@ -1183,8 +1224,9 @@ impl<T> FastLinkedList<T> {
 
     /// Adds an element immediately after the node associated with the
     /// specified handle. Returns the handle to the node thats been
-    /// added or None if the specified handle is invalid. This
-    /// operation should complete in O(1) time.
+    /// added or None if the specified handle is invalid.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -1231,8 +1273,9 @@ impl<T> FastLinkedList<T> {
 
     /// Adds an element immediately preceedeing the node associated with the
     /// specified handle. Returns the handle to the node thats been
-    /// added or None if the specified handle is invalid. This
-    /// operation should complete in O(1) time.
+    /// added or None if the specified handle is invalid.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -1286,7 +1329,9 @@ impl<T> FastLinkedList<T> {
     /// become invalid after this operation completes.
     ///
     /// This operation has no effect on the allocated capacity of
-    /// either list. This operation should compute in *O*(1) time
+    /// either list.
+    ///
+    /// This operation should compute in *O*(*1*) time
     ///
     /// # Examples
     ///
@@ -1330,15 +1375,15 @@ impl<T> FastLinkedList<T> {
         other.cid = inc_cid();
     }
 
-    /// Moves the specified node to the front (head) of the list. If
-    /// the node is already at the head of the list then this
-    /// operation has no effect.
+    /// Moves the node associated with the specified handle to the
+    /// front (head) of the list. If the node is already at the head
+    /// of the list then this operation has no effect.
     ///
     /// Returns true if the node is successfully moved to the head of
     /// the list (or if it was already at the head) and false if the
-    /// specified node is invalid.
+    /// specified handle is invalid.
     ///
-    /// This operation should complete in *O*(1) time.
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -1381,15 +1426,15 @@ impl<T> FastLinkedList<T> {
         }
     }
 
-    /// Moves the specified node to the back (tail) of the list. If
-    /// the node is already at the tail of the list then this
-    /// operation has no effect.
+    /// Moves the node associated with the specified handle to the
+    /// back (tail) of the list. If the node is already at the tail of
+    /// the list then this operation has no effect.
     ///
     /// Returns true if the node is successfully moved to the tail of
     /// the list (or if it was already at the tail) and false if the
-    /// specified node is invalid.
+    /// specified handle is invalid.
     ///
-    /// This operation should complete in *O*(1) time.
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
@@ -1432,10 +1477,11 @@ impl<T> FastLinkedList<T> {
         }
     }
 
-    /// Returns `Some(true)` if the specified node is immediately previous to
-    /// `other` and `Some(false)` otherwise.
+    /// Returns `true` if the specified node is immediately previous
+    /// to `other` and `false` otherwise. If either of the nodes is
+    /// invalid, this method returns None.
     ///
-    /// If either of the nodes in invalid this method returns None.
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1464,10 +1510,11 @@ impl<T> FastLinkedList<T> {
         None
     }
 
-    /// Returns `Some(true)` if the specified node is immediately
-    /// after `other` and `Some(false)` otherwise.
+    /// Returns `true` if the specified node is immediately after
+    /// `other` and `false` otherwise. If either of the nodes is
+    /// invalid, this method returns None.
     ///
-    /// If either of the nodes in invalid this method returns None.
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1496,13 +1543,11 @@ impl<T> FastLinkedList<T> {
         None
     }
 
-    /// Returns `Some(true)` if the specified node is the head of the
-    /// list and `Some(false)` if its not.
+    /// Returns `true` if the specified node is the head of the list
+    /// and `false` if its not. If the specified node is invalid, then
+    /// this method returns `None`
     ///
-    /// If the specified node is invalid then this method returns
-    /// `None`
-    ///
-    /// This method should complete in *O*(1) time.
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1527,13 +1572,11 @@ impl<T> FastLinkedList<T> {
         None
     }
 
-    /// Returns `Some(true)` if the specified node is the tail of the
-    /// list and `Some(false)` if its not.
+    /// Returns `true` if the specified node is the tail of the list
+    /// and `false` if its not. If the specified node is invalid, then
+    /// this method returns `None`
     ///
-    /// If the specified node is invalid then this method returns
-    /// `None`
-    ///
-    /// This method should complete in *O*(1) time.
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1558,11 +1601,11 @@ impl<T> FastLinkedList<T> {
         None
     }
 
-    /// Swaps the position in the list of the two nodes. If either
-    /// node is invalid then this method returns false and true if the
-    /// positions of the nodes were successfully swapped.
+    /// Swaps the position in the list of the two nodes and returns
+    /// true on success. If either node is invalid then this method
+    /// returns false.
     ///
-    /// This method should complete in *O*(1) time.
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
@@ -1640,13 +1683,13 @@ impl<T> FastLinkedList<T> {
         false
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////
     //Private Helpers
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////
 
-    /// Removes and returns the node pointed to by the specified raw pointer. This
-    /// method will panic if the specified pointer is null.
-    /// The memory is returned to the free list.
+    /// Removes and returns the value pointed to by the specified raw
+    /// pointer. This method will panic if the specified pointer is
+    /// null. The memory is returned to the free list.
     fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
         if ptr.is_null() {
             panic!("cannot pop null pointer");
