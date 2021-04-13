@@ -9,3 +9,7 @@ pub mod lists {
         pub use deepmesa_lists::linkedlist::node::Node;
     }
 }
+
+pub mod collections {
+    pub use deepmesa_collections::bitvec::bitvec::FastBitVector;
+}
