@@ -1742,10 +1742,13 @@ impl<T> FastLinkedList<T> {
             return None;
         }
         unsafe {
-            if (*node.ptr).nid != node.nid {
+            // First check if this node is on the freelist. If it is
+            // then we don't need to check the node id (nid)
+            if (*node.ptr).fl_node {
                 return None;
             }
-            if (*node.ptr).fl_node {
+
+            if (*node.ptr).nid != node.nid {
                 return None;
             }
         }
