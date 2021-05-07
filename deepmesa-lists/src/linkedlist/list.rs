@@ -30,7 +30,7 @@ macro_rules! nid_inc {
     }};
 }
 
-/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/fastlinkedlist/) that owns the nodes and can pre-allocate
+/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/linkedlist/) that owns the nodes and can pre-allocate
 /// memory for performance. This linked list allows pushing and
 /// popping elements at either end or in the middle in constant time.
 ///
@@ -39,15 +39,15 @@ macro_rules! nid_inc {
 /// of the list in constant time.
 ///
 /// This list [manages
-/// memory](https://www.deepmesa.com/data-structures/fastlinkedlist/#mem_mgmt)
+/// memory](https://www.deepmesa.com/data-structures/linkedlist/#mem_mgmt)
 /// via an internal freelist of nodes and [capacity is
-/// allocated](https://www.deepmesa.com/data-structures/fastlinkedlist/#cap_realloc)
+/// allocated](https://www.deepmesa.com/data-structures/linkedlist/#cap_realloc)
 /// when the list is full. Capacity is deallocated when the list is
 /// dropped. This list also [vends
-/// handles](https://www.deepmesa.com/data-structures/fastlinkedlist/#handles)
+/// handles](https://www.deepmesa.com/data-structures/linkedlist/#handles)
 /// to its nodes that can be used to mutate the list at any node in
 /// constant time. The list provides
-/// [iterators](https://www.deepmesa.com/data-structures/fastlinkedlist/#iterators)
+/// [iterators](https://www.deepmesa.com/data-structures/linkedlist/#iterators)
 /// that can use used to traverse the list in either direction by
 /// reversing the iterator at any time.
 ///
