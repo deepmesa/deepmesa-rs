@@ -1,5 +1,5 @@
 /*
-   Fast Linked List: A fast and flexible doubly linked list that
+   Linked List: A fast and flexible doubly linked list that
    allows for O(1) inserts and removes from the middle of the
    list. This list preallocates memory and doesn't have to allocate
    and deallocate memory on every insert / remove operation

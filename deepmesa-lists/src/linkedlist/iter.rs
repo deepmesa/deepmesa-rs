@@ -1,5 +1,5 @@
 /*
-   Fast Linked List: A fast and flexible doubly linked list that
+   Linked List: A fast and flexible doubly linked list that
    allows for O(1) inserts and removes from the middle of the
    list. This list preallocates memory and doesn't have to allocate
    and deallocate memory on every insert / remove operation
@@ -18,7 +18,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::{linkedlist::list::FastLinkedList, linkedlist::node::Node};
+use crate::{linkedlist::list::LinkedList, linkedlist::node::Node};
 
 #[derive(Debug)]
 enum IterDirection {
@@ -28,13 +28,13 @@ enum IterDirection {
 
 #[derive(Debug)]
 pub struct Iter<'a, T> {
-    list: &'a FastLinkedList<T>,
+    list: &'a LinkedList<T>,
     cursor: Option<Node<T>>,
     dir: IterDirection,
 }
 
 pub struct IterMut<'a, T> {
-    list: &'a mut FastLinkedList<T>,
+    list: &'a mut LinkedList<T>,
     cursor: Option<Node<T>>,
     dir: IterDirection,
 }
@@ -84,7 +84,7 @@ macro_rules! iter_reverse {
 }
 
 impl<'a, T> Iter<'a, T> {
-    pub(crate) fn new(list: &'a FastLinkedList<T>) -> Iter<T> {
+    pub(crate) fn new(list: &'a LinkedList<T>) -> Iter<T> {
         Iter {
             list,
             cursor: list.head_node(),
@@ -96,7 +96,7 @@ impl<'a, T> Iter<'a, T> {
 }
 
 impl<'a, T> IterMut<'a, T> {
-    pub(crate) fn new(list: &'a mut FastLinkedList<T>) -> IterMut<T> {
+    pub(crate) fn new(list: &'a mut LinkedList<T>) -> IterMut<T> {
         IterMut {
             cursor: list.head_node(),
             list,

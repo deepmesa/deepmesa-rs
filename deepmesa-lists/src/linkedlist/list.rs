@@ -1,5 +1,5 @@
 /*
-   Fast Linked List: A fast and flexible doubly linked list that
+   Linked List: A fast and flexible doubly linked list that
    allows for O(1) inserts and removes from the middle of the
    list. This list preallocates memory and doesn't have to allocate
    and deallocate memory on every insert / remove operation
@@ -62,9 +62,9 @@ macro_rules! nid_inc {
 /// ```
 ///
 /// ```
-/// use deepmesa::lists::FastLinkedList;
+/// use deepmesa::lists::LinkedList;
 ///
-/// let mut list = FastLinkedList::<u8>::with_capacity(10);
+/// let mut list = LinkedList::<u8>::with_capacity(10);
 /// for i in 0..10 {
 ///     list.push_front(i);
 /// }
@@ -74,7 +74,7 @@ macro_rules! nid_inc {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct FastLinkedList<T> {
+pub struct LinkedList<T> {
     cid: usize,
     nid: usize,
     pub(super) head: *mut InternalNode<T>,
@@ -83,7 +83,7 @@ pub struct FastLinkedList<T> {
     fl: fl::FreeList<T>,
 }
 
-impl<T> Drop for FastLinkedList<T> {
+impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         let mut cur: *mut InternalNode<T> = self.head;
         let mut node_vec = Vec::with_capacity(self.len());
@@ -95,7 +95,7 @@ impl<T> Drop for FastLinkedList<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a FastLinkedList<T> {
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -103,7 +103,7 @@ impl<'a, T> IntoIterator for &'a FastLinkedList<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a mut FastLinkedList<T> {
+impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -119,18 +119,18 @@ fn inc_cid() -> usize {
     }
 }
 
-impl<T> FastLinkedList<T> {
+impl<T> LinkedList<T> {
     /// Creates an empty linked list with a
     /// default capacity.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let list = LinkedList::<u8>::new();
     /// ```
-    pub fn new() -> FastLinkedList<T> {
-        FastLinkedList {
+    pub fn new() -> LinkedList<T> {
+        LinkedList {
             cid: inc_cid(),
             nid: 0,
             len: 0,
@@ -154,8 +154,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// for i in 0..10 {
     ///     // All these are pushed without any allocations
     ///     list.push_front(i);
@@ -170,7 +170,7 @@ impl<T> FastLinkedList<T> {
     /// assert_eq!(list.capacity(), 20);
     ///
     /// // A list with a capacity of 0 will allocate on every push
-    /// let mut list = FastLinkedList::<u8>::with_capacity(0);
+    /// let mut list = LinkedList::<u8>::with_capacity(0);
     /// list.push_front(1);
     /// assert_eq!(list.len(), 1);
     /// assert_eq!(list.capacity(), 1);
@@ -179,8 +179,8 @@ impl<T> FastLinkedList<T> {
     /// assert_eq!(list.len(), 2);
     /// assert_eq!(list.capacity(), 2);
     /// ```
-    pub fn with_capacity(capacity: usize) -> FastLinkedList<T> {
-        FastLinkedList {
+    pub fn with_capacity(capacity: usize) -> LinkedList<T> {
+        LinkedList {
             cid: inc_cid(),
             nid: 0,
             len: 0,
@@ -194,8 +194,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -220,8 +220,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -247,8 +247,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -277,8 +277,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
     /// list.push_front(1);
@@ -296,8 +296,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
     /// list.push_back(1);
@@ -315,8 +315,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
     /// list.push_front(1);
@@ -339,8 +339,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
     /// list.push_back(1);
@@ -362,8 +362,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
     /// list.push_tail(1);
@@ -384,8 +384,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
     /// list.push_tail(1);
@@ -410,8 +410,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
     /// list.push_head(1);
@@ -432,8 +432,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
     /// list.push_head(1);
@@ -461,8 +461,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     ///
@@ -494,8 +494,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     /// assert_eq!(list.next(&node), Some(&1));
@@ -529,8 +529,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     ///
@@ -561,8 +561,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     /// assert_eq!(list.prev(&node), Some(&2));
@@ -596,8 +596,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     ///
@@ -629,8 +629,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     ///
@@ -664,8 +664,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// assert_eq!(list.node(&node), Some(&1));
@@ -689,8 +689,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// assert_eq!(list.node(&node), Some(&1));
@@ -716,8 +716,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// match list.head_node() {
@@ -743,8 +743,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     ///
     /// match list.tail_node() {
@@ -770,8 +770,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
     ///
@@ -804,8 +804,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
     ///
@@ -836,8 +836,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.is_empty(), true);
     ///
     /// list.push_head(1);
@@ -854,8 +854,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_head(), false);
     /// list.push_head(1);
     /// assert_eq!(list.has_head(), true);
@@ -873,8 +873,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_tail(), false);
     /// list.push_tail(1);
     /// assert_eq!(list.has_tail(), true);
@@ -890,8 +890,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.capacity(), 10);
     /// ```
     pub fn capacity(&self) -> usize {
@@ -904,8 +904,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.len(), 0);
     ///
     /// list.push_head(1);
@@ -922,8 +922,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// assert_eq!(list.front(), Some(&1));
     ///
@@ -941,8 +941,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(1);
     /// assert_eq!(list.back(), Some(&1));
     ///
@@ -960,8 +960,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_head(), None);
     ///
     /// list.push_head(1);
@@ -984,8 +984,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_tail(), None);
     ///
     /// list.push_tail(1);
@@ -1010,8 +1010,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_front(), None);
     ///
     /// list.push_front(1);
@@ -1032,8 +1032,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_back(), None);
     ///
     /// list.push_back(1);
@@ -1055,8 +1055,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(1);
     /// list.push_head(2);
@@ -1086,8 +1086,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -1117,8 +1117,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
     /// assert_eq!(list.pop_node(&node), Some(1));
@@ -1138,8 +1138,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
@@ -1172,8 +1172,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
@@ -1205,8 +1205,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_back(0);
     /// list.push_back(1);
@@ -1231,8 +1231,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
     /// let middle = list.push_head(1);
@@ -1280,8 +1280,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
     /// let middle = list.push_head(1);
@@ -1336,11 +1336,11 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(0);
     ///
-    /// let mut list2 = FastLinkedList::<u8>::with_capacity(10);
+    /// let mut list2 = LinkedList::<u8>::with_capacity(10);
     /// list2.push_back(1);
     /// list2.push_back(2);
     ///
@@ -1388,8 +1388,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1439,8 +1439,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1485,8 +1485,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1518,8 +1518,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1551,8 +1551,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1580,8 +1580,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1609,8 +1609,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(4);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1906,14 +1906,14 @@ mod test {
 
     #[test]
     fn test_new() {
-        let ll1 = FastLinkedList::<u8>::new();
-        let ll2 = FastLinkedList::<u8>::new();
+        let ll1 = LinkedList::<u8>::new();
+        let ll2 = LinkedList::<u8>::new();
         assert!(ll1.cid < ll2.cid);
     }
 
     #[test]
     fn test_push_head() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_head(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now push a second head
@@ -1936,7 +1936,7 @@ mod test {
 
     #[test]
     fn test_push_tail() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_tail(33);
         assert_node!(ll, node, ONLY, 33, 1);
         //now push a second head
@@ -1960,7 +1960,7 @@ mod test {
 
     #[test]
     fn test_pop_head() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_head(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now pop the head
@@ -1997,7 +1997,7 @@ mod test {
 
     #[test]
     fn test_pop_tail() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_tail(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now pop the tail
@@ -2034,7 +2034,7 @@ mod test {
 
     #[test]
     fn test_capacity_zero() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(0);
+        let mut ll = LinkedList::<u8>::with_capacity(0);
         assert_eq!(ll.len(), 0);
         assert_eq!(ll.capacity(), 0);
         for _ in 0..5 {
@@ -2052,7 +2052,7 @@ mod test {
 
     #[test]
     fn test_capacity() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(2);
+        let mut ll = LinkedList::<u8>::with_capacity(2);
         assert_eq!(ll.len(), 0);
         assert_eq!(ll.capacity(), 2);
         for _ in 0..5 {
@@ -2076,7 +2076,7 @@ mod test {
         }
         assert_eq!(ll.len(), 17);
         assert_eq!(ll.capacity(), 32);
-        let mut ll = FastLinkedList::<u8>::with_capacity(17);
+        let mut ll = LinkedList::<u8>::with_capacity(17);
         for _ in 0..18 {
             ll.push_head(11);
         }
@@ -2086,7 +2086,7 @@ mod test {
 
     #[test]
     fn test_node_reuse() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(8);
+        let mut ll = LinkedList::<u8>::with_capacity(8);
         //first push one node
         let mut node = ll.push_head(1);
         for i in 0..7 {
@@ -2104,7 +2104,7 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -2146,7 +2146,7 @@ mod test {
 
     #[test]
     fn test_iter_reverse() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -2177,7 +2177,7 @@ mod test {
 
     #[test]
     fn test_iter_reverse2() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -2204,7 +2204,7 @@ mod test {
 
     #[test]
     fn test_invalid_node() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         let headnode = ll.push_head(12);
         let headval = ll.pop_head();
         assert_eq!(headval, Some(12));
@@ -2215,7 +2215,7 @@ mod test {
 
     #[test]
     fn test_clear() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         ll.push_head(0);
         ll.push_head(1);
         ll.push_head(2);
@@ -2228,7 +2228,7 @@ mod test {
 
     #[test]
     fn test_push_next() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node1 = ll.push_head(1);
         let node2 = ll.push_head(2);
         let node3 = ll.push_head(3);
@@ -2258,7 +2258,7 @@ mod test {
 
     #[test]
     fn test_push_prev() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node1 = ll.push_head(1);
         let node2 = ll.push_head(2);
         let node3 = ll.push_head(3);
@@ -2289,7 +2289,7 @@ mod test {
 
     #[test]
     fn test_append() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         for i in 0..4 {
             ll.push_tail(i);
         }
@@ -2297,7 +2297,7 @@ mod test {
         assert_eq!(ll.capacity(), 4);
         assert_eq!(ll.fl.len(), 0);
 
-        let mut otherll = FastLinkedList::<u8>::with_capacity(10);
+        let mut otherll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             otherll.push_tail(i);
         }
@@ -2337,14 +2337,14 @@ mod test {
 
     #[test]
     fn test_append_handle() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         ll.push_tail(1);
         ll.push_tail(2);
         ll.push_tail(3);
 
         let hnd: Node<u8>;
         {
-            let mut other = FastLinkedList::<u8>::with_capacity(4);
+            let mut other = LinkedList::<u8>::with_capacity(4);
             other.push_tail(4);
             hnd = other.push_tail(5);
             other.push_tail(6);
@@ -2367,7 +2367,7 @@ mod test {
 
     #[test]
     fn test_make_head() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2398,7 +2398,7 @@ mod test {
 
     #[test]
     fn test_make_tail() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2429,7 +2429,7 @@ mod test {
 
     #[test]
     fn test_is_next() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2444,7 +2444,7 @@ mod test {
 
     #[test]
     fn test_is_prev() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2459,7 +2459,7 @@ mod test {
 
     #[test]
     fn test_swap_node() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd0 = ll.push_tail(0);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
