@@ -1,5 +1,5 @@
 /*
-   Fast Linked List: A fast and flexible doubly linked list that
+   Linked List: A fast and flexible doubly linked list that
    allows for O(1) inserts and removes from the middle of the
    list. This list preallocates memory and doesn't have to allocate
    and deallocate memory on every insert / remove operation
@@ -20,7 +20,7 @@
 */
 
 use crate::linkedlist::{fl, iter::Iter, iter::IterMut, node::InternalNode, node::Node};
-use std::ptr;
+use core::ptr;
 
 macro_rules! nid_inc {
     ($nid: expr) => {{
@@ -30,7 +30,7 @@ macro_rules! nid_inc {
     }};
 }
 
-/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/fastlinkedlist/) that owns the nodes and can pre-allocate
+/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/linkedlist/) that owns the nodes and can pre-allocate
 /// memory for performance. This linked list allows pushing and
 /// popping elements at either end or in the middle in constant time.
 ///
@@ -39,15 +39,15 @@ macro_rules! nid_inc {
 /// of the list in constant time.
 ///
 /// This list [manages
-/// memory](https://www.deepmesa.com/data-structures/fastlinkedlist/#mem_mgmt)
+/// memory](https://www.deepmesa.com/data-structures/linkedlist/#mem_mgmt)
 /// via an internal freelist of nodes and [capacity is
-/// allocated](https://www.deepmesa.com/data-structures/fastlinkedlist/#cap_realloc)
+/// allocated](https://www.deepmesa.com/data-structures/linkedlist/#cap_realloc)
 /// when the list is full. Capacity is deallocated when the list is
 /// dropped. This list also [vends
-/// handles](https://www.deepmesa.com/data-structures/fastlinkedlist/#handles)
+/// handles](https://www.deepmesa.com/data-structures/linkedlist/#handles)
 /// to its nodes that can be used to mutate the list at any node in
 /// constant time. The list provides
-/// [iterators](https://www.deepmesa.com/data-structures/fastlinkedlist/#iterators)
+/// [iterators](https://www.deepmesa.com/data-structures/linkedlist/#iterators)
 /// that can use used to traverse the list in either direction by
 /// reversing the iterator at any time.
 ///
@@ -62,9 +62,9 @@ macro_rules! nid_inc {
 /// ```
 ///
 /// ```
-/// use deepmesa::lists::FastLinkedList;
+/// use deepmesa::lists::LinkedList;
 ///
-/// let mut list = FastLinkedList::<u8>::with_capacity(10);
+/// let mut list = LinkedList::<u8>::with_capacity(10);
 /// for i in 0..10 {
 ///     list.push_front(i);
 /// }
@@ -74,7 +74,7 @@ macro_rules! nid_inc {
 /// }
 /// ```
 #[derive(Debug)]
-pub struct FastLinkedList<T> {
+pub struct LinkedList<T> {
     cid: usize,
     nid: usize,
     pub(super) head: *mut InternalNode<T>,
@@ -83,7 +83,7 @@ pub struct FastLinkedList<T> {
     fl: fl::FreeList<T>,
 }
 
-impl<T> Drop for FastLinkedList<T> {
+impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         let mut cur: *mut InternalNode<T> = self.head;
         let mut node_vec = Vec::with_capacity(self.len());
@@ -95,7 +95,7 @@ impl<T> Drop for FastLinkedList<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a FastLinkedList<T> {
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -103,7 +103,7 @@ impl<'a, T> IntoIterator for &'a FastLinkedList<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a mut FastLinkedList<T> {
+impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -119,18 +119,18 @@ fn inc_cid() -> usize {
     }
 }
 
-impl<T> FastLinkedList<T> {
+impl<T> LinkedList<T> {
     /// Creates an empty linked list with a
     /// default capacity.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let list = LinkedList::<u8>::new();
     /// ```
-    pub fn new() -> FastLinkedList<T> {
-        FastLinkedList {
+    pub fn new() -> LinkedList<T> {
+        LinkedList {
             cid: inc_cid(),
             nid: 0,
             len: 0,
@@ -154,8 +154,8 @@ impl<T> FastLinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// for i in 0..10 {
     ///     // All these are pushed without any allocations
     ///     list.push_front(i);
@@ -170,7 +170,7 @@ impl<T> FastLinkedList<T> {
     /// assert_eq!(list.capacity(), 20);
     ///
     /// // A list with a capacity of 0 will allocate on every push
-    /// let mut list = FastLinkedList::<u8>::with_capacity(0);
+    /// let mut list = LinkedList::<u8>::with_capacity(0);
     /// list.push_front(1);
     /// assert_eq!(list.len(), 1);
     /// assert_eq!(list.capacity(), 1);
@@ -179,8 +179,8 @@ impl<T> FastLinkedList<T> {
     /// assert_eq!(list.len(), 2);
     /// assert_eq!(list.capacity(), 2);
     /// ```
-    pub fn with_capacity(capacity: usize) -> FastLinkedList<T> {
-        FastLinkedList {
+    pub fn with_capacity(capacity: usize) -> LinkedList<T> {
+        LinkedList {
             cid: inc_cid(),
             nid: 0,
             len: 0,
@@ -191,10 +191,11 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a bidirectional iterator over the list
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -216,10 +217,11 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a bidirectional iterator over the list with mutable
     /// references that allows the value to be modified
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::new();
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -239,13 +241,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and drops all the elements from this list. This has no
-    /// effect on the allocated capacity of the list. This method
-    /// should complete in *O*(*n*) time.
+    /// effect on the allocated capacity of the list.
+    ///
+    /// This method should complete in *O*(*n*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// list.push_front(2);
     /// list.push_front(3);
@@ -267,15 +270,15 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty. This method simply calls
+    /// [`self.head()`](#method.head)
     ///
-    /// This method simply calls [`self.head()`](#method.head)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
     /// list.push_front(1);
@@ -286,15 +289,15 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty. This method simply calls
+    /// [`self.tail()`](#method.tail)
     ///
-    /// This method simply calls [`self.tail()`](#method.tail)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
     /// list.push_back(1);
@@ -304,16 +307,16 @@ impl<T> FastLinkedList<T> {
         self.tail()
     }
 
-    /// Returns a mutable reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// Returns a mutable reference to the front (head) of the list or
+    /// `None` if the list is empty. This method simply calls
+    /// [`self.head_mut()`](#method.head_mut)
     ///
-    /// This method simply calls [`self.head_mut()`](#method.head_mut)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
     /// list.push_front(1);
@@ -328,16 +331,16 @@ impl<T> FastLinkedList<T> {
         self.head_mut()
     }
 
-    /// Returns a mutable reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// Returns a mutable reference to the back (tail) of the list or
+    /// `None` if the list is empty. This method simply calls
+    /// [`self.tail_mut()`](#method.tail_mut)
     ///
-    /// This method simply calls [`self.tail_mut()`](#method.tail_mut)
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
     /// list.push_back(1);
@@ -353,13 +356,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
     /// list.push_tail(1);
@@ -374,13 +378,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a mutable reference to the back (tail) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
     /// list.push_tail(1);
@@ -399,13 +404,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
     /// list.push_head(1);
@@ -420,13 +426,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a mutable reference to the front (head) of the list or `None`
-    /// if the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// if the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
     /// list.push_head(1);
@@ -445,53 +452,17 @@ impl<T> FastLinkedList<T> {
         unsafe { Some(&mut (*self.head).val) }
     }
 
-    /// Returns a valid raw pointer to the specified Handle or None if
-    /// the handle is invalid.  This method checks the container Id
-    /// (cid) of the handle against the list itself so that handles
-    /// cannot be used across lists. If the container Id matches then
-    /// the node Id is checked against the node Id stored at that
-    /// memory locatiom. If the container Id and the Node Id are a
-    /// match then a flag indicating whether this node is part of the
-    /// freelist is checked.
-
-    /// If the container Id and the node Id match and the node is not
-    /// part of the free list then the raw pointer to the Node is
-    /// returned. If the conditions don't return true this method
-    /// returns None indicating that the raw pointer does not point to
-    /// the node that the handle originally referred to.
-    ///
-    /// It should be noted that the raw pointer returned will always
-    /// point to a valid memory location since that memory is
-    /// allocated and managed by the freelist. However the contents of
-    /// that memory location can change as nodes are pushed and popped
-    /// off the list. When the contents change the handle becomes
-    /// invalid and this method returns None.
-    fn node_ptr(&self, node: &Node<T>) -> Option<*mut InternalNode<T>> {
-        if node.cid != self.cid {
-            return None;
-        }
-        unsafe {
-            if (*node.ptr).nid != node.nid {
-                return None;
-            }
-            if (*node.ptr).fl_node {
-                return None;
-            }
-        }
-
-        Some((*node).ptr)
-    }
-
     /// Returns a reference to the value of the node immediately after
     /// the node associated with the specified handle. If the
     /// specified handle is invalid or there is no next node, this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     ///
@@ -517,13 +488,14 @@ impl<T> FastLinkedList<T> {
     /// Returns a mutable reference to the value of the node
     /// immediately after the node associated with the specified
     /// handle. If the specified handle is invalid or if there is no
-    /// next node, this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// next node, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     /// assert_eq!(list.next(&node), Some(&1));
@@ -551,13 +523,14 @@ impl<T> FastLinkedList<T> {
     /// Returns a reference to the value of the node immediately
     /// preceeding the node associated with the specified handle.  If
     /// the specified handle is invalid or if there is no preceeding
-    /// node, this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// node, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     ///
@@ -588,8 +561,8 @@ impl<T> FastLinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     /// assert_eq!(list.prev(&node), Some(&2));
@@ -617,12 +590,14 @@ impl<T> FastLinkedList<T> {
     /// Returns a handle to the node immediately preceeding the node
     /// associated with the specified handle. If the specified handle
     /// is invalid or if there is no preceeding node, this method
-    /// returns None. This method should complete in *O*(*1*) time.
+    /// returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
     ///
@@ -648,12 +623,14 @@ impl<T> FastLinkedList<T> {
     /// Returns a handle to the node immediately preceeding the node
     /// associated with the specified handle. If the handle is invalid
     /// or if there is no preceeding node, this method returns
-    /// None. This method should complete in *O*(*1*) time.
+    /// None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
     ///
@@ -681,13 +658,14 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a reference to the value of the node associated with
     /// the specified handle.  If the specified handle is invalid this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// assert_eq!(list.node(&node), Some(&1));
@@ -705,13 +683,14 @@ impl<T> FastLinkedList<T> {
 
     /// Returns a mutable reference to the value of the node associated with
     /// the specified handle.  If the specified handle is invalid this
-    /// method returns None. This method should complete in *O*(*1*)
-    /// time.
+    /// method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// assert_eq!(list.node(&node), Some(&1));
@@ -731,13 +710,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a handle to the head (front) of the list or None if
-    /// the list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// the list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
     /// match list.head_node() {
@@ -757,13 +737,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns a handle to the tail (back) of the list or None if the
-    /// list is empty. This method should complete in *O*(*1*)
-    /// time.
+    /// list is empty.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     ///
     /// match list.tail_node() {
@@ -783,13 +764,14 @@ impl<T> FastLinkedList<T> {
 
     /// Returns true if the node associated with the specified handle
     /// has a next node and false if it does not. If the specified
-    /// handle is invalid this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// handle is invalid this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
     ///
@@ -816,13 +798,14 @@ impl<T> FastLinkedList<T> {
 
     /// Returns true if the node associated with the specified handle
     /// has a previous node and false if it does not. If the specified
-    /// handle is invalid this method returns None. This method should
-    /// complete in *O*(*1*) time.
+    /// handle is invalid this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
     ///
@@ -847,13 +830,14 @@ impl<T> FastLinkedList<T> {
         }
     }
 
-    /// Returns true if the list is empty. This method should
-    /// complete in *O*(*1*) time.
+    /// Returns true if the list is empty and false otherwise.
+    ///
+    /// This method should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.is_empty(), true);
     ///
     /// list.push_head(1);
@@ -866,10 +850,12 @@ impl<T> FastLinkedList<T> {
     /// Returns true if the list has a head node and false if the list
     /// is empty.
     ///
+    /// This method should complete in *O*(*1*) time.
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_head(), false);
     /// list.push_head(1);
     /// assert_eq!(list.has_head(), true);
@@ -883,10 +869,12 @@ impl<T> FastLinkedList<T> {
     /// Returns true if the list has a tail node and false if the list
     /// is empty.
     ///
+    /// This method should complete in *O*(*1*) time.
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_tail(), false);
     /// list.push_tail(1);
     /// assert_eq!(list.has_tail(), true);
@@ -899,10 +887,11 @@ impl<T> FastLinkedList<T> {
 
     /// Returns the number of elements the list can hold without
     /// before new memory is allocated.
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.capacity(), 10);
     /// ```
     pub fn capacity(&self) -> usize {
@@ -910,10 +899,13 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Returns the number of elements in the list
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.len(), 0);
     ///
     /// list.push_head(1);
@@ -923,16 +915,15 @@ impl<T> FastLinkedList<T> {
         self.len
     }
 
-    /// Adds an element to the front (head) of the list. This
-    /// operation should complete in O(1) time.
+    /// Adds an element to the front (head) of the list. This method
+    /// simply calls [`self.push_head()`](#method.push_head)
     ///
-    /// This method simply calls
-    /// [`self.push_head()`](#method.push_head)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// assert_eq!(list.front(), Some(&1));
     ///
@@ -943,16 +934,15 @@ impl<T> FastLinkedList<T> {
         self.push_head(elem);
     }
 
-    /// Adds an element to the back (tail) of the list. This
-    /// operation should complete in O(1) time.
+    /// Adds an element to the back (tail) of the list. This method
+    /// simply calls [`self.push_tail()`](#method.push_tail)
     ///
-    /// This method simply calls
-    /// [`self.push_tail()`](#method.push_tail)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(1);
     /// assert_eq!(list.back(), Some(&1));
     ///
@@ -963,43 +953,15 @@ impl<T> FastLinkedList<T> {
         self.push_tail(elem);
     }
 
-    /// Removes and returns the node pointed to by the specified raw pointer. This
-    /// method will panic if the specified pointer is null.
-    /// The memory is returned to the free list.
-    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
-        if ptr.is_null() {
-            panic!("cannot pop null pointer");
-        }
-
-        unsafe {
-            if !(*ptr).next.is_null() {
-                (*(*ptr).next).prev = (*ptr).prev;
-            }
-
-            if !(*ptr).prev.is_null() {
-                (*(*ptr).prev).next = (*ptr).next;
-            }
-
-            if self.head == ptr {
-                self.head = (*ptr).next;
-            }
-
-            if self.tail == ptr {
-                self.tail = (*ptr).prev;
-            }
-            self.len -= 1;
-            self.fl.release(ptr)
-        }
-    }
-
     /// Removes and returns the value at the head (front) of the
-    /// list or None if the list is empty. This operation should
-    /// complete in O(1) time
+    /// list or None if the list is empty.
+    ///
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_head(), None);
     ///
     /// list.push_head(1);
@@ -1016,13 +978,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the tail (back) of the
-    /// list or None if the list is empty. This operation should
-    /// complete in O(1) time
+    /// list or None if the list is empty.
+    ///
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_tail(), None);
     ///
     /// list.push_tail(1);
@@ -1040,15 +1003,15 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the front (head) of the list
-    /// or None if the list is empty. This operation should complete
-    /// in O(1) time.
+    /// or None if the list is empty. This method simply calls
+    /// [`self.pop_head()`](#method.pop_head)
     ///
-    /// This method simply calls [`self.pop_head()`](#method.pop_head)
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_front(), None);
     ///
     /// list.push_front(1);
@@ -1062,15 +1025,15 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Removes and returns the value at the back (tail) of the list
-    /// or None if the list is empty. This operation should complete
-    /// in O(1) time
+    /// or None if the list is empty. This method simply calls
+    /// [`self.pop_tail()`](#method.pop_tail)
     ///
-    /// This method simply calls [`self.pop_tail()`](#method.pop_tail)
+    /// This operation should complete in *O*(*1*) time
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_back(), None);
     ///
     /// list.push_back(1);
@@ -1088,10 +1051,12 @@ impl<T> FastLinkedList<T> {
     /// specified handle is invalid or there is no next node, then
     /// this method returns None.
     ///
+    /// This operation should complete in *O*(*1*) time
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(1);
     /// list.push_head(2);
@@ -1117,10 +1082,12 @@ impl<T> FastLinkedList<T> {
     /// the specified handle is invalid or there is no previous node,
     /// then this method returns None.
     ///
+    /// This operation should complete in *O*(*1*) time
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -1146,10 +1113,12 @@ impl<T> FastLinkedList<T> {
     /// specified handle. If the specified handle is invalid then this
     /// method returns None.
     ///
+    /// This operation should complete in *O*(*1*) time
+    ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
     /// assert_eq!(list.pop_node(&node), Some(1));
@@ -1163,12 +1132,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Adds an element to the head (front) of the list and returns a
-    /// handle to it. This operation should complete in O(1) time.
+    /// handle to it.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
@@ -1195,12 +1166,14 @@ impl<T> FastLinkedList<T> {
     }
 
     /// Adds an element to the tail (back) of the list and returns a
-    /// handle to it. This operation should complete in O(1) time.
+    /// handle to it.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
@@ -1227,11 +1200,13 @@ impl<T> FastLinkedList<T> {
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
     ///
+    /// This operation should complete in *O*(*n*) time
+    ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_back(0);
     /// list.push_back(1);
@@ -1249,14 +1224,15 @@ impl<T> FastLinkedList<T> {
 
     /// Adds an element immediately after the node associated with the
     /// specified handle. Returns the handle to the node thats been
-    /// added or None if the specified handle is invalid. This
-    /// operation should complete in O(1) time.
+    /// added or None if the specified handle is invalid.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
     /// let middle = list.push_head(1);
@@ -1297,14 +1273,15 @@ impl<T> FastLinkedList<T> {
 
     /// Adds an element immediately preceedeing the node associated with the
     /// specified handle. Returns the handle to the node thats been
-    /// added or None if the specified handle is invalid. This
-    /// operation should complete in O(1) time.
+    /// added or None if the specified handle is invalid.
+    ///
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
     /// let middle = list.push_head(1);
@@ -1352,16 +1329,18 @@ impl<T> FastLinkedList<T> {
     /// become invalid after this operation completes.
     ///
     /// This operation has no effect on the allocated capacity of
-    /// either list. This operation should compute in *O*(1) time
+    /// either list.
+    ///
+    /// This operation should compute in *O*(*1*) time
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(10);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(0);
     ///
-    /// let mut list2 = FastLinkedList::<u8>::with_capacity(10);
+    /// let mut list2 = LinkedList::<u8>::with_capacity(10);
     /// list2.push_back(1);
     /// list2.push_back(2);
     ///
@@ -1396,21 +1375,21 @@ impl<T> FastLinkedList<T> {
         other.cid = inc_cid();
     }
 
-    /// Moves the specified node to the front (head) of the list. If
-    /// the node is already at the head of the list then this
-    /// operation has no effect.
+    /// Moves the node associated with the specified handle to the
+    /// front (head) of the list. If the node is already at the head
+    /// of the list then this operation has no effect.
     ///
     /// Returns true if the node is successfully moved to the head of
     /// the list (or if it was already at the head) and false if the
-    /// specified node is invalid.
+    /// specified handle is invalid.
     ///
-    /// This operation should complete in *O*(1) time.
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1447,21 +1426,21 @@ impl<T> FastLinkedList<T> {
         }
     }
 
-    /// Moves the specified node to the back (tail) of the list. If
-    /// the node is already at the tail of the list then this
-    /// operation has no effect.
+    /// Moves the node associated with the specified handle to the
+    /// back (tail) of the list. If the node is already at the tail of
+    /// the list then this operation has no effect.
     ///
     /// Returns true if the node is successfully moved to the tail of
     /// the list (or if it was already at the tail) and false if the
-    /// specified node is invalid.
+    /// specified handle is invalid.
     ///
-    /// This operation should complete in *O*(1) time.
+    /// This operation should complete in *O*(*1*) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::lists::FastLinkedList;
-    /// let mut list = FastLinkedList::<u8>::with_capacity(3);
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
     /// let hnd2 = list.push_tail(2);
@@ -1496,6 +1475,312 @@ impl<T> FastLinkedList<T> {
                 true
             },
         }
+    }
+
+    /// Returns `true` if the specified node is immediately previous
+    /// to `other` and `false` otherwise. If either of the nodes is
+    /// invalid, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_prev(&hnd0, &hnd1), Some(true));
+    /// assert_eq!(list.is_prev(&hnd1, &hnd0), Some(false));
+    /// assert_eq!(list.is_prev(&hnd1, &hnd2), None);
+    /// ```
+    pub fn is_prev(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                unsafe {
+                    if (*n_ptr).next == o_ptr {
+                        return Some(true);
+                    } else {
+                        return Some(false);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Returns `true` if the specified node is immediately after
+    /// `other` and `false` otherwise. If either of the nodes is
+    /// invalid, this method returns None.
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_next(&hnd1, &hnd0), Some(true));
+    /// assert_eq!(list.is_next(&hnd0, &hnd1), Some(false));
+    /// assert_eq!(list.is_next(&hnd2, &hnd1), None);
+    /// ```
+    pub fn is_next(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                unsafe {
+                    if (*n_ptr).prev == o_ptr {
+                        return Some(true);
+                    } else {
+                        return Some(false);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Returns `true` if the specified node is the head of the list
+    /// and `false` if its not. If the specified node is invalid, then
+    /// this method returns `None`
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_head(&hnd0), Some(true));
+    /// assert_eq!(list.is_head(&hnd1), Some(false));
+    /// assert_eq!(list.is_head(&hnd2), None);
+    /// ```
+    pub fn is_head(&self, node: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if n_ptr == self.head {
+                return Some(true);
+            } else {
+                return Some(false);
+            }
+        }
+        None
+    }
+
+    /// Returns `true` if the specified node is the tail of the list
+    /// and `false` if its not. If the specified node is invalid, then
+    /// this method returns `None`
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.is_tail(&hnd0), Some(false));
+    /// assert_eq!(list.is_tail(&hnd1), Some(true));
+    /// assert_eq!(list.is_tail(&hnd2), None);
+    /// ```
+    pub fn is_tail(&self, node: &Node<T>) -> Option<bool> {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if n_ptr == self.tail {
+                return Some(true);
+            } else {
+                return Some(false);
+            }
+        }
+        None
+    }
+
+    /// Swaps the position in the list of the two nodes and returns
+    /// true on success. If either node is invalid then this method
+    /// returns false.
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::lists::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(4);
+    /// let hnd0 = list.push_tail(0);
+    /// let hnd1 = list.push_tail(1);
+    /// let hnd2 = list.push_tail(2);
+    /// list.pop_tail();
+    /// assert_eq!(list.swap_node(&hnd0, &hnd1), true);
+    /// assert_eq!(list.swap_node(&hnd1, &hnd2), false);
+    /// assert_eq!(list.is_head(&hnd1), Some(true));
+    /// assert_eq!(list.is_tail(&hnd0), Some(true));
+    /// ```
+    pub fn swap_node(&mut self, node: &Node<T>, other: &Node<T>) -> bool {
+        if let Some(n_ptr) = self.node_ptr(node) {
+            if let Some(o_ptr) = self.node_ptr(other) {
+                if n_ptr == o_ptr {
+                    return true;
+                }
+                unsafe {
+                    if (*n_ptr).next == o_ptr {
+                        //n_ptr is after o_pter. Swap them
+                        self.swap_node_adjacent(n_ptr, o_ptr);
+                        return true;
+                    }
+                    if (*o_ptr).next == n_ptr {
+                        //o_ptr is after n_ptr. Swap them
+                        self.swap_node_adjacent(o_ptr, n_ptr);
+                        return true;
+                    }
+                    // n_ptr & o_ptr at disjoint - i.e. have atleast one other node between them
+                    let np_prev = (*n_ptr).prev;
+                    let np_next = (*n_ptr).next;
+                    let op_prev = (*o_ptr).prev;
+                    let op_next = (*o_ptr).next;
+
+                    (*o_ptr).prev = np_prev;
+                    (*o_ptr).next = np_next;
+                    (*n_ptr).prev = op_prev;
+                    (*n_ptr).next = op_next;
+
+                    if np_prev.is_null() {
+                        //n_ptr is at the head. So make o_ptr the head
+                        self.head = o_ptr;
+                    } else {
+                        (*np_prev).next = o_ptr;
+                    }
+
+                    if np_next.is_null() {
+                        //n_ptr is at the tail. So make o_ptr the tail
+                        self.tail = o_ptr;
+                    } else {
+                        (*np_next).prev = o_ptr;
+                    }
+
+                    if op_prev.is_null() {
+                        //o_ptr is at the head. So make n_ptr the head
+                        self.head = n_ptr;
+                    } else {
+                        (*op_prev).next = n_ptr;
+                    }
+
+                    if op_next.is_null() {
+                        //o_ptr is the tail. So make n_ptr the tail
+                        self.tail = n_ptr;
+                    } else {
+                        (*op_next).prev = n_ptr;
+                    }
+
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    ////////////////////
+    //Private Helpers
+    ////////////////////
+
+    /// Removes and returns the value pointed to by the specified raw
+    /// pointer. This method will panic if the specified pointer is
+    /// null. The memory is returned to the free list.
+    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
+        if ptr.is_null() {
+            panic!("cannot pop null pointer");
+        }
+
+        unsafe {
+            if !(*ptr).next.is_null() {
+                (*(*ptr).next).prev = (*ptr).prev;
+            }
+
+            if !(*ptr).prev.is_null() {
+                (*(*ptr).prev).next = (*ptr).next;
+            }
+
+            if self.head == ptr {
+                self.head = (*ptr).next;
+            }
+
+            if self.tail == ptr {
+                self.tail = (*ptr).prev;
+            }
+            self.len -= 1;
+            self.fl.release(ptr)
+        }
+    }
+
+    /// Returns a valid raw pointer to the specified Handle or None if
+    /// the handle is invalid.  This method checks the container Id
+    /// (cid) of the handle against the list itself so that handles
+    /// cannot be used across lists. If the container Id matches then
+    /// the node Id is checked against the node Id stored at that
+    /// memory locatiom. If the container Id and the Node Id are a
+    /// match then a flag indicating whether this node is part of the
+    /// freelist is checked.
+
+    /// If the container Id and the node Id match and the node is not
+    /// part of the free list then the raw pointer to the Node is
+    /// returned. If the conditions don't return true this method
+    /// returns None indicating that the raw pointer does not point to
+    /// the node that the handle originally referred to.
+    ///
+    /// It should be noted that the raw pointer returned will always
+    /// point to a valid memory location since that memory is
+    /// allocated and managed by the freelist. However the contents of
+    /// that memory location can change as nodes are pushed and popped
+    /// off the list. When the contents change the handle becomes
+    /// invalid and this method returns None.
+    fn node_ptr(&self, node: &Node<T>) -> Option<*mut InternalNode<T>> {
+        if node.cid != self.cid {
+            return None;
+        }
+        unsafe {
+            // First check if this node is on the freelist. If it is
+            // then we don't need to check the node id (nid)
+            if (*node.ptr).fl_node {
+                return None;
+            }
+
+            if (*node.ptr).nid != node.nid {
+                return None;
+            }
+        }
+
+        Some((*node).ptr)
+    }
+
+    unsafe fn swap_node_adjacent(
+        &mut self,
+        n_ptr: *mut InternalNode<T>,
+        o_ptr: *mut InternalNode<T>,
+    ) {
+        // N -> O
+
+        if (*n_ptr).prev.is_null() {
+            //n_ptr is the head
+            self.head = o_ptr;
+        } else {
+            (*(*n_ptr).prev).next = o_ptr;
+        }
+
+        if (*o_ptr).next.is_null() {
+            //o_ptr is the tail
+            self.tail = n_ptr;
+        } else {
+            (*(*o_ptr).next).prev = n_ptr;
+        }
+
+        (*n_ptr).next = (*o_ptr).next;
+        (*o_ptr).prev = (*n_ptr).prev;
+        (*o_ptr).next = n_ptr;
+        (*n_ptr).prev = o_ptr;
     }
 }
 
@@ -1621,14 +1906,14 @@ mod test {
 
     #[test]
     fn test_new() {
-        let ll1 = FastLinkedList::<u8>::new();
-        let ll2 = FastLinkedList::<u8>::new();
+        let ll1 = LinkedList::<u8>::new();
+        let ll2 = LinkedList::<u8>::new();
         assert!(ll1.cid < ll2.cid);
     }
 
     #[test]
     fn test_push_head() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_head(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now push a second head
@@ -1651,7 +1936,7 @@ mod test {
 
     #[test]
     fn test_push_tail() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_tail(33);
         assert_node!(ll, node, ONLY, 33, 1);
         //now push a second head
@@ -1675,7 +1960,7 @@ mod test {
 
     #[test]
     fn test_pop_head() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_head(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now pop the head
@@ -1712,7 +1997,7 @@ mod test {
 
     #[test]
     fn test_pop_tail() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node = ll.push_tail(11);
         assert_node!(ll, node, ONLY, 11, 1);
         //now pop the tail
@@ -1749,7 +2034,7 @@ mod test {
 
     #[test]
     fn test_capacity_zero() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(0);
+        let mut ll = LinkedList::<u8>::with_capacity(0);
         assert_eq!(ll.len(), 0);
         assert_eq!(ll.capacity(), 0);
         for _ in 0..5 {
@@ -1767,7 +2052,7 @@ mod test {
 
     #[test]
     fn test_capacity() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(2);
+        let mut ll = LinkedList::<u8>::with_capacity(2);
         assert_eq!(ll.len(), 0);
         assert_eq!(ll.capacity(), 2);
         for _ in 0..5 {
@@ -1791,7 +2076,7 @@ mod test {
         }
         assert_eq!(ll.len(), 17);
         assert_eq!(ll.capacity(), 32);
-        let mut ll = FastLinkedList::<u8>::with_capacity(17);
+        let mut ll = LinkedList::<u8>::with_capacity(17);
         for _ in 0..18 {
             ll.push_head(11);
         }
@@ -1801,7 +2086,7 @@ mod test {
 
     #[test]
     fn test_node_reuse() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(8);
+        let mut ll = LinkedList::<u8>::with_capacity(8);
         //first push one node
         let mut node = ll.push_head(1);
         for i in 0..7 {
@@ -1819,7 +2104,7 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -1861,7 +2146,7 @@ mod test {
 
     #[test]
     fn test_iter_reverse() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -1892,7 +2177,7 @@ mod test {
 
     #[test]
     fn test_iter_reverse2() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             ll.push_head(i);
         }
@@ -1919,7 +2204,7 @@ mod test {
 
     #[test]
     fn test_invalid_node() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         let headnode = ll.push_head(12);
         let headval = ll.pop_head();
         assert_eq!(headval, Some(12));
@@ -1930,7 +2215,7 @@ mod test {
 
     #[test]
     fn test_clear() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(10);
+        let mut ll = LinkedList::<u8>::with_capacity(10);
         ll.push_head(0);
         ll.push_head(1);
         ll.push_head(2);
@@ -1943,7 +2228,7 @@ mod test {
 
     #[test]
     fn test_push_next() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node1 = ll.push_head(1);
         let node2 = ll.push_head(2);
         let node3 = ll.push_head(3);
@@ -1973,7 +2258,7 @@ mod test {
 
     #[test]
     fn test_push_prev() {
-        let mut ll = FastLinkedList::<u8>::new();
+        let mut ll = LinkedList::<u8>::new();
         let node1 = ll.push_head(1);
         let node2 = ll.push_head(2);
         let node3 = ll.push_head(3);
@@ -2004,7 +2289,7 @@ mod test {
 
     #[test]
     fn test_append() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         for i in 0..4 {
             ll.push_tail(i);
         }
@@ -2012,7 +2297,7 @@ mod test {
         assert_eq!(ll.capacity(), 4);
         assert_eq!(ll.fl.len(), 0);
 
-        let mut otherll = FastLinkedList::<u8>::with_capacity(10);
+        let mut otherll = LinkedList::<u8>::with_capacity(10);
         for i in 0..10 {
             otherll.push_tail(i);
         }
@@ -2052,14 +2337,14 @@ mod test {
 
     #[test]
     fn test_append_handle() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         ll.push_tail(1);
         ll.push_tail(2);
         ll.push_tail(3);
 
         let hnd: Node<u8>;
         {
-            let mut other = FastLinkedList::<u8>::with_capacity(4);
+            let mut other = LinkedList::<u8>::with_capacity(4);
             other.push_tail(4);
             hnd = other.push_tail(5);
             other.push_tail(6);
@@ -2082,7 +2367,7 @@ mod test {
 
     #[test]
     fn test_make_head() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2113,7 +2398,7 @@ mod test {
 
     #[test]
     fn test_make_tail() {
-        let mut ll = FastLinkedList::<u8>::with_capacity(4);
+        let mut ll = LinkedList::<u8>::with_capacity(4);
         let hnd1 = ll.push_tail(1);
         let hnd2 = ll.push_tail(2);
         let hnd3 = ll.push_tail(3);
@@ -2140,5 +2425,104 @@ mod test {
         assert_node!(ll, hnd3, FIRST, 3, 3);
         assert_node!(ll, hnd2, MIDDLE, 2, 3);
         assert_node!(ll, hnd1, LAST, 1, 3);
+    }
+
+    #[test]
+    fn test_is_next() {
+        let mut ll = LinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        ll.pop_tail();
+        assert_eq!(ll.is_next(&hnd1, &hnd1), Some(false));
+        assert_eq!(ll.is_next(&hnd1, &hnd2), Some(false));
+        assert_eq!(ll.is_next(&hnd2, &hnd1), Some(true));
+        assert_eq!(ll.is_next(&hnd2, &hnd3), None);
+        assert_eq!(ll.is_next(&hnd1, &hnd3), None);
+        assert_eq!(ll.is_next(&hnd3, &hnd3), None);
+    }
+
+    #[test]
+    fn test_is_prev() {
+        let mut ll = LinkedList::<u8>::with_capacity(4);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+        ll.pop_tail();
+        assert_eq!(ll.is_prev(&hnd1, &hnd1), Some(false));
+        assert_eq!(ll.is_prev(&hnd1, &hnd2), Some(true));
+        assert_eq!(ll.is_prev(&hnd2, &hnd1), Some(false));
+        assert_eq!(ll.is_prev(&hnd2, &hnd3), None);
+        assert_eq!(ll.is_prev(&hnd1, &hnd3), None);
+        assert_eq!(ll.is_prev(&hnd3, &hnd3), None);
+    }
+
+    #[test]
+    fn test_swap_node() {
+        let mut ll = LinkedList::<u8>::with_capacity(4);
+        let hnd0 = ll.push_tail(0);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+
+        ll.swap_node(&hnd0, &hnd3);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd0, 0);
+
+        ll.swap_node(&hnd1, &hnd2);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
+
+        ll.swap_node(&hnd3, &hnd2);
+        assert_node!(ll, hnd2, FIRST, 2, 4);
+        assert_node!(ll, hnd3, MIDDLE, 3, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+        assert_order!(ll, hnd3, 3, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
+
+        ll.swap_node(&hnd1, &hnd0);
+        assert_node!(ll, hnd2, FIRST, 2, 4);
+        assert_node!(ll, hnd3, MIDDLE, 3, 4);
+        assert_node!(ll, hnd0, MIDDLE, 0, 4);
+        assert_node!(ll, hnd1, LAST, 1, 4);
+
+        assert_order!(ll, hnd2, 2, hnd3, 3);
+        assert_order!(ll, hnd3, 3, hnd0, 0);
+        assert_order!(ll, hnd0, 0, hnd1, 1);
+
+        ll.swap_node(&hnd3, &hnd2);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd0, MIDDLE, 0, 4);
+        assert_node!(ll, hnd1, LAST, 1, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd0, 0);
+        assert_order!(ll, hnd0, 0, hnd1, 1);
+
+        ll.swap_node(&hnd1, &hnd0);
+        assert_node!(ll, hnd3, FIRST, 3, 4);
+        assert_node!(ll, hnd2, MIDDLE, 2, 4);
+        assert_node!(ll, hnd1, MIDDLE, 1, 4);
+        assert_node!(ll, hnd0, LAST, 0, 4);
+
+        assert_order!(ll, hnd3, 3, hnd2, 2);
+        assert_order!(ll, hnd2, 2, hnd1, 1);
+        assert_order!(ll, hnd1, 1, hnd0, 0);
     }
 }
