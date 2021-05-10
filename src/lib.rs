@@ -11,5 +11,10 @@ pub mod lists {
 }
 
 pub mod collections {
-    pub use deepmesa_collections::bitvec::bitvec::FastBitVector;
+    pub mod bitvec {
+        pub use deepmesa_collections::bitvec::bitslice::BitSlice;
+        pub use deepmesa_collections::bitvec::bitslice::Slice;
+        pub use deepmesa_collections::bitvec::BitOrder;
+    }
+    pub use deepmesa_collections::bitvec::bitvec::BitVector;
 }

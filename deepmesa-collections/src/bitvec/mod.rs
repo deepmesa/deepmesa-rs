@@ -3,24 +3,7 @@ pub mod bitvec;
 
 use std::mem;
 
-//#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-//pub struct Numbits(usize);
 type Numbits = usize;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EncodingError {
-    msg: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DgapEncoding {
-    VarByte,
-    Unary,
-    Gamma,
-    Delta,
-    // Golomb,
-    // Huffman,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BitOrder {
@@ -52,7 +35,7 @@ macro_rules! impl_bit_order_convert {
                     if n == type_len {
                         return *self;
                     }
-                    return self >> (type_len - n);
+                    return *self >> (type_len - n);
                 }
 
                 fn lsb0_to_msb0(&self, n: Numbits) -> Self {
@@ -69,7 +52,7 @@ macro_rules! impl_bit_order_convert {
                     if n == type_len {
                         return *self;
                     }
-                    return self << (type_len - n);
+                    return *self << (type_len - n);
                 }
             }
         )*
@@ -79,7 +62,7 @@ macro_rules! impl_bit_order_convert {
 impl_bit_order_convert! {u8,u16,u32,u64,u128}
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use rand::Rng;
 
