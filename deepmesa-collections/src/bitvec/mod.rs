@@ -1,9 +1,8 @@
+mod bitops;
 pub mod bitslice;
 pub mod bitvec;
 
-use std::mem;
-
-type Numbits = usize;
+type BitCount = usize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BitOrder {
@@ -12,58 +11,61 @@ pub enum BitOrder {
 }
 
 pub trait BitOrderConvert {
-    fn msb0_to_lsb0(&self, n: Numbits) -> Self;
-    fn lsb0_to_msb0(&self, n: Numbits) -> Self;
+    fn msb0_to_lsb0(&self, n: BitCount) -> Self;
+    fn lsb0_to_msb0(&self, n: BitCount) -> Self;
 }
 
 macro_rules! impl_bit_order_convert {
-    ($($t:ty),*) => {
-        $(
-            impl BitOrderConvert for $t {
-                fn msb0_to_lsb0(&self, n: Numbits) -> Self {
-                    let type_len = mem::size_of::<Self>() * 8;
-                    if n == 0 {
-                        return *self;
-                    }
-
-                    if n > type_len {
-                        panic!(
-                            "Cannot convert BitOrder for Numbits ({}) > {}",
-                            n, type_len
-                        );
-                    }
-                    if n == type_len {
-                        return *self;
-                    }
-                    return *self >> (type_len - n);
+    ($t:ty, $sz:literal) => {
+        impl BitOrderConvert for $t {
+            fn msb0_to_lsb0(&self, n: BitCount) -> Self {
+                const TYPE_LEN: usize = $sz;
+                if n == 0 {
+                    return *self;
                 }
 
-                fn lsb0_to_msb0(&self, n: Numbits) -> Self {
-                    let type_len = mem::size_of::<Self>() * 8;
-                    if n == 0 {
-                        return *self;
-                    }
-                    if n > type_len {
-                        panic!(
-                            "Cannot convert BitOrder for Numbits ({}) > {}",
-                            n, type_len
-                        );
-                    }
-                    if n == type_len {
-                        return *self;
-                    }
-                    return *self << (type_len - n);
+                if n > TYPE_LEN {
+                    panic!(
+                        "Cannot convert BitOrder for BitCount ({}) > {}",
+                        n, TYPE_LEN
+                    );
                 }
+                if n == TYPE_LEN {
+                    return *self;
+                }
+                return *self >> (TYPE_LEN - n);
             }
-        )*
-    }
+
+            fn lsb0_to_msb0(&self, n: BitCount) -> Self {
+                const TYPE_LEN: usize = $sz;
+                if n == 0 {
+                    return *self;
+                }
+                if n > TYPE_LEN {
+                    panic!(
+                        "Cannot convert BitOrder for BitCount ({}) > {}",
+                        n, TYPE_LEN
+                    );
+                }
+                if n == TYPE_LEN {
+                    return *self;
+                }
+                return *self << (TYPE_LEN - n);
+            }
+        }
+    };
 }
 
-impl_bit_order_convert! {u8,u16,u32,u64,u128}
+impl_bit_order_convert!(u8, 8);
+impl_bit_order_convert!(u16, 16);
+impl_bit_order_convert!(u32, 32);
+impl_bit_order_convert!(u64, 64);
+impl_bit_order_convert!(u128, 128);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::mem;
     use rand::Rng;
 
     macro_rules! gen_test {
