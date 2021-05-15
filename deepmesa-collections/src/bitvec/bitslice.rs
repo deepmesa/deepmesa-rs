@@ -1,5 +1,33 @@
-use crate::bitvec::{bitops, bitvec::BitVector, BitCount, BitOrderConvert};
+/*
+   BitVector: A fast contiguous growable array of bits allocated
+   on the heap that allows storing and manipulating an arbitrary
+   number of bits. This collection is backed by a Vector<u8> which
+   manages the underlying memory.
+
+   Copyright 2021 "Rahul Singh <rsingh@arrsingh.com>"
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+use crate::bitvec::{
+    bitops,
+    bitvec::BitVector,
+    iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
+    BitCount, BitOrderConvert,
+};
 use core::convert::TryFrom;
+use core::ops::Deref;
+use core::ops::DerefMut;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::ops::Range;
@@ -11,6 +39,14 @@ use core::ops::RangeToInclusive;
 
 #[repr(transparent)]
 pub struct BitSlice([u8]);
+
+macro_rules! iter_unsigned {
+    ($iter_fn: ident, $iter_type: ident) => {
+        pub fn $iter_fn(&self) -> $iter_type {
+            $iter_type::new(&self.0, self.offset(), self.len())
+        }
+    };
+}
 
 macro_rules! read_unsigned {
     ($i:ident, $b: literal, $read_fn: ident) => {
@@ -89,6 +125,49 @@ macro_rules! try_from {
             }
         }
     };
+}
+
+pub struct BitPtr<'a> {
+    bit: bool,
+    bits: &'a mut [u8],
+    mut_bit: bool,
+    index: usize,
+}
+
+impl<'a> BitPtr<'a> {
+    pub(super) fn new(bit: bool, bits: &'a mut [u8], index: usize) -> BitPtr {
+        BitPtr {
+            bit,
+            bits,
+            mut_bit: bit,
+            index,
+        }
+    }
+}
+
+impl<'a> Deref for BitPtr<'a> {
+    type Target = bool;
+    fn deref(&self) -> &Self::Target {
+        &self.mut_bit
+    }
+}
+
+impl<'a> DerefMut for BitPtr<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mut_bit
+    }
+}
+
+impl<'a> Drop for BitPtr<'a> {
+    fn drop(&mut self) {
+        if self.bit != self.mut_bit {
+            if self.mut_bit {
+                bitops::set_msb_n(&mut self.bits[self.index / 8], (self.index % 8) as u8);
+            } else {
+                bitops::clr_msb_n(&mut self.bits[self.index / 8], (self.index % 8) as u8);
+            }
+        }
+    }
 }
 
 impl BitSlice {
@@ -171,6 +250,14 @@ impl BitSlice {
         BitSlice::get_unchecked(&self.0, index)
     }
 
+    pub fn get_mut(&mut self, index: usize) -> Option<BitPtr> {
+        if let Some(bit) = self.get(index) {
+            let offset = self.offset();
+            return Some(BitPtr::new(bit, &mut self.0, index + offset));
+        }
+        return None;
+    }
+
     pub fn set(&mut self, index: usize, value: bool) {
         if index >= self.len() {
             panic!(
@@ -182,6 +269,10 @@ impl BitSlice {
 
         let index = index + self.offset();
         BitSlice::set_unchecked(&mut self.0, index, value);
+    }
+
+    pub fn iter(&self) -> Iter {
+        Iter::new(&self.0, self.offset(), self.len())
     }
 
     pub(super) fn get_unchecked(bits: &[u8], index: usize) -> Option<bool> {
@@ -196,6 +287,12 @@ impl BitSlice {
             bitops::clr_msb_n(&mut bits[index / 8], (index % 8) as u8);
         }
     }
+
+    iter_unsigned!(iter_u8, IterU8);
+    iter_unsigned!(iter_u16, IterU16);
+    iter_unsigned!(iter_u32, IterU32);
+    iter_unsigned!(iter_u64, IterU64);
+    iter_unsigned!(iter_u128, IterU128);
 
     as_unsigned!(u8, 8, as_u8);
     as_unsigned!(u16, 16, as_u16);
@@ -246,23 +343,13 @@ impl BitSlice {
     /// byte: 0b1100_1101 start: 4, count: 2 returns (0b1100_0011, 2)
     #[inline(always)]
     fn sub_byte_lsb0(byte: u8, start: u8, bit_count: BitCount) -> (u8, BitCount) {
-        if start > 7 {
-            panic!("start {} cannot be greater than 7", start);
-        }
+        debug_assert!(start <= 7, "start {} cannot be greater than 7", start);
         let count: u8;
         if bit_count < 8 {
             count = bit_count as u8;
         } else {
             count = 8;
         }
-
-        //Cases:
-        // start = 0
-        // --- read: 8     return full byte
-        // --- read: < 8   return MSB `read` bits (shift right and return)
-        // start > 0
-        // --- read: 8     return LSB `avail` bits (clear the MSB bits and return)
-        // --- read: < 8   clear the MSB bits then shift right and return
 
         match start {
             0 => match count {
@@ -290,9 +377,11 @@ impl BitSlice {
         len: usize,
         max_bits: BitCount,
     ) -> (u128, BitCount) {
-        if max_bits > 128 {
-            panic!("max_bits cannot exceed 128 bits. max_bits = {}", max_bits);
-        }
+        debug_assert!(
+            max_bits <= 128,
+            "max_bits cannot exceed 128 bits. max_bits = {}",
+            max_bits
+        );
 
         //at most read 128 bits
         let mut retval: u128 = 0;
@@ -307,10 +396,6 @@ impl BitSlice {
             if bits_remaining == 0 {
                 break;
             }
-            // println!(
-            //     "Doing Read: start: {}, cursor: {}, len: {}, max_bits: {}, bits_remaining: {}",
-            //     start, cursor, len, max_bits, bits_remaining
-            // );
             let byte = bits[cursor / 8];
             let (byte_val, read) =
                 BitSlice::sub_byte_lsb0(byte, (cursor % 8) as u8, bits_remaining);
@@ -463,8 +548,8 @@ mod tests {
     fn test_slice() {
         let mut bv = BitVector::new(20);
 
-        bv.push_u8(0b1011_0011);
-        bv.push_u8(0b1011_0011);
+        bv.push_u8(0b1011_0011, None);
+        bv.push_u8(0b1011_0011, None);
         assert_eq!(bv.get(0), Some(true));
         assert_eq!(bv.get(1), Some(false));
 
@@ -576,5 +661,15 @@ mod tests {
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 4, 2), (0b0000_0011, 2));
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 0, 1), (0b0000_0001, 1));
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 7, 8), (0b0000_0001, 1));
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut bv = BitVector::new(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        let s = &mut bv[0..7];
+        *s.get_mut(0).unwrap() = false;
+        assert_eq!(bv[0], false);
     }
 }

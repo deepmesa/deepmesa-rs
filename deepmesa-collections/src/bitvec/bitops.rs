@@ -19,10 +19,10 @@
    limitations under the License.
 */
 /// Clear the count lsb bits
-#[allow(unused_parens)]
 #[inline(always)]
-pub(super) fn clr_lsb(val: &mut u8, count: u8) {
-    *val &= (0xFF << count);
+pub(super) fn clr_lsb(val: u8, n: u8) -> u8 {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    val & msb_ones(8 - n)
 }
 
 /// left shift `count` msb bits of src into dst
@@ -38,11 +38,6 @@ pub(super) fn shl_into(dst: &mut u8, src: u8, count: u8) {
     *dst |= (src >> 8 - count);
 }
 
-#[inline(always)]
-pub(super) fn crop_msb(val: u8, count: u8) -> u8 {
-    val << count
-}
-
 /// Returns true if the n MSB bits of the val are set
 #[inline(always)]
 pub(super) fn is_msb_nset(val: u8, n: u8) -> bool {
@@ -54,11 +49,8 @@ pub(super) fn is_msb_nset(val: u8, n: u8) -> bool {
 /// greater than 8
 #[inline(always)]
 pub(super) fn msb_clr(val: u8, n: u8) -> u8 {
-    if n > 8 {
-        panic!("n ({}) exceeds 8", n);
-    }
-
-    let mask = lsb_ones_unchecked(8 - n);
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    let mask = lsb_ones(8 - n);
     val & mask
 }
 
@@ -66,9 +58,7 @@ pub(super) fn msb_clr(val: u8, n: u8) -> u8 {
 /// panic if n is greater than 7
 #[inline(always)]
 pub(super) fn msb_nset(n: u8) -> u8 {
-    if n > 7 {
-        panic!("n ({}) exceeds 7", n);
-    }
+    debug_assert!(n <= 7, "n ({}) exceeds 7", n);
 
     const VALUES: [u8; 8] = [
         0b1000_0000,
@@ -81,26 +71,13 @@ pub(super) fn msb_nset(n: u8) -> u8 {
         0b0000_0001,
     ];
     VALUES[n as usize]
-    // match n {
-    //     0 => 0b1000_0000,
-    //     1 => 0b0100_0000,
-    //     2 => 0b0010_0000,
-    //     3 => 0b0001_0000,
-    //     4 => 0b0000_1000,
-    //     5 => 0b0000_0100,
-    //     6 => 0b0000_0010,
-    //     7 => 0b0000_0001,
-    //     _ =>
-    // }
 }
 
 /// Returns a byte with the 'n'th LSB bit cleared. This method will
 /// panic if n is greater than 7
 #[inline(always)]
 pub(super) fn msb_nclr(n: u8) -> u8 {
-    if n > 7 {
-        panic!("n ({}) exceeds 7", n);
-    }
+    debug_assert!(n <= 7, "n ({}) exceeds 7", n);
 
     const VALUES: [u8; 8] = [
         0b0111_1111,
@@ -117,7 +94,8 @@ pub(super) fn msb_nclr(n: u8) -> u8 {
 
 /// Returns a byte with 'n' lsb bits set to 1
 #[inline(always)]
-fn lsb_ones_unchecked(n: u8) -> u8 {
+pub(super) fn lsb_ones(n: u8) -> u8 {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
     const VALUES: [u8; 9] = [
         0b0000_0000,
         0b0000_0001,
@@ -132,22 +110,10 @@ fn lsb_ones_unchecked(n: u8) -> u8 {
     VALUES[n as usize]
 }
 
-/// Returns a byte with 'n' lsb bits set to 1
-#[inline(always)]
-pub(super) fn lsb_ones(n: u8) -> u8 {
-    if n > 8 {
-        panic!("n ({}) exceeds 8", n);
-    }
-    lsb_ones_unchecked(n)
-}
-
 /// Returns a byte with 'n' MSB bits set to 1
 #[inline(always)]
 pub(super) fn msb_ones(n: u8) -> u8 {
-    if n > 8 {
-        panic!("n ({}) exceeds 8", n);
-    }
-
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
     const VALUES: [u8; 9] = [
         0b0000_0000,
         0b1000_0000,
@@ -160,19 +126,6 @@ pub(super) fn msb_ones(n: u8) -> u8 {
         0b1111_1111,
     ];
     VALUES[n as usize]
-}
-
-/// Sets the 'count' LSB bits to 1
-#[inline(always)]
-pub(super) fn fill_lsb(byte: &mut u8, count: u8) {
-    *byte |= lsb_ones(count);
-}
-
-/// Fills the 'count' LSB bits to 1, starting from 'from'
-#[allow(unused_parens)]
-#[inline(always)]
-pub(super) fn fill_lsb_from(byte: &mut u8, count: u8, from: u8) {
-    *byte |= (lsb_ones(count) << from - count + 1)
 }
 
 /// Returns the 8 bits of the LSB byte
@@ -217,9 +170,7 @@ pub(super) fn shl(val: u128, count: u8) -> u128 {
 /// method will panic if 'count' is greater than 8
 #[inline(always)]
 pub(super) fn msbn_usize(val: usize, count: u8) -> usize {
-    if count > 8 {
-        panic!("count {} exceeds 8", count);
-    }
+    debug_assert!(count <= 8, "count {} exceeds 8", count);
 
     //shift right by 64 - count
     #[cfg(target_pointer_width = "64")]
@@ -245,9 +196,7 @@ pub(super) fn msbn_usize(val: usize, count: u8) -> usize {
 #[inline(always)]
 
 pub(super) fn msb_zeros_usize(count: u8) -> usize {
-    if count > 8 {
-        panic!("count {} exceeds 8", count);
-    }
+    debug_assert!(count <= 8, "count {} exceeds 8", count);
 
     #[cfg(target_pointer_width = "64")]
     const VALUES: [usize; 9] = [
@@ -294,9 +243,7 @@ pub(super) fn clr_msb_usize(val: usize, count: u8) -> usize {
 /// result. This method panics if 'count' is greater than 8
 #[inline(always)]
 pub(super) fn msb_set_usize(dst: usize, src: usize, count: u8) -> usize {
-    if count > 8 {
-        panic!("count {} exceeds 8", count);
-    }
+    debug_assert!(count <= 8, "count {} exceeds 8", count);
 
     // Until usize::BITS is in stable
     #[cfg(target_pointer_width = "64")]
@@ -410,5 +357,12 @@ mod tests {
     fn test_msb_clr() {
         let val: u8 = 0b1010_0101;
         assert_eq!(msb_clr(val, 5), 0b0000_0101);
+    }
+
+    #[test]
+    fn test_clr_lsb() {
+        assert_eq!(clr_lsb(0b1010_1110, 0), 0b1010_1110);
+        assert_eq!(clr_lsb(0b1010_1110, 5), 0b1010_0000);
+        assert_eq!(clr_lsb(0b1010_1110, 2), 0b1010_1100);
     }
 }

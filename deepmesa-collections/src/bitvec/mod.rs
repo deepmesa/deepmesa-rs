@@ -1,6 +1,7 @@
 mod bitops;
 pub mod bitslice;
 pub mod bitvec;
+pub mod iter;
 
 type BitCount = usize;
 

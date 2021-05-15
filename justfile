@@ -10,10 +10,9 @@ build:
 #    cargo test --package deepmesa-collections bitvec::bitslice::tests::test_read_bits_u8 -- --nocapture
 #    cargo test --package deepmesa-collections bitvec::bitvec::tests::test_read_u16 -- --nocapture
 #    cargo test --package deepmesa-collections bitvec::tests::test_convert_u128 -- --nocapture
-#
+#    cargo test --package deepmesa-collections bitvec::bitvec::tests::test_push_bits  -- --nocapture --exact
 test:
     cargo test --all -- --nocapture
-
 
 doc:
     cargo doc --no-deps --all
