@@ -546,7 +546,7 @@ mod tests {
     use crate::bitvec::{bitvec::BitVector, BitOrder};
     #[test]
     fn test_slice() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
 
         bv.push_u8(0b1011_0011, None);
         bv.push_u8(0b1011_0011, None);
@@ -575,7 +575,7 @@ mod tests {
 
     #[test]
     fn test_read_bits_u8() {
-        let mut bvec = BitVector::new(20);
+        let mut bvec = BitVector::with_capacity(20);
         bvec.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
         bvec.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
 
@@ -610,7 +610,7 @@ mod tests {
 
     #[test]
     fn test_read_u8_slice() {
-        let mut bvec = BitVector::new(20);
+        let mut bvec = BitVector::with_capacity(20);
         bvec.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
         bvec.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
 
@@ -640,7 +640,7 @@ mod tests {
 
     #[test]
     fn test_from() {
-        let mut bvec = BitVector::new(20);
+        let mut bvec = BitVector::with_capacity(20);
         bvec.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
         bvec.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
 
@@ -665,7 +665,7 @@ mod tests {
 
     #[test]
     fn test_get_mut() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b1011_1100, None);
         assert_eq!(bv[0], true);
         let s = &mut bv[0..7];

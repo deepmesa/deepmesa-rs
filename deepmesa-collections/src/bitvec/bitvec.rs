@@ -28,10 +28,16 @@ use crate::bitvec::{
 };
 use core::fmt;
 use core::fmt::Debug;
+use core::ops::BitAnd;
+use core::ops::BitAndAssign;
+use core::ops::BitOr;
+use core::ops::BitOrAssign;
+use core::ops::BitXor;
+use core::ops::BitXorAssign;
 use core::ops::Deref;
 use core::ops::DerefMut;
 use core::ops::Index;
-
+use core::ops::Not;
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
 /// bits. This collection is backed by a Vector<u8> which manages the
@@ -49,7 +55,7 @@ use core::ops::Index;
 /// ```
 /// use deepmesa::collections::BitVector;
 ///
-/// let mut bv = BitVector::new(128);
+/// let mut bv = BitVector::with_capacity(128);
 /// bv.push(true);
 /// bv.push(false);
 /// bv.push(true);
@@ -219,6 +225,18 @@ macro_rules! read_bits_unsigned {
 const U128_BITS: u8 = 128;
 
 impl BitVector {
+    /// Creates an empty BitVector with a capacity or 128 bits.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// let bv = BitVector::new();
+    /// assert_eq!(bv.capacity(), 128);
+    /// ```
+    pub fn new() -> BitVector {
+        BitVector::with_capacity(128)
+    }
+
     /// Creates an empty BitVector with the specified capacity. If the
     /// specified capacity is not a multiple of 8, it is increased to
     /// be a multiple of 8
@@ -226,24 +244,23 @@ impl BitVector {
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
-    /// let bv = BitVector::new(6);
+    /// let bv = BitVector::with_capacity(6);
     /// assert_eq!(bv.capacity(), 8);
     /// ```
-    pub fn new(capacity_bits: usize) -> BitVector {
+    pub fn with_capacity(capacity_bits: usize) -> BitVector {
         BitVector {
             bits: Vec::with_capacity((capacity_bits + 7) / 8),
             capacity_bits: ((capacity_bits + 7) / 8) * 8,
             bit_len: 0,
         }
     }
-
     /// Returns the number of bits this BitVector can hold before new
     /// memory is allocated.
     ///
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
-    /// let bv = BitVector::new(22);
+    /// let bv = BitVector::with_capacity(22);
     /// assert_eq!(bv.capacity(), 24);
     /// ```
     pub fn capacity(&self) -> usize {
@@ -255,7 +272,7 @@ impl BitVector {
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// for _ in 0..5 {
     ///     bv.push(true);
     /// }
@@ -270,7 +287,7 @@ impl BitVector {
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// assert!(bv.is_empty());
     /// bv.push(true);
     /// assert!(!bv.is_empty());
@@ -285,7 +302,7 @@ impl BitVector {
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// for _ in 0..5 {
     ///     bv.push(true);
     /// }
@@ -372,7 +389,7 @@ impl BitVector {
     /// ```
     /// use deepmesa::collections::BitVector;
     ///
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
     /// bv.push(false);
     /// bv.push(true);
@@ -405,7 +422,7 @@ impl BitVector {
     /// ```
     /// use deepmesa::collections::BitVector;
     ///
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
     /// bv.push(true);
     /// bv.push(false);
@@ -435,7 +452,7 @@ impl BitVector {
     /// ```
     /// use deepmesa::collections::BitVector;
     ///
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
     /// bv.push(false);
     /// assert_eq!(bv[0], true);
@@ -455,7 +472,7 @@ impl BitVector {
     /// ```
     /// use deepmesa::collections::BitVector;
     ///
-    /// let mut bv = BitVector::new(22);
+    /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
     /// bv.push(false);
     /// bv.push(true);
@@ -498,6 +515,114 @@ impl BitVector {
             rem -= pushed;
         }
         total_pushed
+    }
+}
+
+impl Deref for BitVector {
+    type Target = BitSlice;
+    fn deref(&self) -> &Self::Target {
+        &self[0..self.len()]
+    }
+}
+
+impl DerefMut for BitVector {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        let len = self.len();
+        &mut self[0..len]
+    }
+}
+
+impl BitAnd<bool> for BitVector {
+    type Output = Self;
+    fn bitand(mut self, rhs: bool) -> Self::Output {
+        self &= rhs;
+        self
+    }
+}
+
+impl BitOr<bool> for BitVector {
+    type Output = Self;
+    fn bitor(mut self, rhs: bool) -> Self::Output {
+        self |= rhs;
+        self
+    }
+}
+
+impl BitXor<bool> for BitVector {
+    type Output = Self;
+    fn bitxor(mut self, rhs: bool) -> Self::Output {
+        self ^= rhs;
+        self
+    }
+}
+
+impl Not for BitVector {
+    type Output = Self;
+    fn not(mut self) -> Self::Output {
+        for byte in self.bits.iter_mut() {
+            *byte = !*byte;
+        }
+        self
+    }
+}
+
+impl BitAndAssign<bool> for BitVector {
+    fn bitand_assign(&mut self, rhs: bool) {
+        let mut and_val: u8 = 0;
+        if rhs {
+            and_val = u8::MAX;
+        }
+        for byte in self.bits.iter_mut() {
+            *byte &= and_val;
+        }
+
+        //TODO:Set the bits after bit_len in the last byte to 0
+    }
+}
+
+impl BitOrAssign<bool> for BitVector {
+    fn bitor_assign(&mut self, rhs: bool) {
+        let mut or_val: u8 = 0;
+        if rhs {
+            or_val = u8::MAX;
+        }
+        for byte in self.bits.iter_mut() {
+            *byte |= or_val;
+        }
+
+        //TODO:Set the bits after bit_len in the last byte to 0
+    }
+}
+
+impl BitXorAssign<bool> for BitVector {
+    fn bitxor_assign(&mut self, rhs: bool) {
+        let mut or_val: u8 = 0;
+        if rhs {
+            or_val = u8::MAX;
+        }
+        for byte in self.bits.iter_mut() {
+            *byte ^= or_val;
+        }
+
+        //TODO:Set the bits after bit_len in the last byte to 0
+    }
+}
+
+impl AsMut<BitSlice> for BitVector {
+    fn as_mut(&mut self) -> &mut BitSlice {
+        self.index_mut(0, self.bit_len)
+    }
+}
+
+impl AsRef<BitSlice> for BitVector {
+    fn as_ref(&self) -> &BitSlice {
+        self.index(0, self.bit_len)
+    }
+}
+
+impl Default for BitVector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -584,20 +709,6 @@ impl BitVector {
     }
 }
 
-impl Deref for BitVector {
-    type Target = BitSlice;
-    fn deref(&self) -> &Self::Target {
-        &self[0..self.len()]
-    }
-}
-
-impl DerefMut for BitVector {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let len = self.len();
-        &mut self[0..len]
-    }
-}
-
 #[cfg(test)]
 impl BitVector {
     #[cfg(test)]
@@ -617,7 +728,7 @@ mod tests {
 
     #[test]
     fn test_bit_at() {
-        let mut bv = BitVector::new(32);
+        let mut bv = BitVector::with_capacity(32);
         //push a byte = 0101_0011
         bv.push_bits_u8(0b0101_0011, 8, BitOrder::Lsb0);
         assert_eq!(bv.get(0).unwrap(), false);
@@ -645,7 +756,7 @@ mod tests {
 
     #[test]
     fn test_push_byte() {
-        let mut bv = BitVector::new(32);
+        let mut bv = BitVector::with_capacity(32);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.len_bytes(), 0);
         assert_eq!(bv.bit_len, 0);
@@ -687,7 +798,7 @@ mod tests {
     //test pushing bits in 8 bit multiples
     #[test]
     fn test_push_bits_8_multiple() {
-        let mut bv = BitVector::new(32);
+        let mut bv = BitVector::with_capacity(32);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
         bv.fill(8, true);
@@ -711,7 +822,7 @@ mod tests {
 
     #[test]
     fn test_fill() {
-        let mut bv = BitVector::new(32);
+        let mut bv = BitVector::with_capacity(32);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
         bv.fill(1, true);
@@ -760,7 +871,7 @@ mod tests {
 
     #[test]
     fn test_push_100_bits() {
-        let mut bv = BitVector::new(1);
+        let mut bv = BitVector::with_capacity(1);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
         bv.fill(100, true);
@@ -774,7 +885,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "cannot push more than 8 bits from a u8. bit_count=10")]
     fn test_push_bits_u8_panic() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b1010_1000;
 
         bv.push_bits_u8(val, 10, BitOrder::Msb0);
@@ -782,7 +893,7 @@ mod tests {
 
     #[test]
     fn test_push_bits() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val: u8 = 0b1100_1010;
         bv.push_bits_u8(val, 0, BitOrder::Msb0);
         assert_eq!(bv.len(), 0);
@@ -813,7 +924,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "cannot push more than 8 bits from a u8. bit_count=11")]
     fn test_push_bits_u8_trailing_panic() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b1010_1000;
 
         bv.push_bits_u8(val, 11, BitOrder::Lsb0);
@@ -821,7 +932,7 @@ mod tests {
 
     #[test]
     fn test_push_bits_u8_trailing() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b1010_0011;
 
         bv.push_bits_u8(val, 0, BitOrder::Lsb0);
@@ -843,14 +954,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "cannot push more than 128 bits from a u128. bit_count=300")]
     fn test_push_u128_panic() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b0110_1000;
         bv.push_bits_u128(val, 300, BitOrder::Msb0);
     }
 
     #[test]
     fn test_push_usize_trailing() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b0110_1010;
 
         //first push 0 bits
@@ -875,7 +986,7 @@ mod tests {
 
     #[test]
     fn test_push_bits_u8() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val = 0b0110_1000;
 
         //first push 0 bits
@@ -917,7 +1028,7 @@ mod tests {
 
     #[test]
     fn test_read_bits_u16() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         //push 3 bits 110
         bv.push(true);
         bv.push(true);
@@ -937,7 +1048,7 @@ mod tests {
 
     #[test]
     fn test_read_bits_u8() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
         bv.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
         assert_eq!(bv.len(), 16);
@@ -970,7 +1081,7 @@ mod tests {
 
     #[test]
     fn test_read_2bits() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_bits_u8(0b1011_0111, 8, BitOrder::Msb0);
         bv.push_bits_u8(0b00001_0001, 8, BitOrder::Msb0);
         bv.push_bits_u8(0b1100_0011, 8, BitOrder::Msb0);
@@ -983,7 +1094,7 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b0001_0110, Some(8));
         let s = &bv[0..4];
         assert_eq!(s.len(), 4);
@@ -1001,7 +1112,7 @@ mod tests {
 
     #[test]
     fn test_pop() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_bits_u8(23, 8, BitOrder::Lsb0);
         assert_eq!(bv.get(7), Some(true));
         assert_eq!(bv.pop(), Some(true));
@@ -1015,7 +1126,7 @@ mod tests {
 
     #[test]
     fn test_set() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_bits_u8(0b1010_1100, 8, BitOrder::Lsb0);
         assert_eq!(bv.get(3), Some(false));
         assert_eq!(bv.get(7), Some(false));
@@ -1034,7 +1145,7 @@ mod tests {
 
     #[test]
     fn test_push_bits_u64() {
-        let mut bv = BitVector::new(512);
+        let mut bv = BitVector::with_capacity(512);
         bv.push_bits_u64(u64::MAX, 64, BitOrder::Msb0);
         let (val, bit_count) = bv.read_bits_u64(0, 64);
         assert_eq!(bit_count, 64);
@@ -1043,7 +1154,7 @@ mod tests {
 
     #[test]
     fn test_push_bits_u128() {
-        let mut bv = BitVector::new(512);
+        let mut bv = BitVector::with_capacity(512);
         assert_eq!(bv.push_bits_u128(u64::MAX as u128, 64, BitOrder::Lsb0), 64);
         assert_eq!(bv.len(), 64);
         let (val, bit_count) = bv.read_bits_u128(0, 64);
@@ -1053,7 +1164,7 @@ mod tests {
 
     #[test]
     fn test_push_u8() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         let val: u8 = 0b0011_0000;
         bv.push_u8(val, None);
         assert_eq!(bv.len(), 6);
@@ -1079,7 +1190,7 @@ mod tests {
 
     #[test]
     fn test_get_mut() {
-        let mut bv = BitVector::new(20);
+        let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b1011_1100, None);
         assert_eq!(bv[0], true);
         *bv.get_mut(0).unwrap() = false;
@@ -1088,7 +1199,7 @@ mod tests {
 
     #[test]
     fn test_read_u16() {
-        let mut bv = BitVector::new(128);
+        let mut bv = BitVector::with_capacity(128);
         bv.push(true);
         bv.push(false);
         bv.push(true);
@@ -1101,7 +1212,7 @@ mod tests {
 
     #[test]
     fn test_push_u8_width() {
-        let mut bv = BitVector::new(128);
+        let mut bv = BitVector::with_capacity(128);
 
         bv.push_u8(0b0000_0000, Some(0));
         assert_eq!(bv.len(), 0);
@@ -1132,5 +1243,118 @@ mod tests {
         assert_eq!(bv.len(), 20);
         assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
         bv.clear();
+    }
+
+    #[test]
+    fn test_bit_and() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        let bv2 = bv & true;
+        assert_eq!(bv2.len(), 3);
+        assert_eq!(bv2.read_u8(0), (0b0000_0101, 3));
+
+        let bv3 = bv2 & false;
+        assert_eq!(bv3.len(), 3);
+        assert_eq!(bv3.read_u8(0), (0b0000_0000, 3));
+    }
+
+    #[test]
+    fn test_bit_and_assign() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        bv &= true;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0101, 3));
+
+        bv &= false;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0000, 3));
+    }
+
+    #[test]
+    fn test_bit_or() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        let bv2 = bv | true;
+        assert_eq!(bv2.len(), 3);
+        assert_eq!(bv2.read_u8(0), (0b0000_0111, 3));
+
+        let bv3 = bv2 | false;
+        assert_eq!(bv3.len(), 3);
+        assert_eq!(bv3.read_u8(0), (0b0000_0111, 3));
+    }
+
+    #[test]
+    fn test_bit_or_assign() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        bv |= true;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0111, 3));
+
+        bv |= false;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0111, 3));
+    }
+
+    #[test]
+    fn test_bit_not() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        bv = !bv;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0010, 3));
+
+        bv = !bv;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0101, 3));
+    }
+
+    #[test]
+    fn test_bit_xor() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        let bv2 = bv ^ true;
+        assert_eq!(bv2.len(), 3);
+        assert_eq!(bv2.read_u8(0), (0b0000_0010, 3));
+
+        let bv3 = bv2 ^ false;
+        assert_eq!(bv3.len(), 3);
+        assert_eq!(bv3.read_u8(0), (0b0000_0010, 3));
+
+        let bv4 = bv3 ^ true;
+        assert_eq!(bv4.len(), 3);
+        assert_eq!(bv4.read_u8(0), (0b0000_0101, 3));
+    }
+
+    #[test]
+    fn test_bit_xor_assign() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 3);
+
+        bv ^= true;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0010, 3));
+
+        bv ^= false;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0010, 3));
+
+        bv ^= true;
+        assert_eq!(bv.len(), 3);
+        assert_eq!(bv.read_u8(0), (0b0000_0101, 3));
     }
 }

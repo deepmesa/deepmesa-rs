@@ -12,7 +12,7 @@ build:
 #    cargo test --package deepmesa-collections bitvec::tests::test_convert_u128 -- --nocapture
 #    cargo test --package deepmesa-collections bitvec::bitvec::tests::test_push_bits  -- --nocapture --exact
 test:
-    cargo test --all -- --nocapture
+    cargo test --package deepmesa-collections -- --nocapture
 
 doc:
     cargo doc --no-deps --all

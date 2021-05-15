@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_iter_slice() {
-        let mut bv = BitVector::new(128);
+        let mut bv = BitVector::with_capacity(128);
         bv.push_u8(0b1100_1010, None);
 
         let slice = &bv[2..6];
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_iter_bitvec() {
-        let mut bv = BitVector::new(128);
+        let mut bv = BitVector::with_capacity(128);
         bv.push(false);
         bv.push(true);
         bv.push(false);
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_iter_u16_bitvec() {
-        let mut bv = BitVector::new(128);
+        let mut bv = BitVector::with_capacity(128);
         bv.push_u16(0b1100_1010_0011_0101, None);
         bv.push_u16(0b1000_1100_0011_1111, None);
         bv.push_u8(0b0000_0011, None);
