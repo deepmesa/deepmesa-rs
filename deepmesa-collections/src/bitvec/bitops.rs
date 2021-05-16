@@ -25,6 +25,90 @@ pub(super) fn clr_lsb(val: u8, n: u8) -> u8 {
     val & msb_ones(8 - n)
 }
 
+#[inline(always)]
+pub(super) fn clr_lsb_inplace(val: &mut u8, n: u8) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    *val &= msb_ones(8 - n);
+}
+
+#[inline(always)]
+pub(super) fn or_lsb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    if rhs {
+        *val |= lsb_ones(n);
+    }
+}
+
+#[inline(always)]
+pub(super) fn or_msb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    if rhs {
+        *val |= msb_ones(n);
+    }
+}
+
+#[inline(always)]
+pub(super) fn and_lsb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    if !rhs {
+        clr_lsb_inplace(val, n);
+    }
+}
+
+#[inline(always)]
+pub(super) fn and_msb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    if !rhs {
+        clr_msb_inplace(val, n);
+    }
+}
+
+#[inline(always)]
+pub(super) fn xor_lsb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    if rhs {
+        *val ^= lsb_ones(n);
+        //lsb_ones
+    }
+}
+
+#[inline(always)]
+pub(super) fn xor_msb_inplace(val: &mut u8, n: u8, rhs: bool) {
+    if rhs {
+        *val ^= msb_ones(n);
+        //lsb_ones
+    }
+}
+
+#[inline(always)]
+pub(super) fn clr_msb_inplace(val: &mut u8, n: u8) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    // 1010_0011
+    // 0001_1111
+    // 0001_1111
+    *val &= lsb_ones(8 - n);
+}
+
+/// Bitwise NOT of the 'n' lsb bits of the specified value
+#[inline(always)]
+pub(super) fn not_lsb_inplace(val: &mut u8, n: u8) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    let xord = *val ^ msb_ones(8 - n);
+    *val = !xord;
+}
+
+/// Bitwise NOT of the 'n' msb bits of the specified value
+#[inline(always)]
+pub(super) fn not_msb_inplace(val: &mut u8, n: u8) {
+    debug_assert!(n <= 8, "n ({}) exceeds 8", n);
+    // 1010_0011, 3 -> 010_0_0011
+    // 0001_1111 XOR
+    // 1011_1100 NOT
+    // 0100_0011
+
+    let xord = *val ^ lsb_ones(8 - n);
+    *val = !xord;
+}
+
 /// left shift `count` msb bits of src into dst
 ///
 /// let src:u8 = 0b1010_0000;
@@ -364,5 +448,223 @@ mod tests {
         assert_eq!(clr_lsb(0b1010_1110, 0), 0b1010_1110);
         assert_eq!(clr_lsb(0b1010_1110, 5), 0b1010_0000);
         assert_eq!(clr_lsb(0b1010_1110, 2), 0b1010_1100);
+    }
+
+    #[test]
+    fn test_not_lsb_inplace() {
+        let mut val = 0b1010_0011;
+        not_lsb_inplace(&mut val, 5);
+        assert_eq!(val, 0b1011_1100);
+
+        let mut val = 0b1111_0000;
+        not_lsb_inplace(&mut val, 8);
+        assert_eq!(val, 0b0000_1111);
+
+        let mut val = 0b1111_0000;
+        not_lsb_inplace(&mut val, 0);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        not_lsb_inplace(&mut val, 1);
+        assert_eq!(val, 0b1111_0001);
+
+        let mut val = 0b1111_0010;
+        not_lsb_inplace(&mut val, 3);
+        assert_eq!(val, 0b1111_0101);
+    }
+
+    #[test]
+    fn test_not_msb_inplace() {
+        let mut val = 0b1010_0011;
+        not_msb_inplace(&mut val, 3);
+        assert_eq!(val, 0b0100_0011);
+
+        let mut val = 0b1111_0000;
+        not_msb_inplace(&mut val, 8);
+        assert_eq!(val, 0b000_1111);
+
+        let mut val = 0b1111_0000;
+        not_msb_inplace(&mut val, 0);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        not_msb_inplace(&mut val, 1);
+        assert_eq!(val, 0b0111_0000);
+
+        let mut val = 0b1111_0010;
+        not_msb_inplace(&mut val, 5);
+        assert_eq!(val, 0b0000_1010);
+    }
+
+    #[test]
+    fn test_or_lsb_inplace() {
+        let mut val = 0b1010_0011;
+        or_lsb_inplace(&mut val, 5, true);
+        assert_eq!(val, 0b1011_1111);
+
+        let mut val = 0b1010_0011;
+        or_lsb_inplace(&mut val, 5, false);
+        assert_eq!(val, 0b1010_0011);
+
+        let mut val = 0b1111_0000;
+        or_lsb_inplace(&mut val, 8, true);
+        assert_eq!(val, 0b1111_1111);
+
+        let mut val = 0b1111_0000;
+        or_lsb_inplace(&mut val, 8, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        or_lsb_inplace(&mut val, 0, true);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        or_lsb_inplace(&mut val, 0, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        or_lsb_inplace(&mut val, 1, true);
+        assert_eq!(val, 0b1111_0001);
+
+        let mut val = 0b1111_0011;
+        or_lsb_inplace(&mut val, 1, false);
+        assert_eq!(val, 0b1111_0011);
+
+        let mut val = 0b1111_0010;
+        or_lsb_inplace(&mut val, 3, true);
+        assert_eq!(val, 0b1111_0111);
+
+        let mut val = 0b1111_0010;
+        or_lsb_inplace(&mut val, 3, false);
+        assert_eq!(val, 0b1111_0010);
+    }
+
+    #[test]
+    fn test_or_msb_inplace() {
+        let mut val = 0b1010_0011;
+        or_msb_inplace(&mut val, 5, true);
+        assert_eq!(val, 0b1111_1011);
+
+        let mut val = 0b1010_0011;
+        or_msb_inplace(&mut val, 5, false);
+        assert_eq!(val, 0b1010_0011);
+
+        let mut val = 0b1111_0000;
+        or_msb_inplace(&mut val, 8, true);
+        assert_eq!(val, 0b1111_1111);
+
+        let mut val = 0b1111_0000;
+        or_msb_inplace(&mut val, 8, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        or_msb_inplace(&mut val, 0, true);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        or_msb_inplace(&mut val, 0, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b0000_1111;
+        or_msb_inplace(&mut val, 1, true);
+        assert_eq!(val, 0b1000_1111);
+
+        let mut val = 0b0000_0011;
+        or_msb_inplace(&mut val, 1, false);
+        assert_eq!(val, 0b0000_0011);
+
+        let mut val = 0b1010_0010;
+        or_msb_inplace(&mut val, 3, true);
+        assert_eq!(val, 0b1110_0010);
+
+        let mut val = 0b1111_0010;
+        or_msb_inplace(&mut val, 3, false);
+        assert_eq!(val, 0b1111_0010);
+    }
+
+    #[test]
+    fn test_xor_lsb_inplace() {
+        let mut val = 0b1010_0011;
+        xor_lsb_inplace(&mut val, 5, true);
+        assert_eq!(val, 0b1011_1100);
+
+        let mut val = 0b1010_0011;
+        xor_lsb_inplace(&mut val, 5, false);
+        assert_eq!(val, 0b1010_0011);
+
+        let mut val = 0b1111_0000;
+        xor_lsb_inplace(&mut val, 8, true);
+        assert_eq!(val, 0b0000_1111);
+
+        let mut val = 0b1111_0000;
+        xor_lsb_inplace(&mut val, 8, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        xor_lsb_inplace(&mut val, 0, true);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        xor_lsb_inplace(&mut val, 0, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        xor_lsb_inplace(&mut val, 1, true);
+        assert_eq!(val, 0b1111_0001);
+
+        let mut val = 0b1111_0011;
+        xor_lsb_inplace(&mut val, 1, false);
+        assert_eq!(val, 0b1111_0011);
+
+        let mut val = 0b1111_0010;
+        xor_lsb_inplace(&mut val, 3, true);
+        assert_eq!(val, 0b1111_0101);
+
+        let mut val = 0b1111_0010;
+        xor_lsb_inplace(&mut val, 3, false);
+        assert_eq!(val, 0b1111_0010);
+    }
+
+    #[test]
+    fn test_xor_msb_inplace() {
+        let mut val = 0b1010_0011;
+        xor_msb_inplace(&mut val, 5, true);
+        assert_eq!(val, 0b0101_1011);
+
+        let mut val = 0b1010_0011;
+        xor_msb_inplace(&mut val, 5, false);
+        assert_eq!(val, 0b1010_0011);
+
+        let mut val = 0b1111_0000;
+        xor_msb_inplace(&mut val, 8, true);
+        assert_eq!(val, 0b0000_1111);
+
+        let mut val = 0b1111_0000;
+        xor_msb_inplace(&mut val, 8, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        xor_msb_inplace(&mut val, 0, true);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b1111_0000;
+        xor_msb_inplace(&mut val, 0, false);
+        assert_eq!(val, 0b1111_0000);
+
+        let mut val = 0b0000_1111;
+        xor_msb_inplace(&mut val, 1, true);
+        assert_eq!(val, 0b1000_1111);
+
+        let mut val = 0b0000_0011;
+        xor_msb_inplace(&mut val, 1, false);
+        assert_eq!(val, 0b0000_0011);
+
+        let mut val = 0b1010_0010;
+        xor_msb_inplace(&mut val, 3, true);
+        assert_eq!(val, 0b0100_0010);
+
+        let mut val = 0b1111_0010;
+        xor_msb_inplace(&mut val, 3, false);
+        assert_eq!(val, 0b1111_0010);
     }
 }

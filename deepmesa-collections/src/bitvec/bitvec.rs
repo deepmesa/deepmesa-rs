@@ -38,6 +38,7 @@ use core::ops::Deref;
 use core::ops::DerefMut;
 use core::ops::Index;
 use core::ops::Not;
+
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
 /// bits. This collection is backed by a Vector<u8> which manages the
@@ -65,47 +66,9 @@ use core::ops::Not;
 /// assert_eq!(bv.get(2), Some(true));
 /// ```
 pub struct BitVector {
-    bits: Vec<u8>,
-    capacity_bits: usize,
-    bit_len: usize,
-}
-
-impl Debug for BitVector {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "BitVec {{ bit_len: {}, capacity_bits: {}, bits:\n",
-            self.bit_len, self.capacity_bits
-        )?;
-
-        let mut count = 0;
-        write!(f, "{{")?;
-        for byte in self.bits.iter() {
-            if count % 4 == 0 {
-                write!(f, "\n    ")?;
-            }
-            write!(f, "{:08b} ", byte)?;
-            count += 1;
-        }
-        write!(f, "\n}}}}")?;
-        Ok(())
-    }
-}
-
-impl Index<usize> for BitVector {
-    type Output = bool;
-    fn index(&self, index: usize) -> &Self::Output {
-        match self.get(index) {
-            None => {
-                panic!(
-                    "index out of bounds: the len is {} but the index is {}",
-                    self.bit_len, index
-                );
-            }
-            Some(true) => &true,
-            Some(false) => &false,
-        }
-    }
+    pub(super) bits: Vec<u8>,
+    pub(super) capacity_bits: usize,
+    pub(super) bit_len: usize,
 }
 
 macro_rules! iter_unsigned {
@@ -518,6 +481,44 @@ impl BitVector {
     }
 }
 
+impl Debug for BitVector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "BitVec {{ bit_len: {}, capacity_bits: {}, bits:\n",
+            self.bit_len, self.capacity_bits
+        )?;
+
+        let mut count = 0;
+        write!(f, "{{")?;
+        for byte in self.bits.iter() {
+            if count % 4 == 0 {
+                write!(f, "\n    ")?;
+            }
+            write!(f, "{:08b} ", byte)?;
+            count += 1;
+        }
+        write!(f, "\n}}}}")?;
+        Ok(())
+    }
+}
+
+impl Index<usize> for BitVector {
+    type Output = bool;
+    fn index(&self, index: usize) -> &Self::Output {
+        match self.get(index) {
+            None => {
+                panic!(
+                    "index out of bounds: the len is {} but the index is {}",
+                    self.bit_len, index
+                );
+            }
+            Some(true) => &true,
+            Some(false) => &false,
+        }
+    }
+}
+
 impl Deref for BitVector {
     type Target = BitSlice;
     fn deref(&self) -> &Self::Target {
@@ -562,6 +563,12 @@ impl Not for BitVector {
         for byte in self.bits.iter_mut() {
             *byte = !*byte;
         }
+
+        //Set the bits after bit_len in the last byte to 0
+        bitops::clr_lsb_inplace(
+            &mut self.bits[self.bit_len / 8],
+            (8 - self.bit_len % 8) as u8,
+        );
         self
     }
 }
@@ -576,7 +583,29 @@ impl BitAndAssign<bool> for BitVector {
             *byte &= and_val;
         }
 
-        //TODO:Set the bits after bit_len in the last byte to 0
+        //Set the bits after bit_len in the last byte to 0
+        bitops::clr_lsb_inplace(
+            &mut self.bits[self.bit_len / 8],
+            (8 - self.bit_len % 8) as u8,
+        );
+    }
+}
+
+impl BitAndAssign<bool> for &mut BitVector {
+    fn bitand_assign(&mut self, rhs: bool) {
+        let mut and_val: u8 = 0;
+        if rhs {
+            and_val = u8::MAX;
+        }
+        for byte in self.bits.iter_mut() {
+            *byte &= and_val;
+        }
+
+        //Set the bits after bit_len in the last byte to 0
+        bitops::clr_lsb_inplace(
+            &mut self.bits[self.bit_len / 8],
+            (8 - self.bit_len % 8) as u8,
+        );
     }
 }
 
@@ -590,7 +619,11 @@ impl BitOrAssign<bool> for BitVector {
             *byte |= or_val;
         }
 
-        //TODO:Set the bits after bit_len in the last byte to 0
+        //Set the bits after bit_len in the last byte to 0
+        bitops::clr_lsb_inplace(
+            &mut self.bits[self.bit_len / 8],
+            (8 - self.bit_len % 8) as u8,
+        );
     }
 }
 
@@ -604,12 +637,17 @@ impl BitXorAssign<bool> for BitVector {
             *byte ^= or_val;
         }
 
-        //TODO:Set the bits after bit_len in the last byte to 0
+        //Set the bits after bit_len in the last byte to 0
+        bitops::clr_lsb_inplace(
+            &mut self.bits[self.bit_len / 8],
+            (8 - self.bit_len % 8) as u8,
+        );
     }
 }
 
 impl AsMut<BitSlice> for BitVector {
     fn as_mut(&mut self) -> &mut BitSlice {
+        println!("IN AS MUT!");
         self.index_mut(0, self.bit_len)
     }
 }
@@ -633,19 +671,19 @@ impl BitVector {
         unsafe {
             let ptr = self.bits.as_ptr().add(start / 8);
             let slice: &[u8] =
-                std::slice::from_raw_parts(ptr, BitSlice::pack(end - start, start % 8));
-            std::mem::transmute(slice)
+                core::slice::from_raw_parts(ptr, BitSlice::pack(end - start, start % 8));
+            core::mem::transmute(slice)
         }
     }
 
     pub(super) fn index_mut(&mut self, start: usize, end: usize) -> &mut BitSlice {
         BitSlice::check_bounds(start, end, self.len());
         unsafe {
-            let ptr = self.bits.as_mut_ptr().add(start % 8);
+            let ptr = self.bits.as_mut_ptr().add(start / 8);
             let slice: &mut [u8] =
-                std::slice::from_raw_parts_mut(ptr, BitSlice::pack(end - start, start % 8));
+                core::slice::from_raw_parts_mut(ptr, BitSlice::pack(end - start, start % 8));
 
-            std::mem::transmute(slice)
+            core::mem::transmute(slice)
         }
     }
 
@@ -1356,5 +1394,22 @@ mod tests {
         bv ^= true;
         assert_eq!(bv.len(), 3);
         assert_eq!(bv.read_u8(0), (0b0000_0101, 3));
+    }
+
+    #[test]
+    fn test_last_byte_cleared() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b1101_0110, None);
+        bv.push_u8(0b0000_1001, None);
+
+        assert_eq!(bv.len(), 12);
+        let raw_slice = bv.as_raw_slice();
+        let last_byte = raw_slice[raw_slice.len() - 1];
+        assert_eq!(last_byte, 0b1001_0000);
+
+        bv |= true;
+        let raw_slice = bv.as_raw_slice();
+        let last_byte = raw_slice[raw_slice.len() - 1];
+        assert_eq!(last_byte, 0b1111_0000);
     }
 }
