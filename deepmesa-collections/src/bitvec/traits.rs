@@ -1040,7 +1040,7 @@ mod tests {
         let val = 0b1010_0011;
 
         let mut res = val;
-        res.xor_lsb(0, 0b1100_0011);
+        res.xor_lsb_assign(0, 0b1100_0011);
         assert_eq!(res, val);
 
         let mut res = val;

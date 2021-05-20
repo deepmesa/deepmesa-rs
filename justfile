@@ -15,7 +15,7 @@ build:
 #    cargo test --package deepmesa-collections bitvec::bitops::tests::test_not_msb_inplace -- --nocapture --exact
 
 test:
-    cargo test --package deepmesa-collections  bitvec::bitslice::tests::test_bit_and_slice -- --nocapture
+    cargo test --package deepmesa-collections -- --nocapture
 
 
 doc:

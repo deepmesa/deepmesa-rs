@@ -188,28 +188,19 @@ impl<'a> Drop for BitPtr<'a> {
     }
 }
 
-macro_rules! bitwise_partial_mut {
+macro_rules! bitwise_partial_assign {
     ($val: expr, $start:expr, $len: expr, $rhs: expr, &=) => {
-        if $len < 8 {
-            $val.and_partial_assign($start, $len, $rhs);
-            return;
-        }
+        $val.and_partial_assign($start, $len, $rhs);
     };
     ($val: expr, $start:expr, $len: expr, $rhs: expr, |=) => {
-        if $len < 8 {
-            $val.or_partial_assign($start, $len, $rhs);
-            return;
-        }
+        $val.or_partial_assign($start, $len, $rhs);
     };
     ($val: expr, $start:expr, $len: expr, $rhs: expr, ^=) => {
-        if $len < 8 {
-            $val.xor_partial_assign($start, $len, $rhs);
-            return;
-        }
+        $val.xor_partial_assign($start, $len, $rhs);
     };
 }
 
-macro_rules! bitwise_lsb_mut {
+macro_rules! bitwise_lsb_assign {
     ($val: expr, $n:expr, $rhs: expr, &=) => {
         $val.and_lsb_assign($n, $rhs);
     };
@@ -221,7 +212,7 @@ macro_rules! bitwise_lsb_mut {
     };
 }
 
-macro_rules! bitwise_msb_mut {
+macro_rules! bitwise_msb_assign {
     ($val: expr, $n:expr, $rhs: expr, &=) => {
         $val.and_msb_assign($n, $rhs);
     };
@@ -233,106 +224,62 @@ macro_rules! bitwise_msb_mut {
     };
 }
 
-impl BitAndAssign<&BitSlice> for &mut BitSlice {
-    fn bitand_assign(&mut self, rhs: &BitSlice) {
-        let len = self.len();
-        if len == 0 {
-            return;
-        }
-
-        // Main Slice: ...._.... ...._.... ...._.... ...._....
-        //               ^                        ^ Offset = 2 Len = 19
-
-        // Rhs Slice : ...._.... ...._....
-        // Sub Slice : ...._.. [.. ...._.... //strip out the leading 8-offset bits
-        // First byte and with split part
-        // Then start reading u8 at a time from the subslice
-        // --- If you read exactly 8 bits into a u8 then do the and with the full byte
-        // --- else convert it to msb0 and do the and
-        // Last step: Instead of clearing out the LSB,
-        let mut s_iter = rhs.iter_u8();
-        let eb_idx = (len - 1) / 8;
-        let offset = self.offset();
-        let ss_start = 8 - offset;
-        //        let ss_end = len - 7;
-        let (rhs_fb, rhs_fb_r) = rhs.read_bits_u8(0, 8 - offset);
-        //let ss = &rhs[ss_start..]; //this could be
-        println!("Main Slice: {:?}", self);
-        println!("Rhs  Slice: {:?}", rhs);
-        println!("Staring AndAssign. Len: {}, Offset: {}", len, offset);
-
-        println!(
-            "Special Case First Byte: offset: {}\nByte[0]: {:08b}\nRHSfb:   {:08b}",
-            offset, self.0[0], rhs_fb
-        );
-
-        // .. .._....
-        //    ^ offset = 2
-
-        //Special Case the first byte
-        println!(
-            "Special Case First Byte: partial Assign: Byte: {:08b} &= {:08b} start:{}, len: {}",
-            self.0[0], rhs_fb, offset, rhs_fb_r
-        );
-
-        if rhs_fb_r < 8 - offset {
-            //left shift the rhs_fb to align the bits
-            let rhs_fb = rhs_fb << (8 - offset - rhs_fb_r);
-            (&mut self.0[0]).and_partial_assign(offset as u8, rhs_fb_r as u8, rhs_fb);
-            return;
-        } else {
-            println!(
-                "Partial And: byte: {:08b} rhs: {:08b}, start: {}, len {}",
-                self.0[0], rhs_fb, offset, rhs_fb_r
-            );
-            (&mut self.0[0]).and_partial_assign(offset as u8, rhs_fb_r as u8, rhs_fb);
-            println!("Result: {:08b}", self.0[0]);
-        }
-        let ss = &rhs[ss_start..]; //this could be a slice of length 0
-        println!("SS Start: {}, SS Len: {}", ss_start, ss.len(),);
-        if ss.len() == 0 {
-            return;
-        }
-
-        let mut rhs_iter = ss.iter_u8();
-        let mut bits_processed = rhs_fb_r;
-        for i in 1..=eb_idx {
-            if let Some((rhs_byte, rhs_bits)) = rhs_iter.next() {
-                println!("Remaining in S: {}", len - bits_processed);
-
-                if rhs_bits == 8 {
-                    println!(
-                        "Processing Middle Byte:\nByte[{}]: {:08b}\nSByte  : {:08b}  rhs_bits: {}",
-                        i, self.0[i], rhs_byte, rhs_bits
-                    );
-                    let bits_rem = len - bits_processed;
-                    if bits_rem >= 8 {
-                        self.0[i] &= rhs_byte;
-                    } else {
-                        self.0[i].and_msb_assign(bits_rem as u8, rhs_byte);
-                    }
-
-                    println!("Result: {:08b}", self.0[i]);
-                } else {
-                    println!(
-                        "Processing Middle Byte:\nByte[{}]: {:08b}\nSByte  : {:08b}  rhs_bits: {}",
-                        i,
-                        self.0[i],
-                        (rhs_byte).lsb0_to_msb0(rhs_bits),
-                        rhs_bits
-                    );
-                    self.0[i].and_msb_assign(rhs_bits as u8, (rhs_byte).lsb0_to_msb0(rhs_bits));
-                    println!("Result: {:08b}", self.0[i]);
+macro_rules! impl_bitwise_assign_bitslice {
+    ($t_name: ident, $fn_name: ident, $for: ty, $op: tt) => {
+        impl $t_name<&BitSlice> for $for  {
+            fn $fn_name(&mut self, rhs: &BitSlice) {
+                let len = self.len();
+                if len == 0 {
+                    return;
                 }
 
-                bits_processed += rhs_bits;
-            } else {
-                println!("Ran out of bits in rhs Slice");
-                return;
+                let eb_idx = (len - 1) / 8;
+                let offset = self.offset();
+                let ss_start = 8 - offset;
+                let (rhs_fb, rhs_fb_r) = rhs.read_bits_u8(0, 8 - offset);
+
+                //Special Case the first byte
+                if rhs_fb_r < 8 - offset {
+                    //left shift the rhs_fb to align the bits
+                    let rhs_fb = rhs_fb << (8 - offset - rhs_fb_r);
+                    bitwise_partial_assign!(&mut self.0[0], offset as u8, rhs_fb_r as u8, rhs_fb, $op);
+                    return;
+                } else {
+                    bitwise_partial_assign!(&mut self.0[0], offset as u8, rhs_fb_r as u8, rhs_fb, $op);
+                }
+                let ss = &rhs[ss_start..];
+                if ss.len() == 0 {
+                    return;
+                }
+
+                let mut rhs_iter = ss.iter_u8();
+                let mut bits_processed = rhs_fb_r;
+                for i in 1..=eb_idx {
+                    if let Some((rhs_byte, rhs_bits)) = rhs_iter.next() {
+                        if rhs_bits == 8 {
+                            let bits_rem = len - bits_processed;
+                            if bits_rem >= 8 {
+                                b_expr!(self.0[i] $op rhs_byte);
+                            } else {
+                                bitwise_msb_assign!(self.0[i], bits_rem as u8, rhs_byte, $op);
+                            }
+                        } else {
+                            bitwise_msb_assign!(self.0[i], rhs_bits as u8, (rhs_byte).lsb0_to_msb0(rhs_bits), $op);
+                        }
+
+                        bits_processed += rhs_bits;
+                    } else {
+                        return;
+                    }
+                }
             }
         }
-    }
+    };
 }
+
+impl_bitwise_assign_bitslice!(BitAndAssign, bitand_assign, &mut BitSlice, &=);
+impl_bitwise_assign_bitslice!(BitOrAssign, bitor_assign, &mut BitSlice, |=);
+impl_bitwise_assign_bitslice!(BitXorAssign, bitxor_assign, &mut BitSlice, ^=);
 
 macro_rules! bitwise_no_op {
     ($len:ident, $rhs: ident, &=) => {
@@ -360,7 +307,10 @@ macro_rules! impl_bitwise_assign_bool {
                 bitwise_no_op!(len, rhs, $op);
 
                 let offset = self.offset();
-                bitwise_partial_mut!(&mut self.0[0], offset as u8, len as u8, rhs, $op);
+                if len < 8 {
+                    bitwise_partial_assign!(&mut self.0[0], offset as u8, len as u8, rhs, $op);
+                    return;
+                }
 
                 let mut rhs_val: u8 = 0;
                 if rhs {
@@ -370,9 +320,9 @@ macro_rules! impl_bitwise_assign_bool {
                 let eb_idx = (len - 1) / 8;
                 for i in 0..=eb_idx {
                     if i == 0 {
-                        bitwise_lsb_mut!(&mut self.0[i], (8 - offset) as u8, rhs, $op);
+                        bitwise_lsb_assign!(&mut self.0[i], (8 - offset) as u8, rhs, $op);
                     } else if i == eb_idx {
-                        bitwise_msb_mut!(&mut self.0[i], ((len % 8) + offset) as u8, rhs, $op);
+                        bitwise_msb_assign!(&mut self.0[i], ((len % 8) + offset) as u8, rhs, $op);
                     } else {
                         b_expr!(self.0[i] $op rhs_val);
                     }
@@ -1382,16 +1332,279 @@ mod tests {
         // res 1001_0011_0100 1010 0010 0100 1000 0001 0100_1011_1101_0111
 
         assert_eq!(s.read_u32(0), (0b00_1010_0010_0100_1000_0001_010, 25));
-        let finalval = bv.read_u64(0);
-        println!(
-            "Final bv: {:048b}\nExpec Bv: {:048b}",
-            finalval.0, 0b1001_0011_0100_1010_0010_0100_1000_0001_0100_1011_1101_0111 as u64
-        );
-
         assert_eq!(
             bv.read_u64(0),
             (
                 0b1001_0011_0100_1010_0010_0100_1000_0001_0100_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_or_slice_0() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1110_1011_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..0];
+        assert_eq!(s2.len(), 0);
+
+        s |= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              []
+        // s |= s2         01_1010 0110_1100_1010_0101 111
+        // res 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b01_1010_0110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0101_1010_0110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_or_slice_3() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1011_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..3];
+        assert_eq!(s2.len(), 3);
+
+        s |= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              10 1
+        // s |= s2         11_1010 0110_1100_1010_0101 111
+        // res 1001_0011_0111_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b11_1010_0110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_1010_0110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_or_slice_8() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1010_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..8];
+        assert_eq!(s2.len(), 8);
+
+        s |= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              10 1010 10
+        // s |= s2         11_1010 1110_1100_1010_0101 111
+        // res 1001_0011_0111_1010 1110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b11_1010_1110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_1010_1110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_or_slice_32() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1010_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101_0011_1010, Some(16));
+        let s2 = &bv2[0..32];
+        assert_eq!(s2.len(), 32);
+
+        s |= s2;
+        //                   0         1         2         3
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              10 1010 1011 0101 1101 1011 0100 11_1010
+        // s |= s2         11_1010 1111 1101 1111 1111 111
+        // res 1001_0011_0111_1010 1111 1101 1111 1111 1110_1011_1101_0111
+
+        assert_eq!(s.read_u32(0), (0b11_1010_1111_1101_1111_1111_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_1010_1111_1101_1111_1111_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_xor_slice_0() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1110_1011_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..0];
+        assert_eq!(s2.len(), 0);
+
+        s ^= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              []
+        // s ^= s2         01_1010 0110_1100_1010_0101 111
+        // res 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b01_1010_0110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0101_1010_0110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_xor_slice_3() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1011_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..3];
+        assert_eq!(s2.len(), 3);
+
+        s ^= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              10 1
+        // s ^= s2         11_0010 0110_1100_1010_0101 111
+        // res 1001_0011_0111_0010 0110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b11_0010_0110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_0010_0110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_xor_slice_8() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1010_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101, Some(8));
+        let s2 = &bv2[0..8];
+        assert_eq!(s2.len(), 8);
+
+        s ^= s2;
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        // s2              10 1010 10
+        // s ^= s2         11_0000 1110_1100_1010_0101 111
+        // res 1001_0011_0111_0000 1110_1100_1010_0101 1110_1011_1101_0111
+        assert_eq!(s.read_u32(0), (0b11_0000_1110_1100_1010_0101_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_0000_1110_1100_1010_0101_1110_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_bit_xor_slice_32() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let mut s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1010_1010_1101_0111, Some(16));
+        bv2.push_u16(0b0110_1101_0011_1010, Some(16));
+        let s2 = &bv2[0..32];
+        assert_eq!(s2.len(), 32);
+
+        s ^= s2;
+        //                   0         1         2         3
+        // bv: 1001_0011_0101_1010 0110_1100_1010_0101 1110_1011_1101_0111
+        //             7   ^     15        23        31   ^    39        47
+        //                 10                             35
+        //                 01_1010 0110_1100_1010_0101 111
+        // s2              10 1010 1011 0101 1101 1011 0100 11_1010
+        // s ^= s2         11_0000 1101 1001 0111 1110 101
+        // res 1001_0011_0111_0000 1101 1001 0111 1110 1010_1011_1101_0111
+
+        assert_eq!(s.read_u32(0), (0b11_0000_1101_1001_0111_1110_101, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_0000_1101_1001_0111_1110_1010_1011_1101_0111,
                 48
             )
         );
@@ -1419,5 +1632,45 @@ mod tests {
         assert_eq!(ss_mut.read_u16(0), (0b0001_1111, 5));
         ss_mut.fill(false);
         assert_eq!(ss_mut.read_u16(0), (0b0000_0000, 5));
+    }
+
+    #[test]
+    fn test_slice_fill_0() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+        s.fill(false);
+        assert_eq!(s.read_u32(0), (0, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0100_0000_0000_0000_0000_0000_000_0_1011_1101_0111,
+                48
+            )
+        );
+    }
+
+    #[test]
+    fn test_slice_fill_1() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u16(0b0110_1100_1010_0101, Some(16));
+        bv.push_u16(0b1110_1011_1101_0111, Some(16));
+
+        let s = &mut bv[10..35];
+        assert_eq!(s.len(), 25);
+        s.fill(true);
+        assert_eq!(s.read_u32(0), (0b11_1111_1111_1111_1111_1111_111, 25));
+        assert_eq!(
+            bv.read_u64(0),
+            (
+                0b1001_0011_0111_1111_1111_1111_1111_1111_1110_1011_1101_0111,
+                48
+            )
+        );
     }
 }
