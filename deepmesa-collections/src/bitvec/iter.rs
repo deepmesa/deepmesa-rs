@@ -19,7 +19,7 @@
    limitations under the License.
 */
 
-use crate::bitvec::{bitslice::BitSlice, bitvec::BitVector};
+use crate::bitvec::{bitslice::BitSlice, bitvec::BitVector, BitCount};
 
 macro_rules! iter_unsigned {
     ($iter_name: ident, $i:ident, $b: literal) => {
@@ -46,7 +46,7 @@ macro_rules! iter_unsigned {
         }
 
         impl<'a> Iterator for $iter_name<'a> {
-            type Item = $i;
+            type Item = ($i, BitCount);
             fn next(&mut self) -> Option<Self::Item> {
                 if self.cursor >= self.bit_len {
                     return None;
@@ -58,7 +58,7 @@ macro_rules! iter_unsigned {
 
                 let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, st_index, len, $b);
                 self.cursor += bit_count;
-                Some(val as $i)
+                Some((val as $i, bit_count))
             }
         }
     };
@@ -77,24 +77,6 @@ pub struct Iter<'a> {
     slice_offset: usize,
 }
 
-// pub struct IterU16<'a> {
-//     bits: &'a [u8],
-//     cursor: usize,
-//     bit_len: usize,
-//     slice_offset: usize,
-// }
-
-// impl<'a> IterU16<'a> {
-//     pub(super) fn new(bits: &'a [u8], slice_offset: usize, bit_len: usize) -> IterU16<'a> {
-//         IterU16 {
-//             bits,
-//             cursor: 0,
-//             bit_len,
-//             slice_offset,
-//         }
-//     }
-// }
-
 impl<'a> Iter<'a> {
     pub(super) fn new(bits: &'a [u8], slice_offset: usize, bit_len: usize) -> Iter<'a> {
         Iter {
@@ -105,23 +87,6 @@ impl<'a> Iter<'a> {
         }
     }
 }
-
-// impl<'a> Iterator for IterU16<'a> {
-//     type Item = u16;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.cursor >= self.bit_len {
-//             return None;
-//         }
-
-//         let offset = self.slice_offset;
-//         let len = self.bit_len + offset;
-//         let st_index = self.cursor + offset;
-
-//         let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, st_index, len, 16);
-//         self.cursor += bit_count;
-//         Some(val as u16)
-//     }
-// }
 
 impl<'a> Iterator for Iter<'a> {
     type Item = bool;
@@ -206,9 +171,9 @@ mod tests {
         bv.push_u8(0b0000_0011, None);
         assert_eq!(bv.len(), 34);
         let mut iter = bv.iter_u16();
-        assert_eq!(iter.next(), Some(0b1100_1010_0011_0101));
-        assert_eq!(iter.next(), Some(0b1000_1100_0011_1111));
-        assert_eq!(iter.next(), Some(0b0000_0000_0000_0011));
+        assert_eq!(iter.next(), Some((0b1100_1010_0011_0101, 16)));
+        assert_eq!(iter.next(), Some((0b1000_1100_0011_1111, 16)));
+        assert_eq!(iter.next(), Some((0b0000_0000_0000_0011, 2)));
         assert_eq!(&iter.next(), &None);
     }
 }

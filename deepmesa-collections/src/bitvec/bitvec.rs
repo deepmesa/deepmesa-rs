@@ -24,6 +24,7 @@ use crate::bitvec::{
     bitslice::BitPtr,
     bitslice::BitSlice,
     iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
+    traits::{BitwiseClear, BitwiseClearAssign},
     BitCount, BitOrder, BitOrderConvert,
 };
 use core::fmt;
@@ -37,7 +38,14 @@ use core::ops::BitXorAssign;
 use core::ops::Deref;
 use core::ops::DerefMut;
 use core::ops::Index;
+use core::ops::IndexMut;
 use core::ops::Not;
+use core::ops::Range;
+use core::ops::RangeFrom;
+use core::ops::RangeFull;
+use core::ops::RangeInclusive;
+use core::ops::RangeTo;
+use core::ops::RangeToInclusive;
 
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
@@ -317,11 +325,11 @@ impl BitVector {
     push_unsigned!(u128, 128, push_u128);
 
     pub fn as_bitslice(&self) -> &BitSlice {
-        self.index(0, self.bit_len)
+        self.index_range(0, self.bit_len)
     }
 
     pub fn as_mut_bitslice(&mut self) -> &mut BitSlice {
-        self.index_mut(0, self.bit_len)
+        self.index_range_mut(0, self.bit_len)
     }
 
     pub fn as_raw_slice(&self) -> &[u8] {
@@ -455,7 +463,8 @@ impl BitVector {
         if pos == 0 {
             self.bits.pop();
         } else {
-            bitops::clr_msb_n(&mut self.bits[(self.bit_len - 1) / 8], pos);
+            self.bits[(self.bit_len - 1) / 8].clear_msb_nth_assign(pos);
+            //bitops::clr_msb_n(&mut self.bits[(self.bit_len - 1) / 8], pos);
         }
         self.bit_len -= 1;
         retval
@@ -533,128 +542,164 @@ impl DerefMut for BitVector {
     }
 }
 
-impl BitAnd<bool> for BitVector {
-    type Output = Self;
-    fn bitand(mut self, rhs: bool) -> Self::Output {
-        self &= rhs;
-        self
-    }
-}
-
-impl BitOr<bool> for BitVector {
-    type Output = Self;
-    fn bitor(mut self, rhs: bool) -> Self::Output {
-        self |= rhs;
-        self
-    }
-}
-
-impl BitXor<bool> for BitVector {
-    type Output = Self;
-    fn bitxor(mut self, rhs: bool) -> Self::Output {
-        self ^= rhs;
-        self
-    }
+//Set the bits after bit_len in the last byte to 0
+macro_rules! clr_lsb_last_byte {
+    ($self: ident) => {
+        ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8);
+        // bitops::clr_lsb_mut(
+        //     &mut $self.bits[($self.bit_len - 1) / 8],
+        //     (7 - ($self.bit_len - 1) % 8) as u8,
+        // );
+    };
 }
 
 impl Not for BitVector {
     type Output = Self;
     fn not(mut self) -> Self::Output {
+        if self.bit_len == 0 {
+            return self;
+        }
+
         for byte in self.bits.iter_mut() {
             *byte = !*byte;
         }
 
-        //Set the bits after bit_len in the last byte to 0
-        bitops::clr_lsb_inplace(
-            &mut self.bits[self.bit_len / 8],
-            (8 - self.bit_len % 8) as u8,
-        );
+        clr_lsb_last_byte!(self);
         self
     }
 }
 
-impl BitAndAssign<bool> for BitVector {
-    fn bitand_assign(&mut self, rhs: bool) {
-        let mut and_val: u8 = 0;
-        if rhs {
-            and_val = u8::MAX;
+macro_rules! impl_bitwise {
+    ($t_name: ident, $fn_name: ident, $rhs: ty, $for: ty, $op: tt) => {
+        impl $t_name<$rhs> for $for {
+            type Output = Self;
+            fn $fn_name(mut self, rhs: $rhs) -> Self::Output {
+                b_expr!(self $op rhs);
+                self
+            }
         }
-        for byte in self.bits.iter_mut() {
-            *byte &= and_val;
-        }
-
-        //Set the bits after bit_len in the last byte to 0
-        bitops::clr_lsb_inplace(
-            &mut self.bits[self.bit_len / 8],
-            (8 - self.bit_len % 8) as u8,
-        );
-    }
+    };
 }
 
-impl BitAndAssign<bool> for &mut BitVector {
-    fn bitand_assign(&mut self, rhs: bool) {
-        let mut and_val: u8 = 0;
-        if rhs {
-            and_val = u8::MAX;
-        }
-        for byte in self.bits.iter_mut() {
-            *byte &= and_val;
-        }
+// impl BitAnd<BitVector> for BitVector
+impl_bitwise!(BitAnd, bitand, BitVector, BitVector, &=);
+// impl BitAnd<&BitVector> for BitVector
+impl_bitwise!(BitAnd, bitand, &BitVector, BitVector, &=);
+// impl BitAnd<&BitSlice> for BitVector
+impl_bitwise!(BitAnd, bitand, &BitSlice, BitVector, &=);
 
-        //Set the bits after bit_len in the last byte to 0
-        bitops::clr_lsb_inplace(
-            &mut self.bits[self.bit_len / 8],
-            (8 - self.bit_len % 8) as u8,
-        );
-    }
+// impl BitOr<BitVector> for BitVector
+impl_bitwise!(BitOr, bitor, BitVector, BitVector, |=);
+// impl BitOr<&BitVector> for BitVector
+impl_bitwise!(BitOr, bitor, &BitVector, BitVector, |=);
+// impl BitOr<&BitSlice> for BitVector
+impl_bitwise!(BitOr, bitor, &BitSlice, BitVector, |=);
+
+// impl BitXor<BitVector> for BitVector
+impl_bitwise!(BitXor, bitxor, BitVector, BitVector, ^=);
+// impl BitXor<&BitVector> for BitVector
+impl_bitwise!(BitXor, bitxor, &BitVector, BitVector, ^=);
+// impl BitXor<&BitSlice> for BitVector
+impl_bitwise!(BitXor, bitxor, &BitSlice, BitVector, ^=);
+
+macro_rules! impl_bitwise_bool {
+    ($t_name: ident, $fn_name: ident, $for: ty, $op:tt) => {
+        impl $t_name<bool> for $for {
+            type Output = Self;
+            fn $fn_name(mut self, rhs: bool) -> Self::Output {
+                b_expr!(self $op rhs);
+                self
+            }
+        }
+    };
 }
 
-impl BitOrAssign<bool> for BitVector {
-    fn bitor_assign(&mut self, rhs: bool) {
-        let mut or_val: u8 = 0;
-        if rhs {
-            or_val = u8::MAX;
-        }
-        for byte in self.bits.iter_mut() {
-            *byte |= or_val;
-        }
+impl_bitwise_bool!(BitOr, bitor, BitVector, |=);
+impl_bitwise_bool!(BitAnd, bitand, BitVector, &=);
+impl_bitwise_bool!(BitXor, bitxor, BitVector, ^=);
 
-        //Set the bits after bit_len in the last byte to 0
-        bitops::clr_lsb_inplace(
-            &mut self.bits[self.bit_len / 8],
-            (8 - self.bit_len % 8) as u8,
-        );
-    }
+macro_rules! impl_bitwise_assign {
+    ($t_name: ident, $fn_name: ident, $rhs: ty, $for: ty, $op: tt) => {
+        impl $t_name<$rhs> for $for {
+            fn $fn_name(&mut self, rhs: $rhs) {
+                if self.bit_len == 0 {
+                    return;
+                }
+
+                let mut s_iter = rhs.iter_u8();
+                for byte in self.bits.iter_mut() {
+                    if let Some((s_byte, s_bits)) = s_iter.next() {
+                        if s_bits == 8 {
+                            b_expr!(*byte $op s_byte);
+                        } else {
+                            b_expr!(*byte $op (s_byte).lsb0_to_msb0(s_bits));
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                clr_lsb_last_byte!(self);
+            }
+        }
+    };
 }
 
-impl BitXorAssign<bool> for BitVector {
-    fn bitxor_assign(&mut self, rhs: bool) {
-        let mut or_val: u8 = 0;
-        if rhs {
-            or_val = u8::MAX;
-        }
-        for byte in self.bits.iter_mut() {
-            *byte ^= or_val;
-        }
+//impl BitAndAssign<BitVector> for BitVector
+impl_bitwise_assign!(BitAndAssign, bitand_assign, BitVector, BitVector, &=);
+//impl BitAndAssign<&BitVector> for BitVector
+impl_bitwise_assign!(BitAndAssign, bitand_assign, &BitVector, BitVector, &=);
+//impl BitAndAssign<&BitSlice> for BitVector
+impl_bitwise_assign!(BitAndAssign, bitand_assign, &BitSlice, BitVector, &=);
 
-        //Set the bits after bit_len in the last byte to 0
-        bitops::clr_lsb_inplace(
-            &mut self.bits[self.bit_len / 8],
-            (8 - self.bit_len % 8) as u8,
-        );
-    }
+//impl BitOrAssign<BitVector> for BitVector {
+impl_bitwise_assign!(BitOrAssign, bitor_assign, BitVector, BitVector, |=);
+//impl BitOrAssign<&BitVector> for BitVector {
+impl_bitwise_assign!(BitOrAssign, bitor_assign, &BitVector, BitVector, |=);
+//impl BitOrAssign<&BitSlice> for BitVector {
+impl_bitwise_assign!(BitOrAssign, bitor_assign, &BitSlice, BitVector, |=);
+
+//impl BitXorAssign<BitVector> for BitVector {
+impl_bitwise_assign!(BitXorAssign, bitxor_assign, BitVector, BitVector, ^=);
+//impl BitXorAssign<&BitVector> for BitVector {
+impl_bitwise_assign!(BitXorAssign, bitxor_assign, &BitVector, BitVector, ^=);
+//impl BitXorAssign<&BitSlice> for BitVector {
+impl_bitwise_assign!(BitXorAssign, bitxor_assign, &BitSlice, BitVector, ^=);
+
+macro_rules! impl_bitwise_assign_bool {
+    ($t_name: ident, $fn_name: ident, $for: ty, $op: tt) => {
+        impl $t_name<bool> for $for {
+            fn $fn_name(&mut self, rhs: bool) {
+                if self.bit_len == 0 {
+                    return;
+                }
+                let mut and_val: u8 = 0;
+                if rhs {
+                    and_val = u8::MAX;
+                }
+                for byte in self.bits.iter_mut() {
+                    b_expr!(*byte $op and_val);
+                }
+
+                clr_lsb_last_byte!(self);
+            }
+        }
+    };
 }
+
+impl_bitwise_assign_bool!(BitAndAssign, bitand_assign, BitVector, &=);
+impl_bitwise_assign_bool!(BitOrAssign, bitor_assign, BitVector, |=);
+impl_bitwise_assign_bool!(BitXorAssign, bitxor_assign, BitVector, ^=);
 
 impl AsMut<BitSlice> for BitVector {
     fn as_mut(&mut self) -> &mut BitSlice {
-        println!("IN AS MUT!");
-        self.index_mut(0, self.bit_len)
+        self.index_range_mut(0, self.bit_len)
     }
 }
 
 impl AsRef<BitSlice> for BitVector {
     fn as_ref(&self) -> &BitSlice {
-        self.index(0, self.bit_len)
+        self.index_range(0, self.bit_len)
     }
 }
 
@@ -664,41 +709,13 @@ impl Default for BitVector {
     }
 }
 
+impl_index_range!(BitVector, BitVector);
+impl_index_range_mut!(BitVector, BitVector);
+
 //Private and Helper methods
 impl BitVector {
-    pub(super) fn index(&self, start: usize, end: usize) -> &BitSlice {
-        BitSlice::check_bounds(start, end, self.len());
-        unsafe {
-            let ptr = self.bits.as_ptr().add(start / 8);
-            let slice: &[u8] =
-                core::slice::from_raw_parts(ptr, BitSlice::pack(end - start, start % 8));
-            core::mem::transmute(slice)
-        }
-    }
-
-    pub(super) fn index_mut(&mut self, start: usize, end: usize) -> &mut BitSlice {
-        BitSlice::check_bounds(start, end, self.len());
-        unsafe {
-            let ptr = self.bits.as_mut_ptr().add(start / 8);
-            let slice: &mut [u8] =
-                core::slice::from_raw_parts_mut(ptr, BitSlice::pack(end - start, start % 8));
-
-            core::mem::transmute(slice)
-        }
-    }
-
-    /// Returns Number of bits in the last byte of the underlying
-    /// Vector.
-    #[inline(always)]
-    fn last_count(&self) -> u8 {
-        (self.bit_len % 8) as u8
-    }
-
-    /// Increments the bit_len
-    #[inline(always)]
-    fn inc_len(&mut self, val: u8) {
-        self.bit_len += val as usize;
-    }
+    index_range_fn!(bits);
+    index_range_mut_fn!(bits);
 
     /// Pushes `bit_count` bits in the specified u128 into the vector
     /// starting from the msb.
@@ -713,37 +730,50 @@ impl BitVector {
             return 0;
         }
         let mut len_b = U128_BITS;
-        let count = bit_count as u8;
-        let mut rem = count;
+        let mut rem = bit_count as u8;
 
-        let set_bits = self.last_count();
-        if set_bits > 0 {
-            let push_ct = 8 - set_bits;
-            let mut byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
+        // Calculate the number of partial bits in the last byte.
+        let partial_bits = (self.bit_len % 8) as u8;
+
+        //if push_ct is 1 thru 7 then do this. If its 0 then push a
+        // whole byte, if its 8 then push 8 bits (aka whole byte)
+
+        if partial_bits > 0 {
+            let push_ct = 8 - partial_bits;
+            let mut byte: u8 = bitops::ls_byte(val >> (len_b - 8));
+            //let mut byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             if push_ct > rem {
-                byte = bitops::clr_lsb(byte, 8 - rem);
+                byte.clear_lsb_assign(8 - rem);
+                //byte = bitops::clr_lsb(byte, 8 - rem);
                 rem = 0;
             } else {
                 len_b -= push_ct;
                 rem -= push_ct;
             }
-            bitops::shl_into(&mut self.bits[self.bit_len / 8], byte, push_ct);
+            bitops::shl_into(&mut self.bits[(self.bit_len - 1) / 8], byte, push_ct);
         }
 
         while rem >= 8 {
-            let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
+            // Get the 8 bits of val from the MSB end (shift val right
+            // then get the LSB 8 bits)
+            let byte: u8 = bitops::ls_byte(val >> (len_b - 8));
+            //let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             len_b -= 8;
             rem -= 8;
             self.bits.push(byte);
         }
 
         if rem > 0 {
-            let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
+            // Get the 8 bits of val from the MSB end (shift val right
+            // then get the LSB 8 bits)
+            let byte: u8 = bitops::ls_byte(val >> (len_b - 8));
+            //let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             //clear out the 8-rem lsb bits of the byte
-            self.bits.push(bitops::clr_lsb(byte, 8 - rem));
+            self.bits.push(byte.clear_lsb(8 - rem));
+            //self.bits.push(bitops::clr_lsb(byte, 8 - rem));
         }
-        self.inc_len(count);
-        count as BitCount
+        self.bit_len += bit_count as usize;
+        bit_count
     }
 }
 
@@ -1301,6 +1331,7 @@ mod tests {
     #[test]
     fn test_bit_and_assign() {
         let mut bv = BitVector::with_capacity(128);
+        bv &= true; //should do nothing
         bv.push_u8(0b0000_0101, None);
         assert_eq!(bv.len(), 3);
 
@@ -1311,6 +1342,22 @@ mod tests {
         bv &= false;
         assert_eq!(bv.len(), 3);
         assert_eq!(bv.read_u8(0), (0b0000_0000, 3));
+
+        bv.clear();
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 19);
+        bv &= true;
+        assert_eq!(bv.read_u16(0), (0b1001_0011_0101_1010, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0101, 3));
+
+        bv &= false;
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0000, 3));
+
+        bv &= true;
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0000, 3));
     }
 
     #[test]
@@ -1331,6 +1378,8 @@ mod tests {
     #[test]
     fn test_bit_or_assign() {
         let mut bv = BitVector::with_capacity(128);
+        bv |= true; //should do nothing
+
         bv.push_u8(0b0000_0101, None);
         assert_eq!(bv.len(), 3);
 
@@ -1341,11 +1390,28 @@ mod tests {
         bv |= false;
         assert_eq!(bv.len(), 3);
         assert_eq!(bv.read_u8(0), (0b0000_0111, 3));
+
+        bv.clear();
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 19);
+        bv |= true;
+        assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0111, 3));
+
+        bv |= false;
+        assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0111, 3));
+
+        bv |= true;
+        assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0111, 3));
     }
 
     #[test]
     fn test_bit_not() {
         let mut bv = BitVector::with_capacity(128);
+        bv = !bv; //should do nothing
         bv.push_u8(0b0000_0101, None);
         assert_eq!(bv.len(), 3);
 
@@ -1380,6 +1446,7 @@ mod tests {
     #[test]
     fn test_bit_xor_assign() {
         let mut bv = BitVector::with_capacity(128);
+        bv ^= false; // should do nothing
         bv.push_u8(0b0000_0101, None);
         assert_eq!(bv.len(), 3);
 
@@ -1394,6 +1461,21 @@ mod tests {
         bv ^= true;
         assert_eq!(bv.len(), 3);
         assert_eq!(bv.read_u8(0), (0b0000_0101, 3));
+
+        bv.clear();
+        bv.push_u16(0b1001_0011_0101_1010, Some(16));
+        bv.push_u8(0b0000_0101, None);
+        assert_eq!(bv.len(), 19);
+        bv ^= true;
+        assert_eq!(bv.read_u16(0), (0b0110_1100_1010_0101, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0010, 3));
+
+        bv ^= false;
+        assert_eq!(bv.read_u16(0), (0b0110_1100_1010_0101, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0010, 3));
+        bv ^= true;
+        assert_eq!(bv.read_u16(0), (0b1001_0011_0101_1010, 16));
+        assert_eq!(bv.read_u8(16), (0b0000_0101, 3));
     }
 
     #[test]
@@ -1411,5 +1493,30 @@ mod tests {
         let raw_slice = bv.as_raw_slice();
         let last_byte = raw_slice[raw_slice.len() - 1];
         assert_eq!(last_byte, 0b1111_0000);
+    }
+
+    #[test]
+    fn test_bit_and_slice() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1011_0101_0011_1100, Some(16));
+        assert_eq!(bv.len(), 16);
+        let mut bv2 = BitVector::with_capacity(8);
+        bv2.push_u8(0b1100_0011, Some(8));
+
+        let s = &bv2[..];
+        assert_eq!(s.len(), 8);
+        bv = bv & s;
+        assert_eq!(bv.len(), 16);
+        assert_eq!(bv.read_u16(0), (0b1000_0001_0011_1100, 16));
+
+        bv.clear();
+        bv.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv2.push_u8(0b1111_0011, None);
+        let s = &bv2[..];
+        assert_eq!(s.len(), 16);
+        bv = bv & s;
+        assert_eq!(bv.len(), 16);
+        assert_eq!(bv.read_u16(0), (0b1000_0001_0011_0000, 16));
+        bv &= &bv2;
     }
 }

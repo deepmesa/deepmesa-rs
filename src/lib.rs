@@ -15,8 +15,9 @@ pub mod lists {
 pub mod collections {
     /// This module contains traits and structs specific to th ['BitVector']
     pub mod bitvec {
-        pub use deepmesa_collections::bitvec::bitslice::BitSlice;
+        pub use deepmesa_collections::bitvec::traits;
         pub use deepmesa_collections::bitvec::BitOrder;
     }
+    pub use deepmesa_collections::bitvec::bitslice::BitSlice;
     pub use deepmesa_collections::bitvec::bitvec::BitVector;
 }

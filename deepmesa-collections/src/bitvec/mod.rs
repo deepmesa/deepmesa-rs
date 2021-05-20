@@ -1,7 +1,12 @@
 mod bitops;
+
+#[macro_use]
+mod macros;
+
 pub mod bitslice;
 pub mod bitvec;
 pub mod iter;
+pub mod traits;
 
 type BitCount = usize;
 

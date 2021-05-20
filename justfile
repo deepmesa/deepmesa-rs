@@ -13,8 +13,10 @@ build:
 #    cargo test --package deepmesa-collections bitvec::bitvec::tests::test_push_bits  -- --nocapture --exact
 #    cargo test --package deepmesa-collections bitvec::bitslice::tests::test_bit_not -- --nocapture
 #    cargo test --package deepmesa-collections bitvec::bitops::tests::test_not_msb_inplace -- --nocapture --exact
+
 test:
-    cargo test --all -- --nocapture
+    cargo test --package deepmesa-collections bitvec::traits::tests -- --nocapture
+
 
 doc:
     cargo doc --no-deps --all
