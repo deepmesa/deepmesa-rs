@@ -464,7 +464,6 @@ impl BitVector {
             self.bits.pop();
         } else {
             self.bits[(self.bit_len - 1) / 8].clear_msb_nth_assign(pos);
-            //bitops::clr_msb_n(&mut self.bits[(self.bit_len - 1) / 8], pos);
         }
         self.bit_len -= 1;
         retval
@@ -546,10 +545,6 @@ impl DerefMut for BitVector {
 macro_rules! clr_lsb_last_byte {
     ($self: ident) => {
         ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8);
-        // bitops::clr_lsb_mut(
-        //     &mut $self.bits[($self.bit_len - 1) / 8],
-        //     (7 - ($self.bit_len - 1) % 8) as u8,
-        // );
     };
 }
 
@@ -741,10 +736,8 @@ impl BitVector {
         if partial_bits > 0 {
             let push_ct = 8 - partial_bits;
             let mut byte: u8 = bitops::ls_byte(val >> (len_b - 8));
-            //let mut byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             if push_ct > rem {
                 byte.clear_lsb_assign(8 - rem);
-                //byte = bitops::clr_lsb(byte, 8 - rem);
                 rem = 0;
             } else {
                 len_b -= push_ct;
@@ -757,7 +750,6 @@ impl BitVector {
             // Get the 8 bits of val from the MSB end (shift val right
             // then get the LSB 8 bits)
             let byte: u8 = bitops::ls_byte(val >> (len_b - 8));
-            //let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             len_b -= 8;
             rem -= 8;
             self.bits.push(byte);
@@ -767,10 +759,8 @@ impl BitVector {
             // Get the 8 bits of val from the MSB end (shift val right
             // then get the LSB 8 bits)
             let byte: u8 = bitops::ls_byte(val >> (len_b - 8));
-            //let byte: u8 = bitops::ls_byte(bitops::shr_u128(val, len_b - 8));
             //clear out the 8-rem lsb bits of the byte
             self.bits.push(byte.clear_lsb(8 - rem));
-            //self.bits.push(bitops::clr_lsb(byte, 8 - rem));
         }
         self.bit_len += bit_count as usize;
         bit_count
