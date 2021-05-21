@@ -87,51 +87,34 @@ macro_rules! iter_unsigned {
     };
 }
 
-macro_rules! panic_push {
-    (u8, $bit_count:ident) => {
-        panic!(
-            "cannot push more than 8 bits from a u8. bit_count={}",
-            $bit_count
-        )
-    };
-    (u16,$bit_count:ident) => {
-        panic!(
-            "cannot push more than 16 bits from a u16. bit_count={}",
-            $bit_count
-        )
-    };
-    (u32,$bit_count:ident) => {
-        panic!(
-            "cannot push more than 32 bits from a u32. bit_count={}",
-            $bit_count
-        )
-    };
-    (u64, $bit_count:ident) => {
-        panic!(
-            "cannot push more than 64 bits from a u64. bit_count={}",
-            $bit_count
-        )
-    };
-    (u128, $bit_count:ident) => {
-        panic!(
-            "cannot push more than 128 bits from a u128. bit_count={}",
-            $bit_count
-        )
+macro_rules! check_push_bounds {
+    ($t: ty, $sz:literal, $bit_count: ident) => {
+        if $bit_count > $sz {
+            panic!(
+                concat!(
+                    "cannot push more than ",
+                    $sz,
+                    " bits from a ",
+                    stringify!($t),
+                    ". bit_count={}"
+                ),
+                $bit_count
+            );
+        }
     };
 }
 
 macro_rules! push_bits_unsigned {
-    ($i:ident, $b: literal, $push_bits_fn: ident) => {
+    ($i:ident, $sz: literal, $push_bits_fn: ident) => {
         pub fn $push_bits_fn(&mut self, val: $i, bit_count: BitCount, order: BitOrder) -> BitCount {
             if bit_count == 0 {
                 return 0;
             }
-            if bit_count > $b {
-                panic_push!($i, bit_count);
-            }
+
+            check_push_bounds!($i, $sz, bit_count);
 
             match order {
-                BitOrder::Msb0 => self.push_bits_msb0((val as u128).lsb0_to_msb0($b), bit_count),
+                BitOrder::Msb0 => self.push_bits_msb0((val as u128).lsb0_to_msb0($sz), bit_count),
                 BitOrder::Lsb0 => {
                     self.push_bits_msb0((val as u128).lsb0_to_msb0(bit_count), bit_count)
                 }
@@ -171,6 +154,7 @@ macro_rules! push_unsigned {
 macro_rules! read_unsigned {
     ($i:ident, $b: literal, $read_fn: ident) => {
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
+            start_bounds_check!(start, self.bit_len);
             let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, start, self.bit_len, $b);
             (val as $i, bit_count)
         }
@@ -180,6 +164,8 @@ macro_rules! read_unsigned {
 macro_rules! read_bits_unsigned {
     ($i:ident, $b: literal, $read_bits_fn: ident) => {
         pub fn $read_bits_fn(&self, start: usize, max_bits: BitCount) -> ($i, BitCount) {
+            start_bounds_check!(start, self.bit_len);
+
             if max_bits > $b {
                 panic!(
                     "cannot read more than $b bits into a $i. max_bits={}",
@@ -325,11 +311,11 @@ impl BitVector {
     push_unsigned!(u128, 128, push_u128);
 
     pub fn as_bitslice(&self) -> &BitSlice {
-        self.index_range(0, self.bit_len)
+        self.index(0..self.bit_len)
     }
 
     pub fn as_mut_bitslice(&mut self) -> &mut BitSlice {
-        self.index_range_mut(0, self.bit_len)
+        self.index_mut(0..self.bit_len)
     }
 
     pub fn as_raw_slice(&self) -> &[u8] {
@@ -383,7 +369,7 @@ impl BitVector {
             );
         }
 
-        BitSlice::set_unchecked(&mut self.bits, index, value);
+        set_unchecked!(index, value, &mut self.bits);
     }
 
     /// Returns a boolean value indicating whether the bit at the
@@ -407,7 +393,7 @@ impl BitVector {
             return None;
         }
 
-        BitSlice::get_unchecked(&self.bits, index)
+        get_unchecked!(index, self.bits);
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<BitPtr> {
@@ -688,13 +674,13 @@ impl_bitwise_assign_bool!(BitXorAssign, bitxor_assign, BitVector, ^=);
 
 impl AsMut<BitSlice> for BitVector {
     fn as_mut(&mut self) -> &mut BitSlice {
-        self.index_range_mut(0, self.bit_len)
+        self.index_mut(0..self.bit_len)
     }
 }
 
 impl AsRef<BitSlice> for BitVector {
     fn as_ref(&self) -> &BitSlice {
-        self.index_range(0, self.bit_len)
+        self.index(0..self.bit_len)
     }
 }
 
@@ -704,14 +690,11 @@ impl Default for BitVector {
     }
 }
 
-impl_index_range!(BitVector, BitVector);
-impl_index_range_mut!(BitVector, BitVector);
+impl_index_range!(BitVector, BitVector, bits);
+impl_index_range_mut!(BitVector, BitVector, bits);
 
 //Private and Helper methods
 impl BitVector {
-    index_range_fn!(bits);
-    index_range_mut_fn!(bits);
-
     /// Pushes `bit_count` bits in the specified u128 into the vector
     /// starting from the msb.
     fn push_bits_msb0(&mut self, val: u128, bit_count: BitCount) -> BitCount {
@@ -1508,5 +1491,21 @@ mod tests {
         assert_eq!(bv.len(), 16);
         assert_eq!(bv.read_u16(0), (0b1000_0001_0011_0000, 16));
         bv &= &bv2;
+    }
+
+    #[test]
+    #[should_panic(expected = "start index 19 out of range for length 16")]
+    fn test_read_bounds() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv.read_u8(19);
+    }
+
+    #[test]
+    #[should_panic(expected = "start index 19 out of range for length 16")]
+    fn test_read_bits_bounds() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv.read_bits_u8(19, 5);
     }
 }

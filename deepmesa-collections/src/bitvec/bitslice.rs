@@ -91,9 +91,7 @@ macro_rules! read_unsigned {
     ($i:ident, $b: literal, $read_fn: ident) => {
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
             let len = self.len();
-            if start > len {
-                panic!("start index {} out of range for length {}", start, len);
-            }
+            start_bounds_check!(start, len);
 
             let offset = self.offset();
             let (val, bit_count) =
@@ -107,9 +105,7 @@ macro_rules! read_bits_unsigned {
     ($i:ident, $b: literal, $read_bits_fn: ident) => {
         pub fn $read_bits_fn(&self, start: usize, max_bits: BitCount) -> ($i, BitCount) {
             let len = self.len();
-            if start > len {
-                panic!("start index {} out of range for length {}", start, len);
-            }
+            start_bounds_check!(start, len);
 
             if max_bits > $b {
                 panic!(
@@ -377,13 +373,11 @@ impl Not for &mut BitSlice {
 }
 
 impl BitSlice {
-    const OFFSET_BITS: u8 = 3;
-
     /// zeros out the three most significant bits of the length to
     /// return the actual length.
     #[inline(always)]
     pub fn len(&self) -> usize {
-        Self::unpack_len(self.0.len())
+        slice_unpack_len!(self.0.len())
     }
 
     pub fn fill(&mut self, bit: bool) {
@@ -400,7 +394,7 @@ impl BitSlice {
         }
 
         let index = index + self.offset();
-        BitSlice::get_unchecked(&self.0, index)
+        get_unchecked!(index, self.0);
     }
 
     pub fn get_mut(&mut self, index: usize) -> Option<BitPtr> {
@@ -421,7 +415,7 @@ impl BitSlice {
         }
 
         let index = index + self.offset();
-        BitSlice::set_unchecked(&mut self.0, index, value);
+        set_unchecked!(index, value, &mut self.0);
     }
 
     pub fn iter(&self) -> Iter {
@@ -455,64 +449,10 @@ impl BitSlice {
 
 // Helpers and private methods
 impl BitSlice {
-    #[inline(always)]
-    pub(super) fn unpack_len(val: usize) -> usize {
-        bitops::clr_msb_usize(val, Self::OFFSET_BITS)
-    }
-
-    #[inline(always)]
-    pub(super) fn unpack_offset(val: usize) -> usize {
-        bitops::msbn_usize(val, Self::OFFSET_BITS)
-    }
-
-    #[inline(always)]
-    pub(super) fn pack(len: usize, offset: usize) -> usize {
-        bitops::msb_set_usize(len, offset, Self::OFFSET_BITS)
-    }
-
-    pub(super) fn check_bounds(start: usize, end: usize, len: usize) {
-        if start > end {
-            panic!(
-                "slice range start index {} out of range for end at {}",
-                start, end
-            );
-        }
-
-        if start > len {
-            panic!(
-                "slice range start index {} out of range for length {}",
-                start, len
-            );
-        }
-
-        if end > len {
-            panic!(
-                "slice range end index {} out of range for length {}",
-                end, len
-            );
-        }
-    }
-
     /// Returns the 3 most significant bits of the length
     pub(super) fn offset(&self) -> usize {
-        Self::unpack_offset(self.0.len())
+        slice_unpack_offset!(self.0.len())
     }
-
-    pub(super) fn get_unchecked(bits: &[u8], index: usize) -> Option<bool> {
-        let byte = bits[index / 8];
-        return Some(bitops::is_msb_nset(byte, (index % 8) as u8));
-    }
-
-    pub(super) fn set_unchecked(bits: &mut [u8], index: usize, value: bool) {
-        if value {
-            bitops::set_msb_n(&mut bits[index / 8], (index % 8) as u8);
-        } else {
-            bits[index / 8].clear_msb_nth_assign((index % 8) as u8);
-        }
-    }
-
-    index_range_fn!(0);
-    index_range_mut_fn!(0);
 
     #[inline(always)]
     pub(super) fn read_bits_lsb0(
@@ -648,9 +588,9 @@ impl Index<usize> for &mut BitSlice {
     }
 }
 
-impl_index_range!(&BitSlice, BitSlice);
-impl_index_range!(&mut BitSlice, BitSlice);
-impl_index_range_mut!(&mut BitSlice, BitSlice);
+impl_index_range!(&BitSlice, BitSlice, 0);
+impl_index_range!(&mut BitSlice, BitSlice, 0);
+impl_index_range_mut!(&mut BitSlice, BitSlice, 0);
 
 #[cfg(test)]
 mod tests {

@@ -19,119 +19,183 @@
    limitations under the License.
 */
 
+macro_rules! index_range_fn {
+    ($bits:expr, $start: expr, $end:expr, $len:expr) => {
+        unsafe {
+            let ptr = $bits.as_ptr().add($start / 8);
+            let slice: &[u8] =
+                core::slice::from_raw_parts(ptr, slice_pack!($end - $start, $start % 8));
+            return core::mem::transmute(slice);
+        }
+    };
+}
+
+macro_rules! index_range_mut_fn {
+    ($bits:expr, $start: expr, $end:expr) => {
+        unsafe {
+            let ptr = $bits.as_mut_ptr().add($start / 8);
+            let slice: &mut [u8] =
+                core::slice::from_raw_parts_mut(ptr, slice_pack!($end - $start, $start % 8));
+
+            return core::mem::transmute(slice);
+        }
+    };
+}
+
 macro_rules! impl_index_range {
-    ($for:ty, $self:ident) => {
+    ($for:ty, $self:ident, $bits:tt) => {
         impl Index<Range<usize>> for $for {
             type Output = BitSlice;
             fn index(&self, range: Range<usize>) -> &Self::Output {
-                $self::index_range(self, range.start, range.end)
+                slice_bounds_check!(range.start, range.end, self.len());
+                index_range_fn!(self.$bits, range.start, range.end, self.len());
             }
         }
 
         impl Index<RangeFrom<usize>> for $for {
             type Output = BitSlice;
             fn index(&self, range: RangeFrom<usize>) -> &Self::Output {
-                $self::index_range(self, range.start, self.len())
+                slice_start_bounds_check!(range.start, self.len(), self.len());
+                index_range_fn!(self.$bits, range.start, self.len(), self.len());
             }
         }
 
         impl Index<RangeInclusive<usize>> for $for {
             type Output = BitSlice;
             fn index(&self, range: RangeInclusive<usize>) -> &Self::Output {
-                $self::index_range(self, *range.start(), *range.end() + 1)
+                slice_bounds_check!(*range.start(), *range.end() + 1, self.len());
+                index_range_fn!(self.$bits, *range.start(), *range.end() + 1, self.len());
             }
         }
 
         impl Index<RangeToInclusive<usize>> for $for {
             type Output = BitSlice;
             fn index(&self, range: RangeToInclusive<usize>) -> &Self::Output {
-                $self::index_range(self, 0, range.end + 1)
+                slice_end_bounds_check!(range.end + 1, self.len());
+                index_range_fn!(self.$bits, 0, range.end + 1, self.len());
             }
         }
 
         impl Index<RangeTo<usize>> for $for {
             type Output = BitSlice;
             fn index(&self, range: RangeTo<usize>) -> &Self::Output {
-                $self::index_range(self, 0, range.end)
+                slice_end_bounds_check!(range.end, self.len());
+                index_range_fn!(self.$bits, 0, range.end, self.len());
             }
         }
 
         impl Index<RangeFull> for $for {
             type Output = BitSlice;
             fn index(&self, _: RangeFull) -> &Self::Output {
-                $self::index_range(self, 0, self.len())
+                index_range_fn!(self.$bits, 0, self.len(), self.len());
             }
         }
     };
 }
 
 macro_rules! impl_index_range_mut {
-    ($for:ty, $self:ident) => {
-        //TOO2
+    ($for:ty, $self:ident, $bits:tt) => {
         impl IndexMut<Range<usize>> for $for {
             fn index_mut(&mut self, range: Range<usize>) -> &mut Self::Output {
-                $self::index_range_mut(self, range.start, range.end)
+                slice_bounds_check!(range.start, range.end, self.len());
+                index_range_mut_fn!(self.$bits, range.start, range.end);
             }
         }
 
         impl IndexMut<RangeFrom<usize>> for $for {
             fn index_mut(&mut self, range: RangeFrom<usize>) -> &mut Self::Output {
-                $self::index_range_mut(self, range.start, self.len())
+                slice_start_bounds_check!(range.start, self.len(), self.len());
+                index_range_mut_fn!(self.$bits, range.start, self.len());
             }
         }
 
         impl IndexMut<RangeTo<usize>> for $for {
             fn index_mut(&mut self, range: RangeTo<usize>) -> &mut Self::Output {
-                $self::index_range_mut(self, 0, range.end)
+                slice_end_bounds_check!(range.end, self.len());
+                index_range_mut_fn!(self.$bits, 0, range.end);
             }
         }
 
         impl IndexMut<RangeInclusive<usize>> for $for {
             fn index_mut(&mut self, range: RangeInclusive<usize>) -> &mut Self::Output {
-                $self::index_range_mut(self, *range.start(), *range.end() + 1)
+                slice_bounds_check!(*range.start(), *range.end() + 1, self.len());
+                index_range_mut_fn!(self.$bits, *range.start(), *range.end() + 1);
             }
         }
 
         impl IndexMut<RangeToInclusive<usize>> for $for {
             fn index_mut(&mut self, range: RangeToInclusive<usize>) -> &mut Self::Output {
-                $self::index_range_mut(self, 0, range.end + 1)
+                slice_end_bounds_check!(range.end + 1, self.len());
+                index_range_mut_fn!(self.$bits, 0, range.end + 1);
             }
         }
 
         impl IndexMut<RangeFull> for $for {
             fn index_mut(&mut self, _: RangeFull) -> &mut Self::Output {
-                $self::index_range_mut(self, 0, self.len())
+                index_range_mut_fn!(self.$bits, 0, self.len());
             }
         }
     };
 }
 
-macro_rules! index_range_fn {
-    ($b:tt) => {
-        pub(super) fn index_range(&self, start: usize, end: usize) -> &BitSlice {
-            BitSlice::check_bounds(start, end, self.len());
-            unsafe {
-                let ptr = self.$b.as_ptr().add(start / 8);
-                let slice: &[u8] =
-                    core::slice::from_raw_parts(ptr, BitSlice::pack(end - start, start % 8));
-                core::mem::transmute(slice)
-            }
+macro_rules! start_bounds_check {
+    ($start: expr, $len:expr) => {
+        if $start > $len {
+            panic!("start index {} out of range for length {}", $start, $len);
         }
     };
 }
 
-macro_rules! index_range_mut_fn {
-    ($b:tt) => {
-        pub(super) fn index_range_mut(&mut self, start: usize, end: usize) -> &mut BitSlice {
-            BitSlice::check_bounds(start, end, self.len());
-            unsafe {
-                let ptr = self.$b.as_mut_ptr().add(start / 8);
-                let slice: &mut [u8] =
-                    core::slice::from_raw_parts_mut(ptr, BitSlice::pack(end - start, start % 8));
-
-                core::mem::transmute(slice)
-            }
+macro_rules! slice_start_bounds_check {
+    ($start: expr, $end: expr, $len:expr) => {
+        if $start > $len {
+            panic!("start index {} out of range for length {}", $start, $len);
         }
+        if $start > $end {
+            panic!(
+                "slice range start index {} out of range for end at {}",
+                $start, $end
+            );
+        }
+    };
+}
+
+macro_rules! slice_end_bounds_check {
+    ($end: expr, $len: expr) => {
+        if $end > $len {
+            panic!("end index {} out of range for length {}", $end, $len);
+        }
+    };
+}
+
+macro_rules! slice_bounds_check {
+    ($start:expr, $end: expr, $len: expr) => {
+        slice_start_bounds_check!($start, $end, $len);
+        slice_end_bounds_check!($end, $len);
+    };
+}
+
+macro_rules! slice_offset_bits {
+    () => {
+        3
+    };
+}
+
+macro_rules! slice_pack {
+    ($len: expr, $offset: expr) => {
+        bitops::msb_set_usize($len, $offset, slice_offset_bits!())
+    };
+}
+
+macro_rules! slice_unpack_len {
+    ($val: expr) => {
+        bitops::clr_msb_usize($val, slice_offset_bits!())
+    };
+}
+
+macro_rules! slice_unpack_offset {
+    ($val: expr) => {
+        bitops::msbn_usize($val, slice_offset_bits!())
     };
 }
 
@@ -154,5 +218,22 @@ macro_rules! try_from_bitslice {
 macro_rules! b_expr {
     ($e: expr) => {
         $e
+    };
+}
+
+macro_rules! get_unchecked {
+    ($index:expr, $bits: expr) => {
+        let byte = $bits[$index / 8];
+        return Some(bitops::is_msb_nset(byte, ($index % 8) as u8));
+    };
+}
+
+macro_rules! set_unchecked {
+    ($index: expr, $value: expr, $bits: expr) => {
+        if $value {
+            bitops::set_msb_n(&mut $bits[$index / 8], ($index % 8) as u8);
+        } else {
+            $bits[$index / 8].clear_msb_nth_assign(($index % 8) as u8);
+        }
     };
 }

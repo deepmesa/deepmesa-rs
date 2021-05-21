@@ -19,7 +19,7 @@
    limitations under the License.
 */
 
-use crate::bitvec::{bitslice::BitSlice, bitvec::BitVector, BitCount};
+use crate::bitvec::{bitops, bitslice::BitSlice, bitvec::BitVector, BitCount};
 
 macro_rules! iter_unsigned {
     ($iter_name: ident, $i:ident, $b: literal) => {
@@ -97,7 +97,7 @@ impl<'a> Iterator for Iter<'a> {
 
         let index = self.cursor + self.slice_offset;
         self.cursor += 1;
-        BitSlice::get_unchecked(&self.bits, index)
+        get_unchecked!(index, self.bits);
     }
 }
 
