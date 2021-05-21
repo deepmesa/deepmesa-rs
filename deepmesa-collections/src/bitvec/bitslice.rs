@@ -405,6 +405,38 @@ impl BitSlice {
         return None;
     }
 
+    pub fn any(&self) -> bool {
+        if self.len() == 0 {
+            return false;
+        }
+        let mut iter = self.iter_u128();
+        while let Some((val, _)) = iter.next() {
+            if val > 0 {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    pub fn all(&self) -> bool {
+        if self.len() == 0 {
+            return true;
+        }
+        let mut iter = self.iter_u128();
+        while let Some((val, bit_count)) = iter.next() {
+            if bit_count == 128 {
+                if val != u128::MAX {
+                    return false;
+                }
+            } else {
+                if val != (2u128.pow(bit_count as u32) - 1) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     pub fn set(&mut self, index: usize, value: bool) {
         if index >= self.len() {
             panic!(
@@ -1612,5 +1644,44 @@ mod tests {
                 48
             )
         );
+    }
+
+    #[test]
+    fn test_all() {
+        //test that all bits in the slice are 1
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u128(u128::MAX, None);
+        let slice = &bv[..];
+        assert_eq!(slice.all(), true);
+
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_1111_1111, Some(16));
+        assert_eq!(bv[0..8].all(), false);
+        assert_eq!(bv[8..16].all(), true);
+        assert_eq!(bv[0..1].all(), true);
+        assert_eq!(bv[1..3].all(), false);
+        assert_eq!(bv[6..].all(), true);
+    }
+
+    #[test]
+    fn test_any() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u128(u128::MAX, None);
+        let slice = &bv[..];
+        assert_eq!(slice.any(), true);
+
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u128(0, Some(128));
+        let slice = &bv[..];
+        assert_eq!(slice.any(), false);
+
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1001_0011_1111_0000, Some(16));
+        assert_eq!(bv[0..8].any(), true);
+        assert_eq!(bv[8..16].any(), true);
+        assert_eq!(bv[0..1].any(), true);
+        assert_eq!(bv[1..3].any(), false);
+        assert_eq!(bv[6..].any(), true);
+        assert_eq!(bv[12..].any(), false);
     }
 }

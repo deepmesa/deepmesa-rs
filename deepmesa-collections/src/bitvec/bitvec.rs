@@ -47,6 +47,34 @@ use core::ops::RangeInclusive;
 use core::ops::RangeTo;
 use core::ops::RangeToInclusive;
 
+#[macro_export]
+macro_rules! bitvec {
+    () => {
+        BitVector::new();
+    };
+    ($($arg:tt)*) => {{
+        let slice = [$($arg)*];
+        let mut bv = BitVector::new();
+        for item in &slice {
+            match item {
+                0 => bv.push(false),
+                1 => bv.push(true),
+                _ => panic!("{} is not a binary digit", item),
+            }
+        }
+        bv
+    };};
+    ($item: expr, $len: expr) => {
+        {
+            match $item {
+                0=> BitVector::repeat(false, $len),
+                1=> BitVector::repeat(true, $len),
+                _ => panic!("{} is not a binary digit", item),
+            }
+        }
+    };
+}
+
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
 /// bits. This collection is backed by a Vector<u8> which manages the
@@ -77,6 +105,13 @@ pub struct BitVector {
     pub(super) bits: Vec<u8>,
     pub(super) capacity_bits: usize,
     pub(super) bit_len: usize,
+}
+
+//Set the bits after bit_len in the last byte to 0
+macro_rules! clr_lsb_last_byte {
+    ($self: ident) => {
+        ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8);
+    };
 }
 
 macro_rules! iter_unsigned {
@@ -130,10 +165,9 @@ macro_rules! push_unsigned {
             match min_width {
                 None => {}
                 Some(width) => {
-                    // 0000_0111 = lz: 5, b = 8 count = 3 (8-5), width= 3
                     if width > count {
                         if width > $b {
-                            self.fill(width - $b, false);
+                            self.fill(false, width - $b);
                             //fill with zeros (width - $b)
                             count = $b;
                             //bits = $b
@@ -272,13 +306,22 @@ impl BitVector {
         self.bit_len = 0;
     }
 
+    pub fn truncate(&mut self, len: usize) {
+        if len == 0 {
+            self.clear();
+            return;
+        }
+        if len >= self.bit_len {
+            return;
+        }
+        self.bits.truncate(((len - 1) / 8) + 1);
+        self.bit_len = len;
+        clr_lsb_last_byte!(self)
+    }
+
     pub fn iter(&self) -> Iter {
         Iter::new(&self.bits, 0, self.bit_len)
     }
-
-    // pub fn iter_u16(&self) -> IterU16 {
-    //     IterU16::new(&self.bits, 0, self.bit_len)
-    // }
 
     iter_unsigned!(iter_u8, IterU8);
     iter_unsigned!(iter_u16, IterU16);
@@ -340,6 +383,36 @@ impl BitVector {
         self.bits.as_mut_ptr()
     }
 
+    pub fn append(&mut self, other: &mut BitVector) {
+        let mut iter = other.iter_u8();
+        while let Some((val, bitcount)) = iter.next() {
+            self.push_u8(val, Some(bitcount));
+        }
+
+        other.clear()
+    }
+
+    pub fn extend_from_bitslice(&mut self, other: &BitSlice) {
+        let mut iter = other.iter_u8();
+        while let Some((val, bitcount)) = iter.next() {
+            self.push_u8(val, Some(bitcount));
+        }
+    }
+
+    pub fn from_bitslice(slice: &BitSlice) -> Self {
+        let mut bv = BitVector::with_capacity(slice.len());
+        let mut iter = slice.iter_u8();
+        while let Some((val, bitcount)) = iter.next() {
+            bv.push_u8(val, Some(bitcount));
+        }
+        bv
+    }
+
+    pub fn repeat(bit: bool, len: usize) -> Self {
+        let mut bv = BitVector::with_capacity(len);
+        bv.fill(bit, len);
+        bv
+    }
     /// Sets the bit at the given index to 1 if bit is true, otherwise
     /// clears it. Panic if the index exceeds the length
     /// # Examples
@@ -455,7 +528,7 @@ impl BitVector {
         retval
     }
 
-    pub fn fill(&mut self, count: usize, bit: bool) -> BitCount {
+    pub fn fill(&mut self, bit: bool, count: usize) -> BitCount {
         let mut push_val: u128 = 0;
         if bit {
             push_val = u128::MAX;
@@ -525,13 +598,6 @@ impl DerefMut for BitVector {
         let len = self.len();
         &mut self[0..len]
     }
-}
-
-//Set the bits after bit_len in the last byte to 0
-macro_rules! clr_lsb_last_byte {
-    ($self: ident) => {
-        ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8);
-    };
 }
 
 impl Not for BitVector {
@@ -842,7 +908,7 @@ mod tests {
         let mut bv = BitVector::with_capacity(32);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
-        bv.fill(8, true);
+        bv.fill(true, 8);
         assert_eq!(bv.len(), 8);
         assert_eq!(bv.bit_len, 8);
         for i in 0..8 {
@@ -851,7 +917,7 @@ mod tests {
         assert_eq!(bv.byte_at(0).unwrap(), 0b1111_1111);
         assert_eq!(bv.byte_at(1), None);
         //now push a byte of zeros
-        bv.fill(8, false);
+        bv.fill(false, 8);
         assert_eq!(bv.len(), 16);
         assert_eq!(bv.bit_len, 16);
         for i in 8..16 {
@@ -866,14 +932,14 @@ mod tests {
         let mut bv = BitVector::with_capacity(32);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
-        bv.fill(1, true);
+        bv.fill(true, 1);
         assert_eq!(bv.len(), 1);
         assert_eq!(bv.get(0).unwrap(), true);
         assert_eq!(bv.get(1), None);
         assert_eq!(bv.byte_at(0).unwrap(), 0b1000_0000);
         assert_eq!(bv.byte_at(1), None);
 
-        bv.fill(2, false);
+        bv.fill(false, 2);
         assert_eq!(bv.len(), 3);
         assert_eq!(bv.get(0).unwrap(), true);
         assert_eq!(bv.get(1).unwrap(), false);
@@ -915,7 +981,7 @@ mod tests {
         let mut bv = BitVector::with_capacity(1);
         assert_eq!(bv.len(), 0);
         assert_eq!(bv.bit_len, 0);
-        bv.fill(100, true);
+        bv.fill(true, 100);
         assert_eq!(bv.len(), 100);
         for i in 0..100 {
             assert_eq!(bv.get(i).unwrap(), true);
@@ -1507,5 +1573,133 @@ mod tests {
         let mut bv = BitVector::with_capacity(128);
         bv.push_u16(0b1011_0101_0011_1100, Some(16));
         bv.read_bits_u8(19, 5);
+    }
+
+    #[test]
+    fn test_append() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b1011_0101, Some(8));
+        let mut other = BitVector::with_capacity(128);
+        other.push_u16(0b1011_0101_0011_1100, Some(16));
+        other.push_u16(0b1111_1111_1111_1111, Some(16));
+        other.push_u16(0b0000_0000_0000_0000, Some(16));
+        assert_eq!(bv.len(), 8);
+        assert_eq!(other.len(), 48);
+        bv.append(&mut other);
+        assert_eq!(bv.len(), 56);
+        assert_eq!(other.len(), 0);
+        assert_eq!(bv.read_u8(0), (0b1011_0101, 8));
+        assert_eq!(bv.read_u16(8), (0b1011_0101_0011_1100, 16));
+        assert_eq!(bv.read_u16(24), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u16(40), (0b0000_0000_0000_0000, 16));
+    }
+
+    #[test]
+    fn test_extend_from_bitslice() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u8(0b1011_0101, Some(8));
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv2.push_u16(0b1111_1111_1111_1111, Some(16));
+        bv2.push_u16(0b0000_0000_0000_0000, Some(16));
+        let other = &bv2[..];
+        assert_eq!(bv.len(), 8);
+        assert_eq!(other.len(), 48);
+        bv.extend_from_bitslice(other);
+        assert_eq!(bv.len(), 56);
+        assert_eq!(other.len(), 48);
+        assert_eq!(bv.read_u8(0), (0b1011_0101, 8));
+        assert_eq!(bv.read_u16(8), (0b1011_0101_0011_1100, 16));
+        assert_eq!(bv.read_u16(24), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u16(40), (0b0000_0000_0000_0000, 16));
+    }
+
+    #[test]
+    fn test_from_bitslice() {
+        let mut bv2 = BitVector::with_capacity(128);
+        bv2.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv2.push_u16(0b1111_1111_1111_1111, Some(16));
+        bv2.push_u16(0b0000_0000_0000_0000, Some(16));
+        let slice = &bv2[..];
+        assert_eq!(slice.len(), 48);
+        let bv = BitVector::from_bitslice(slice);
+        assert_eq!(bv.len(), 48);
+        assert_eq!(slice.len(), 48);
+        assert_eq!(bv.read_u16(0), (0b1011_0101_0011_1100, 16));
+        assert_eq!(bv.read_u16(16), (0b1111_1111_1111_1111, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+    }
+
+    #[test]
+    fn test_repeat() {
+        let bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+    }
+
+    #[test]
+    fn test_truncate_3() {
+        //
+        let mut bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+        bv.truncate(3);
+        assert_eq!(bv.len(), 3);
+    }
+
+    #[test]
+    fn test_truncate_0() {
+        let mut bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+        bv.truncate(0);
+        assert_eq!(bv.len(), 0);
+    }
+
+    #[test]
+    fn test_truncate_greater() {
+        let mut bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+        bv.truncate(100);
+        assert_eq!(bv.len(), 48);
+    }
+
+    #[test]
+    fn test_truncate_16() {
+        let mut bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+        bv.truncate(16);
+        assert_eq!(bv.len(), 16);
+    }
+
+    #[test]
+    fn test_truncate_48() {
+        let mut bv = BitVector::repeat(false, 48);
+        assert_eq!(bv.read_u16(0), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(16), (0b0000_0000_0000_0000, 16));
+        assert_eq!(bv.read_u16(32), (0b0000_0000_0000_0000, 16));
+        bv.truncate(48);
+        assert_eq!(bv.len(), 48);
+    }
+
+    #[test]
+    fn test_bitvec_macro() {
+        let bv = bitvec!();
+        assert_eq!(bv.len(), 0);
+        let bv = bitvec![1, 0, 1, 1];
+        assert_eq!(bv.len(), 4);
+        assert_eq!(bv.read_u8(0), (0b1011, 4));
+        let bv = bitvec![1;100];
+        assert_eq!(bv.len(), 100);
+        assert_eq!(bv.read_u64(0), (u64::MAX, 64));
+        assert_eq!(bv.read_u32(64), (u32::MAX, 32));
+        assert_eq!(bv.read_u8(96), (0b1111, 4));
     }
 }
