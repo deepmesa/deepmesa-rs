@@ -23,10 +23,10 @@ use crate::bitvec::{
     bitops,
     iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
     traits::{
-        BitwiseClear, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign, BitwisePartialAssign,
-        NotLsbAssign, NotMsbAssign, NotPartialAssign,
+        AsLsb0, AsMsb0, BitwiseClear, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign,
+        BitwisePartialAssign, NotLsbAssign, NotMsbAssign, NotPartialAssign,
     },
-    BitCount, BitOrderConvert,
+    BitCount,
 };
 use core::convert::TryFrom;
 use core::fmt;
@@ -80,7 +80,11 @@ impl Debug for BitSlice {
 }
 
 macro_rules! iter_unsigned {
-    ($iter_fn: ident, $iter_type: ident) => {
+    (
+        $(#[$outer:meta])*
+        $iter_fn: ident, $iter_type: ident
+    ) => {
+        $(#[$outer])*
         pub fn $iter_fn(&self) -> $iter_type {
             $iter_type::new(&self.0, self.offset(), self.len())
         }
@@ -88,21 +92,29 @@ macro_rules! iter_unsigned {
 }
 
 macro_rules! read_unsigned {
-    ($i:ident, $b: literal, $read_fn: ident) => {
-        pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
+    (
+        $(#[$outer:meta])*
+        $u_type:ty, $max_bits: literal, $read_fn: ident
+    ) => {
+        $(#[$outer])*
+        pub fn $read_fn(&self, start: usize) -> ($u_type, BitCount) {
             let len = self.len();
             start_bounds_check!(start, len);
 
             let offset = self.offset();
             let (val, bit_count) =
-                BitSlice::read_bits_lsb0(&self.0, start + offset, len + offset, $b);
-            (val as $i, bit_count)
+                BitSlice::read_bits_lsb0(&self.0, start + offset, len + offset, $max_bits);
+            (val as $u_type, bit_count)
         }
     };
 }
 
 macro_rules! read_bits_unsigned {
-    ($i:ident, $b: literal, $read_bits_fn: ident) => {
+    (
+        $(#[$outer:meta])*
+        $i:ident, $b: literal, $read_bits_fn: ident
+    ) => {
+        $(#[$outer])*
         pub fn $read_bits_fn(&self, start: usize, max_bits: BitCount) -> ($i, BitCount) {
             let len = self.len();
             start_bounds_check!(start, len);
@@ -122,15 +134,22 @@ macro_rules! read_bits_unsigned {
 }
 
 macro_rules! as_unsigned {
-    ($i:ident, $b: literal, $as_fn: ident) => {
-        pub fn $as_fn(&self) -> ($i, BitCount) {
+    (
+        $(#[$outer:meta])*
+        $u_type:ty, $max_bits: literal, $as_fn: ident
+    ) => {
+        $(#[$outer])*
+        pub fn $as_fn(&self) -> ($u_type, BitCount) {
             let len = self.len();
-            if len > $b {
-                panic!("len {} bits is too big to fit into a $i", len);
+            if len > $max_bits {
+                panic!(
+                    concat!("len {} bits is too big to fit into a ", stringify!($i)),
+                    len
+                );
             }
             let offset = self.offset();
-            let (val, count) = BitSlice::read_bits_lsb0(&self.0, offset, len + offset, $b);
-            (val as $i, count)
+            let (val, count) = BitSlice::read_bits_lsb0(&self.0, offset, len + offset, $max_bits);
+            (val as $u_type, count)
         }
     };
 }
@@ -232,6 +251,9 @@ macro_rules! impl_bitwise_assign_bitslice {
                 let eb_idx = (len - 1) / 8;
                 let offset = self.offset();
                 let ss_start = 8 - offset;
+                if rhs.len() == 0 {
+                    return;
+                }
                 let (rhs_fb, rhs_fb_r) = rhs.read_bits_u8(0, 8 - offset);
 
                 //Special Case the first byte
@@ -260,7 +282,7 @@ macro_rules! impl_bitwise_assign_bitslice {
                                 bitwise_msb_assign!(self.0[i], bits_rem as u8, rhs_byte, $op);
                             }
                         } else {
-                            bitwise_msb_assign!(self.0[i], rhs_bits as u8, (rhs_byte).lsb0_to_msb0(rhs_bits), $op);
+                            bitwise_msb_assign!(self.0[i], rhs_bits as u8, (rhs_byte).as_msb0(rhs_bits), $op);
                         }
 
                         bits_processed += rhs_bits;
@@ -491,14 +513,11 @@ impl BitSlice {
         bits: &[u8],
         start: usize,
         len: usize,
-        bit_count: BitCount,
+        max_bits: BitCount,
     ) -> (u128, BitCount) {
-        // let offset = self.offset();
-        // let len = self.len() + offset;
-        // let st_index = start + offset;
-        let (val, bit_count): (u128, BitCount) =
-            BitSlice::read_bits_msb0(bits, start, len, bit_count);
-        return ((val).msb0_to_lsb0(bit_count), bit_count);
+        let (val, bits_read): (u128, BitCount) =
+            BitSlice::read_bits_msb0(bits, start, len, max_bits);
+        return ((val).as_lsb0(bits_read), bits_read);
     }
 
     /// Reads a byte containing upto 8 or `bit_count` lsb bits
@@ -516,11 +535,11 @@ impl BitSlice {
     /// byte: 0b1100_1101 start: 0, count: 8 returns (0b1100_1101, 8)
     /// byte: 0b1100_1101 start: 4, count: 2 returns (0b1100_0011, 2)
     #[inline(always)]
-    fn sub_byte_lsb0(byte: u8, start: u8, bit_count: BitCount) -> (u8, BitCount) {
+    fn sub_byte_lsb0(byte: u8, start: u8, max_bits: BitCount) -> (u8, BitCount) {
         debug_assert!(start <= 7, "start {} cannot be greater than 7", start);
         let count: u8;
-        if bit_count < 8 {
-            count = bit_count as u8;
+        if max_bits < 8 {
+            count = max_bits as u8;
         } else {
             count = 8;
         }
@@ -663,11 +682,11 @@ mod tests {
 
     #[test]
     fn test_read_bits_u8() {
-        let mut bvec = BitVector::with_capacity(20);
-        bvec.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
-        bvec.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_bits_u8(0b1100_1011, 8, BitOrder::Msb0);
+        bv.push_bits_u8(0b1010_0101, 8, BitOrder::Msb0);
 
-        let bv = &*bvec;
+        //        let bv = &*bvec;
         assert_eq!(bv.len(), 16);
 
         // Read a byte from start = 0
@@ -689,11 +708,6 @@ mod tests {
         let (byte, bit_count) = bv.read_bits_u8(15, 8);
         assert_eq!(bit_count, 1);
         assert_eq!(byte, 0b0000_0001);
-
-        //Read a byte from start = 16
-        let (byte, bit_count) = bv.read_bits_u8(16, 8);
-        assert_eq!(bit_count, 0);
-        assert_eq!(byte, 0b0000_0000);
     }
 
     #[test]
@@ -786,14 +800,13 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_assignments)]
     fn test_bit_not_0() {
         let mut bv = BitVector::with_capacity(128);
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s = !s;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
     }
 
@@ -854,17 +867,13 @@ mod tests {
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s &= false;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
         bv.clear();
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s &= true;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
     }
 
@@ -961,17 +970,13 @@ mod tests {
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s |= false;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
         bv.clear();
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s |= true;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
     }
 
@@ -1066,17 +1071,13 @@ mod tests {
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s ^= false;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
         bv.clear();
         bv.push_u8(0b1001_0011, Some(8));
         let mut s = &mut bv[2..2];
         assert_eq!(s.len(), 0);
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         s ^= true;
-        assert_eq!(s.read_u8(0), (0b0000_0000, 0));
         assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
     }
 

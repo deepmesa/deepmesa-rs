@@ -140,7 +140,7 @@ macro_rules! impl_index_range_mut {
 
 macro_rules! start_bounds_check {
     ($start: expr, $len:expr) => {
-        if $start > $len {
+        if $start >= $len {
             panic!("start index {} out of range for length {}", $start, $len);
         }
     };
@@ -148,7 +148,7 @@ macro_rules! start_bounds_check {
 
 macro_rules! slice_start_bounds_check {
     ($start: expr, $end: expr, $len:expr) => {
-        if $start > $len {
+        if $start >= $len {
             panic!("start index {} out of range for length {}", $start, $len);
         }
         if $start > $end {

@@ -22,7 +22,11 @@
 use crate::bitvec::{bitops, bitslice::BitSlice, bitvec::BitVector, BitCount};
 
 macro_rules! iter_unsigned {
-    ($iter_name: ident, $i:ident, $b: literal) => {
+    (
+        $(#[$outer:meta])*
+        $iter_name: ident, $i:ident, $max_bits: literal
+    ) => {
+        $(#[$outer])*
         pub struct $iter_name<'a> {
             bits: &'a [u8],
             cursor: usize,
@@ -56,7 +60,8 @@ macro_rules! iter_unsigned {
                 let len = self.bit_len + offset;
                 let st_index = self.cursor + offset;
 
-                let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, st_index, len, $b);
+                let (val, bit_count) =
+                    BitSlice::read_bits_lsb0(&self.bits, st_index, len, $max_bits);
                 self.cursor += bit_count;
                 Some((val as $i, bit_count))
             }
@@ -64,12 +69,143 @@ macro_rules! iter_unsigned {
     };
 }
 
-iter_unsigned!(IterU8, u8, 8);
-iter_unsigned!(IterU16, u16, 16);
-iter_unsigned!(IterU32, u32, 32);
-iter_unsigned!(IterU64, u64, 64);
-iter_unsigned!(IterU128, u128, 128);
+iter_unsigned!(
+    ///
+    /// This struct is created by the
+    /// [`.iter_u8()`](BitVector#method.iter_u8)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterU8;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+    ///
+    /// let mut iter: IterU8 = bv.iter_u8();
+    /// assert_eq!(iter.next(), Some((0b0101_1101, 8)));
+    /// assert_eq!(iter.next(), Some((0b0011_1010, 8)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterU8,
+    u8,
+    8
+);
+iter_unsigned!(
+    ///
+    /// This struct is created by the
+    /// [`.iter_u16()`](BitVector#method.iter_u16)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterU16;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+    ///
+    /// let mut iter:IterU16 = bv.iter_u16();
+    /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010, 16)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterU16,
+    u16,
+    16
+);
+iter_unsigned!(
+    ///
+    /// This struct is created by the
+    /// [`.iter_u32()`](BitVector#method.iter_u32)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterU32;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+    /// bv.push_u16(0b1111_0011_1100_0000, Some(16));
+    ///
+    /// let mut iter:IterU32 = bv.iter_u32();
+    /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010_1111_0011_1100_0000, 32)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterU32,
+    u32,
+    32
+);
+iter_unsigned!(
+    ///
+    /// This struct is created by the
+    /// [`.iter_u64()`](BitVector#method.iter_u64)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterU64;
+    /// let mut bv = BitVector::new();
+    /// bv.push_u64(u64::MAX, Some(64));
+    ///
+    /// let mut iter:IterU64 = bv.iter_u64();
+    /// assert_eq!(iter.next(), Some((u64::MAX, 64)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterU64,
+    u64,
+    64
+);
+iter_unsigned!(
+    ///
+    /// This struct is created by the
+    /// [`.iter_u128()`](BitVector#method.iter_u128)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterU128;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u64(u64::MAX, Some(64));
+    /// bv.push_u64(u64::MAX, Some(64));
+    ///
+    /// let mut iter = bv.iter_u128();
+    /// assert_eq!(iter.next(), Some((u128::MAX, 128)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterU128,
+    u128,
+    128
+);
 
+///
+/// This struct is created by the [`.iter()`](BitVector#method.iter)
+/// method of [`BitVector`](../struct.BitVector.html) and
+/// [`BitSlice`](BitSlice)
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvec::Iter;
+///
+/// let mut bv = BitVector::new();
+/// bv.push_u8(0b101, None);
+///
+/// let mut iter:Iter = bv.iter();
+/// assert_eq!(iter.next(), Some(true));
+/// assert_eq!(iter.next(), Some(false));
+/// assert_eq!(iter.next(), Some(true));
+/// assert_eq!(iter.next(), None);
+/// ```
 pub struct Iter<'a> {
     bits: &'a [u8],
     cursor: usize,

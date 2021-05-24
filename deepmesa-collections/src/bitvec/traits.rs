@@ -19,6 +19,8 @@
    limitations under the License.
 */
 
+use crate::bitvec::BitCount;
+
 const MSB_ONES: [u8; 9] = [
     0b0000_0000,
     0b1000_0000,
@@ -67,16 +69,85 @@ const LSB_NTH_ZERO: [u8; 8] = [
 
 pub trait BitwiseClear {
     type Output;
+    /// Returns a value with the `n` LSB bits of `self` cleared.
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClear;
+    ///
+    /// let val:u8 = 0b1011_1100;
+    /// assert_eq!(val.clear_lsb(4), 0b1011_0000);
+    /// ```
     fn clear_lsb(self, n: u8) -> Self::Output;
+    /// Returns a value with the `n` MSB bits of `self` cleared.
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClear;
+    ///
+    /// let val:u8 = 0b1011_1100;
+    /// assert_eq!(val.clear_msb(4), 0b0000_1100);
+    /// ```
     fn clear_msb(self, n: u8) -> Self::Output;
+    /// Returns a value with the `nth` LSB bit of `self` cleared.
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClear;
+    ///
+    /// let val:u8 = 0b1011_1100;
+    /// assert_eq!(val.clear_lsb_nth(3), 0b1011_0100);
+    /// ```
     fn clear_lsb_nth(self, n: u8) -> Self::Output;
+    /// Returns a value with the `nth` MSB bit of `self` cleared.
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClear;
+    ///
+    /// let val:u8 = 0b1011_1100;
+    /// assert_eq!(val.clear_msb_nth(3), 0b1010_1100);
+    /// ```
     fn clear_msb_nth(self, n: u8) -> Self::Output;
 }
 
 pub trait BitwiseClearAssign {
+    /// Clears `n` LSB bits of `self`
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    ///
+    /// let mut val:u8 = 0b1011_1100;
+    /// val.clear_lsb_assign(4);
+    /// assert_eq!(val, 0b1011_0000);
+    /// ```
     fn clear_lsb_assign(&mut self, n: u8);
+    /// Clears `n` MSB bits of `self`
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    ///
+    /// let mut val:u8 = 0b1011_1100;
+    /// val.clear_msb_assign(4);
+    /// assert_eq!(val, 0b0000_1100);
+    /// ```
     fn clear_msb_assign(&mut self, n: u8);
+    /// Clears `nth` LSB bit of `self`
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    ///
+    /// let mut val:u8 = 0b1011_1100;
+    /// val.clear_lsb_nth_assign(3);
+    /// assert_eq!(val, 0b1011_0100);
+    /// ```
+
     fn clear_lsb_nth_assign(&mut self, n: u8);
+    /// Clears `nth` MSB bit of `self`
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    ///
+    /// let mut val:u8 = 0b1011_1100;
+    /// val.clear_msb_nth_assign(3);
+    /// assert_eq!(val, 0b1010_1100);
+    /// ```
     fn clear_msb_nth_assign(&mut self, n: u8);
 }
 
@@ -569,9 +640,129 @@ impl NotPartialAssign for u8 {
     }
 }
 
+///
+/// Given a specified number of bits, shift them left (towards the
+/// MSB) to produce an ordering such that those bits are counted from
+/// the MSB to the LSB
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::bitvec::AsMsb0;
+///
+/// let val: u8 = 0b0000_1100;
+/// let converted = val.as_msb0(4);
+/// assert_eq!(converted, 0b1100_0000);
+/// ```
+///
+/// If the bitcount equals the size of `Self` (in bits) then the value
+/// is unchanged.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::bitvec::AsMsb0;
+///
+/// let val: u8 = 0b1010_1100;
+/// let converted = val.as_msb0(8);
+/// assert_eq!(converted, 0b1010_1100);
+/// ```
+pub trait AsMsb0 {
+    fn as_msb0(&self, n: BitCount) -> Self;
+}
+
+///
+/// Given a specified number of bits, shift them right (towards the
+/// LSB) to produce an ordering such that those bits are counted from
+/// the LSB to the MSB
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::bitvec::AsLsb0;
+///
+/// let val: u8 = 0b1100_0000;
+/// let converted = val.as_lsb0(4);
+/// assert_eq!(converted, 0b0000_1100);
+/// ```
+///
+/// If the bitcount equals the size of `Self` (in bits) then the value
+/// is unchanged.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::bitvec::AsLsb0;
+///
+/// let val: u8 = 0b1010_1100;
+/// let converted = val.as_lsb0(8);
+/// assert_eq!(converted, 0b1010_1100);
+/// ```
+pub trait AsLsb0 {
+    fn as_lsb0(&self, n: BitCount) -> Self;
+}
+
+macro_rules! impl_as_lsb0 {
+    ($t: ty, $sz:literal) => {
+        impl AsLsb0 for $t {
+            fn as_lsb0(&self, n: BitCount) -> Self {
+                const TYPE_LEN: usize = $sz;
+                if n == 0 {
+                    return *self;
+                }
+
+                if n > TYPE_LEN {
+                    panic!(
+                        "Cannot convert BitOrder for BitCount ({}) > {}",
+                        n, TYPE_LEN
+                    );
+                }
+                if n == TYPE_LEN {
+                    return *self;
+                }
+                return *self >> (TYPE_LEN - n);
+            }
+        }
+    };
+}
+
+macro_rules! impl_as_msb0 {
+    ($t:ty, $sz:literal) => {
+        impl AsMsb0 for $t {
+            fn as_msb0(&self, n: BitCount) -> Self {
+                const TYPE_LEN: usize = $sz;
+                if n == 0 {
+                    return *self;
+                }
+                if n > TYPE_LEN {
+                    panic!(
+                        "Cannot convert BitOrder for BitCount ({}) > {}",
+                        n, TYPE_LEN
+                    );
+                }
+                if n == TYPE_LEN {
+                    return *self;
+                }
+                return *self << (TYPE_LEN - n);
+            }
+        }
+    };
+}
+
+impl_as_lsb0!(u8, 8);
+impl_as_lsb0!(u16, 16);
+impl_as_lsb0!(u32, 32);
+impl_as_lsb0!(u64, 64);
+impl_as_lsb0!(u128, 128);
+
+impl_as_msb0!(u8, 8);
+impl_as_msb0!(u16, 16);
+impl_as_msb0!(u32, 32);
+impl_as_msb0!(u64, 64);
+impl_as_msb0!(u128, 128);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::mem;
+    use rand::Rng;
+
     #[test]
     fn test_clear_msb() {
         assert_eq!(0b1010_0101.clear_msb(5), 0b0000_0101);
@@ -1367,5 +1558,43 @@ mod tests {
         let mut res = val;
         res.xor_partial_assign(2, 3, 0b1111_1111);
         assert_eq!(res, 0b1000_1011);
+    }
+
+    macro_rules! gen_test {
+        ($ty:ident, $test_name:ident) => {
+            #[test]
+            pub fn $test_name() {
+                let bitlen = mem::size_of::<$ty>() * 8;
+                let pow2: $ty = 2;
+
+                let mut rng = rand::thread_rng();
+                let rand: $ty = rng.gen::<$ty>();
+
+                //test msb0_to_lsb0 $t
+                assert_eq!(rand.as_lsb0(bitlen), rand);
+                let converted = rand.as_lsb0(5);
+
+                assert_eq!(converted, rand / pow2.pow(bitlen as u32 - 5) as $ty);
+
+                //test lsb0_to_msb0
+                let rand: $ty = converted;
+
+                assert_eq!(rand.as_msb0(bitlen), rand);
+                assert_eq!(rand.as_msb0(5), rand * pow2.pow(bitlen as u32 - 5) as $ty);
+            }
+        };
+    }
+
+    gen_test! {u8,test_bit_order_convert_u8}
+    gen_test! {u16,test_bit_order_convert_u16}
+    gen_test! {u32,test_bit_order_convert_u32}
+    gen_test! {u64,test_bit_order_convert_u64}
+    gen_test! {u128,test_bit_order_convert_u128}
+
+    #[test]
+    pub fn test_convert_zero() {
+        let val: u8 = 0b0000_0000;
+        assert_eq!(0, val.as_lsb0(0));
+        assert_eq!(0, val.as_msb0(0));
     }
 }

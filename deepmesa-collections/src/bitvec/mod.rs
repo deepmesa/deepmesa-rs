@@ -10,108 +10,98 @@ pub mod traits;
 
 type BitCount = usize;
 
+///
+/// [`Msb0`](#variant.Msb0) indicates that the MSB (Most Significant
+/// Bit) should be considered as position `0` and consequently bits
+/// should be counted from the MSB to the LSB.
+///
+/// [`Lsb0`](#variant.Lsb0) indicates tht the LSB (Least Significant
+/// Bit) should be considered as position `0` and the bits should
+/// therefore be counter from the LSB to the MSB.
+///
+/// Here is an illustrative example:
+///
+/// # Examples
+/// ```text
+/// let val: u8 = 0b1011_1100;
+/// ```
+/// Counting 4 bits from the `Msb0` would yield `1011` while counting 4
+/// bits from the `Lsb0` would result in `1100`
+///
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BitOrder {
+    /// Counts bits from the LSB (Least Significant Bit) to the MSB
+    /// (Most Significant Bit).
     Lsb0,
+    /// Counts bits from the MSB (Most Significant Bit) to the LSB
+    /// (Least Significant Bit).
     Msb0,
 }
 
-pub trait BitOrderConvert {
-    fn msb0_to_lsb0(&self, n: BitCount) -> Self;
-    fn lsb0_to_msb0(&self, n: BitCount) -> Self;
-}
-
-macro_rules! impl_bit_order_convert {
-    ($t:ty, $sz:literal) => {
-        impl BitOrderConvert for $t {
-            fn msb0_to_lsb0(&self, n: BitCount) -> Self {
-                const TYPE_LEN: usize = $sz;
-                if n == 0 {
-                    return *self;
-                }
-
-                if n > TYPE_LEN {
-                    panic!(
-                        "Cannot convert BitOrder for BitCount ({}) > {}",
-                        n, TYPE_LEN
-                    );
-                }
-                if n == TYPE_LEN {
-                    return *self;
-                }
-                return *self >> (TYPE_LEN - n);
+/// A macro to construct a new [BitVector](BitVector) from a bit pattern.
+///
+/// This macro accepts a sequence of 1s and 0s separated by commas,
+/// (an array of bits effectively) and creates a new BitVector from
+/// that pattern. Any token other than a `0` or a `1` will result in a
+/// panic.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvector;
+///
+/// let bv = bitvector![1,0,1,1,0,1,0,1];
+/// assert_eq!(bv.len(), 8);
+/// assert_eq!(bv.read_u8(0), (0b1011_0101, 8));
+/// ```
+///
+/// The macro can also accept a single bit (1 or 0) and a length and
+/// construct a BitVector of that length with the repeating bit.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvector;
+///
+/// let bv = bitvector![1;100];
+/// assert_eq!(bv.len(), 100);
+/// ```
+///
+/// Finally this macro can also be used to construct an empty
+/// BitVector.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvector;
+///
+/// let bv = bitvector!();
+/// assert_eq!(bv.len(), 0);
+/// ```
+#[macro_export]
+macro_rules! bitvector {
+    () => {
+        BitVector::new();
+    };
+    ($($arg:tt)*) => {{
+        let slice = [$($arg)*];
+        let mut bv = BitVector::new();
+        for item in &slice {
+            match item {
+                0 => bv.push(false),
+                1 => bv.push(true),
+                _ => panic!("{} is not a binary digit", item),
             }
-
-            fn lsb0_to_msb0(&self, n: BitCount) -> Self {
-                const TYPE_LEN: usize = $sz;
-                if n == 0 {
-                    return *self;
-                }
-                if n > TYPE_LEN {
-                    panic!(
-                        "Cannot convert BitOrder for BitCount ({}) > {}",
-                        n, TYPE_LEN
-                    );
-                }
-                if n == TYPE_LEN {
-                    return *self;
-                }
-                return *self << (TYPE_LEN - n);
+        }
+        bv
+    };};
+    ($item: expr, $len: expr) => {
+        {
+            match $item {
+                0=> BitVector::repeat(false, $len),
+                1=> BitVector::repeat(true, $len),
+                _ => panic!("{} is not a binary digit", item),
             }
         }
     };
-}
-
-impl_bit_order_convert!(u8, 8);
-impl_bit_order_convert!(u16, 16);
-impl_bit_order_convert!(u32, 32);
-impl_bit_order_convert!(u64, 64);
-impl_bit_order_convert!(u128, 128);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use core::mem;
-    use rand::Rng;
-
-    macro_rules! gen_test {
-        ($ty:ident, $test_name:ident) => {
-            #[test]
-            pub fn $test_name() {
-                let bitlen = mem::size_of::<$ty>() * 8;
-                let pow2: $ty = 2;
-
-                let mut rng = rand::thread_rng();
-                let rand: $ty = rng.gen::<$ty>();
-
-                //test msb0_to_lsb0 $t
-                assert_eq!(rand.msb0_to_lsb0(bitlen), rand);
-                let converted = rand.msb0_to_lsb0(5);
-
-                assert_eq!(converted, rand / pow2.pow(bitlen as u32 - 5) as $ty);
-
-                //test lsb0_to_msb0
-                let rand: $ty = converted;
-
-                assert_eq!(rand.lsb0_to_msb0(bitlen), rand);
-                assert_eq!(
-                    rand.lsb0_to_msb0(5),
-                    rand * pow2.pow(bitlen as u32 - 5) as $ty
-                );
-            }
-        };
-    }
-
-    gen_test! {u8,test_bit_order_convert_u8}
-    gen_test! {u16,test_bit_order_convert_u16}
-    gen_test! {u32,test_bit_order_convert_u32}
-    gen_test! {u64,test_bit_order_convert_u64}
-    gen_test! {u128,test_bit_order_convert_u128}
-
-    #[test]
-    pub fn test_convert_zero() {
-        let val: u8 = 0b0000_0000;
-        assert_eq!(0, val.msb0_to_lsb0(0));
-        assert_eq!(0, val.lsb0_to_msb0(0));
-    }
 }

@@ -24,8 +24,8 @@ use crate::bitvec::{
     bitslice::BitPtr,
     bitslice::BitSlice,
     iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
-    traits::{BitwiseClear, BitwiseClearAssign},
-    BitCount, BitOrder, BitOrderConvert,
+    traits::{AsMsb0, BitwiseClear, BitwiseClearAssign},
+    BitCount, BitOrder,
 };
 use core::fmt;
 use core::fmt::Debug;
@@ -35,8 +35,6 @@ use core::ops::BitOr;
 use core::ops::BitOrAssign;
 use core::ops::BitXor;
 use core::ops::BitXorAssign;
-use core::ops::Deref;
-use core::ops::DerefMut;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::ops::Not;
@@ -46,34 +44,6 @@ use core::ops::RangeFull;
 use core::ops::RangeInclusive;
 use core::ops::RangeTo;
 use core::ops::RangeToInclusive;
-
-#[macro_export]
-macro_rules! bitvec {
-    () => {
-        BitVector::new();
-    };
-    ($($arg:tt)*) => {{
-        let slice = [$($arg)*];
-        let mut bv = BitVector::new();
-        for item in &slice {
-            match item {
-                0 => bv.push(false),
-                1 => bv.push(true),
-                _ => panic!("{} is not a binary digit", item),
-            }
-        }
-        bv
-    };};
-    ($item: expr, $len: expr) => {
-        {
-            match $item {
-                0=> BitVector::repeat(false, $len),
-                1=> BitVector::repeat(true, $len),
-                _ => panic!("{} is not a binary digit", item),
-            }
-        }
-    };
-}
 
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
@@ -101,6 +71,19 @@ macro_rules! bitvec {
 /// assert_eq!(bv.get(1), Some(false));
 /// assert_eq!(bv.get(2), Some(true));
 /// ```
+///
+/// In addition to the [new()](#method.new) and
+/// [with_capacity()(#method.with_capacity) methods, the bitvector! macro
+/// is also provided for convenient initialization.
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvector;
+///
+/// let bv = bitvector![0,1,1,0];
+/// assert_eq!(bv.len(), 4);
+/// ```
 pub struct BitVector {
     pub(super) bits: Vec<u8>,
     pub(super) capacity_bits: usize,
@@ -115,7 +98,11 @@ macro_rules! clr_lsb_last_byte {
 }
 
 macro_rules! iter_unsigned {
-    ($iter_fn: ident, $iter_type: ident) => {
+    (
+        $(#[$outer:meta])*
+        $iter_fn: ident, $iter_type: ident
+    ) => {
+        $(#[$outer])*
         pub fn $iter_fn(&self) -> $iter_type {
             $iter_type::new(&self.bits, 0, self.bit_len)
         }
@@ -123,7 +110,7 @@ macro_rules! iter_unsigned {
 }
 
 macro_rules! check_push_bounds {
-    ($t: ty, $sz:literal, $bit_count: ident) => {
+    ($t: ty, $sz:literal, $bit_count: expr) => {
         if $bit_count > $sz {
             panic!(
                 concat!(
@@ -140,7 +127,11 @@ macro_rules! check_push_bounds {
 }
 
 macro_rules! push_bits_unsigned {
-    ($i:ident, $sz: literal, $push_bits_fn: ident) => {
+    (
+        $(#[$outer:meta])*
+        $i:ident, $sz: literal, $push_bits_fn: ident
+    ) => {
+        $(#[$outer])*
         pub fn $push_bits_fn(&mut self, val: $i, bit_count: BitCount, order: BitOrder) -> BitCount {
             if bit_count == 0 {
                 return 0;
@@ -149,9 +140,9 @@ macro_rules! push_bits_unsigned {
             check_push_bounds!($i, $sz, bit_count);
 
             match order {
-                BitOrder::Msb0 => self.push_bits_msb0((val as u128).lsb0_to_msb0($sz), bit_count),
+                BitOrder::Msb0 => self.push_bits_msb0((val as u128).as_msb0($sz), bit_count),
                 BitOrder::Lsb0 => {
-                    self.push_bits_msb0((val as u128).lsb0_to_msb0(bit_count), bit_count)
+                    self.push_bits_msb0((val as u128).as_msb0(bit_count), bit_count)
                 }
             }
         }
@@ -159,7 +150,11 @@ macro_rules! push_bits_unsigned {
 }
 
 macro_rules! push_unsigned {
-    ($i:ident, $b: literal, $push_fn: ident) => {
+    (
+        $(#[$outer:meta])*
+        $i:ident, $b: literal, $push_fn: ident
+    ) => {
+        $(#[$outer])*
         pub fn $push_fn(&mut self, val: $i, min_width: Option<BitCount>) -> BitCount {
             let mut count = $b - val.leading_zeros() as usize;
             match min_width {
@@ -180,27 +175,35 @@ macro_rules! push_unsigned {
                 }
             }
 
-            self.push_bits_msb0((val as u128).lsb0_to_msb0(count), count)
+            self.push_bits_msb0((val as u128).as_msb0(count), count)
         }
     };
 }
 
 macro_rules! read_unsigned {
-    ($i:ident, $b: literal, $read_fn: ident) => {
+    (
+        $(#[$outer:meta])*
+        $i:ident, $max_bits: literal, $read_fn: ident
+    ) => {
+        $(#[$outer])*
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
             start_bounds_check!(start, self.bit_len);
-            let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, start, self.bit_len, $b);
+            let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, start, self.bit_len, $max_bits);
             (val as $i, bit_count)
         }
     };
 }
 
 macro_rules! read_bits_unsigned {
-    ($i:ident, $b: literal, $read_bits_fn: ident) => {
+    (
+        $(#[$outer:meta])*
+        $i:ident, $max_bits: literal, $read_bits_fn: ident
+    ) => {
+        $(#[$outer])*
         pub fn $read_bits_fn(&self, start: usize, max_bits: BitCount) -> ($i, BitCount) {
             start_bounds_check!(start, self.bit_len);
 
-            if max_bits > $b {
+            if max_bits > $max_bits {
                 panic!(
                     "cannot read more than $b bits into a $i. max_bits={}",
                     max_bits
@@ -319,48 +322,962 @@ impl BitVector {
         clr_lsb_last_byte!(self)
     }
 
+    /// Returns an iterator over the bits of this BitVector
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b101, None);
+    ///
+    /// let mut iter = bv.iter();
+    /// assert_eq!(iter.next(), Some(true));
+    /// assert_eq!(iter.next(), Some(false));
+    /// assert_eq!(iter.next(), Some(true));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     pub fn iter(&self) -> Iter {
         Iter::new(&self.bits, 0, self.bit_len)
     }
 
-    iter_unsigned!(iter_u8, IterU8);
-    iter_unsigned!(iter_u16, IterU16);
-    iter_unsigned!(iter_u32, IterU32);
-    iter_unsigned!(iter_u64, IterU64);
-    iter_unsigned!(iter_u128, IterU128);
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the bitvector 8
+        /// bits at a time. Each invocation of `iter.next` returns a
+        /// u8 value and the number of bits read.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        ///
+        /// let mut iter = bv.iter_u8();
+        /// assert_eq!(iter.next(), Some((0b0101_1101, 8)));
+        /// assert_eq!(iter.next(), Some((0b0011_1010, 8)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u8,
+        IterU8
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the bitvector 16
+        /// bits at a time. Each invocation of `iter.next` returns a
+        /// u16 value and the number of bits read.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        ///
+        /// let mut iter = bv.iter_u16();
+        /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010, 16)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u16,
+        IterU16
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the bitvector 32
+        /// bits at a time. Each invocation of `iter.next` returns a
+        /// u32 value and the number of bits read.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        /// bv.push_u16(0b1111_0011_1100_0000, Some(16));
+        ///
+        /// let mut iter = bv.iter_u32();
+        /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010_1111_0011_1100_0000, 32)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u32,
+        IterU32
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the bitvector 64
+        /// bits at a time. Each invocation of `iter.next` returns a
+        /// u64 value and the number of bits read.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let mut iter = bv.iter_u64();
+        /// assert_eq!(iter.next(), Some((u64::MAX, 64)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u64,
+        IterU64
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the bitvector 128
+        /// bits at a time. Each invocation of `iter.next` returns a
+        /// u128 value and the number of bits read.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let mut iter = bv.iter_u128();
+        /// assert_eq!(iter.next(), Some((u128::MAX, 128)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u128,
+        IterU128
+    );
 
-    read_unsigned!(u8, 8, read_u8);
-    read_unsigned!(u16, 16, read_u16);
-    read_unsigned!(u32, 32, read_u32);
-    read_unsigned!(u64, 64, read_u64);
-    read_unsigned!(u128, 128, read_u128);
+    read_unsigned!(
+        /// Reads upto 8 bits from this BitVector into a u8 starting
+        /// at the specified `start` position. This method will panic
+        /// if `start` is greater than or equal to the length of the
+        /// BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_u8(0);
+        /// assert_eq!(read, 8);
+        /// assert_eq!(val, 0b0011_0110);
+        ///
+        /// let (val, read) = bv.read_u8(4);
+        /// assert_eq!(read, 4);
+        /// assert_eq!(val, 0b0000_0110);
+        /// ```
+        u8,
+        8,
+        read_u8
+    );
+    read_unsigned!(
+        /// Reads upto 16 bits from this BitVector into a u16 starting
+        /// at the specified `start` position. This method will panic
+        /// if `start` is greater than or equal to the length of the
+        /// BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        ///
+        /// let (val, read) = bv.read_u16(0);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b0011_0110_1100_0011);
+        ///
+        /// let (val, read) = bv.read_u16(4);
+        /// assert_eq!(read, 12);
+        /// assert_eq!(val, 0b0000_0110_1100_0011);
+        /// ```
+        u16,
+        16,
+        read_u16
+    );
+    read_unsigned!(
+        /// Reads upto 32 bits from this BitVector into a u32 starting
+        /// at the specified `start` position. This method will panic
+        /// if `start` is greater than or equal to the length of the
+        /// BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let (val, read) = bv.read_u32(0);
+        /// assert_eq!(read, 32);
+        //
+        /// assert_eq!(val, 0b0011_0110_1100_0011_1100_1010_0100_1100);
+        ///
+        /// let (val, read) = bv.read_u16(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u32,
+        32,
+        read_u32
+    );
+    read_unsigned!(
+        /// Reads upto 64 bits from this BitVector into a u64 starting
+        /// at the specified `start` position. This method will panic
+        /// if `start` is greater than or equal to the length of the
+        /// BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let (val, read) = bv.read_u64(20);
+        /// assert_eq!(read, 12);
+        //
+        /// assert_eq!(val, 0b1010_0100_1100);
+        ///
+        /// let (val, read) = bv.read_u64(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u64,
+        64,
+        read_u64
+    );
+    read_unsigned!(
+        /// Reads upto 128 bits from this BitVector into a u128 starting
+        /// at the specified `start` position. This method will panic
+        /// if `start` is greater than or equal to the length of the
+        /// BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let (val, read) = bv.read_u128(20);
+        /// assert_eq!(read, 12);
+        //
+        /// assert_eq!(val, 0b1010_0100_1100);
+        ///
+        /// let (val, read) = bv.read_u128(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u128,
+        128,
+        read_u128
+    );
 
-    read_bits_unsigned!(u8, 8, read_bits_u8);
-    read_bits_unsigned!(u16, 16, read_bits_u16);
-    read_bits_unsigned!(u32, 32, read_bits_u32);
-    read_bits_unsigned!(u64, 64, read_bits_u64);
-    read_bits_unsigned!(u128, 128, read_bits_u128);
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this BitVector into a u8
+        /// starting at the specified `start` position. This method
+        /// will panic if `max_bits` is greater than 8 or if `start`
+        /// is greater than or equal to the length of the BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a bitvector with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u8 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_bits_u8(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u8,
+        8,
+        read_bits_u8
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this BitVector into a u16
+        /// starting at the specified `start` position. This method
+        /// will panic if `max_bits` is greater than 16 or if `start`
+        /// is greater than or equal to the length of the BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a bitvector with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u16 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_bits_u16(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u16,
+        16,
+        read_bits_u16
+    );
 
-    push_bits_unsigned!(u8, 8, push_bits_u8);
-    push_bits_unsigned!(u16, 16, push_bits_u16);
-    push_bits_unsigned!(u32, 32, push_bits_u32);
-    push_bits_unsigned!(u64, 64, push_bits_u64);
-    push_bits_unsigned!(u128, 128, push_bits_u128);
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this BitVector into a u32
+        /// starting at the specified `start` position. This method
+        /// will panic if `max_bits` is greater than 32 or if `start`
+        /// is greater than or equal to the length of the BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a bitvector with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u8 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_bits_u32(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u32,
+        32,
+        read_bits_u32
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this BitVector into a u64
+        /// starting at the specified `start` position. This method
+        /// will panic if `max_bits` is greater than 64 or if `start`
+        /// is greater than or equal to the length of the BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a bitvector with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u8 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_bits_u64(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u64,
+        64,
+        read_bits_u64
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this BitVector into a u128
+        /// starting at the specified `start` position. This method
+        /// will panic if `max_bits` is greater than 128 or if `start`
+        /// is greater than or equal to the length of the BitVector.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a bitvector with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u8 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let (val, read) = bv.read_bits_u128(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        ///
+        u128,
+        128,
+        read_bits_u128
+    );
 
-    push_unsigned!(u8, 8, push_u8);
-    push_unsigned!(u16, 16, push_u16);
-    push_unsigned!(u32, 32, push_u32);
-    push_unsigned!(u64, 64, push_u64);
-    push_unsigned!(u128, 128, push_u128);
+    push_bits_unsigned!(
+        /// Pushes at most `count` bits from the specified u8 `val` to
+        /// the end of the BitVector. The bits to be pushed are
+        /// counted depending on the `order`. If the `count` is equal
+        /// to 8 the order is ignored and all bits are pushed from the
+        /// MSB (bit position 7) to the LSB (bit position 0). If the
+        /// count is less than 8, then the bits are pushed in the
+        /// specified Order as follows:
+        ///
+        /// If the order is Msb0, the leading `count` bits starting from the
+        /// MSB (from bit position 7) are pushed to the end of the
+        /// BitVector
+        ///
+        /// If the order is Lsb0, then trailing `count` bits starting from
+        /// the LSB (from bit position 0) are pushed to the end of the
+        /// BitVector.
+        ///
+        /// This method will panic, if the count is greater than 8. If
+        /// the `count` is 0, then no bits are pushed and the method
+        /// has no effect.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use deepmesa::collections::bitvec::BitOrder;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u8 = 0b1100_0101;
+        /// bv.push_bits_u8(val, 3, BitOrder::Msb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], true);
+        /// assert_eq!(bv[2], false);
+        ///
+        /// bv.clear();
+        /// bv.push_bits_u8(val, 3, BitOrder::Lsb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// ```
+        u8,
+        8,
+        push_bits_u8
+    );
 
+    push_bits_unsigned!(
+        /// Pushes at most `count` bits from the specified u16 `val` to
+        /// the end of the BitVector. The bits to be pushed are
+        /// counted depending on the `order`. If the `count` is equal
+        /// to 16 the order is ignored and all bits are pushed from the
+        /// MSB (bit position 15) to the LSB (bit position 0). If the
+        /// count is less than 16, then the bits are pushed in the
+        /// specified Order as follows:
+        ///
+        /// If the order is Msb0, the leading `count` bits starting from the
+        /// MSB (from bit position 15) are pushed to the end of the
+        /// BitVector
+        ///
+        /// If the order is Lsb0, then trailing `count` bits starting from
+        /// the LSB (from bit position 0) are pushed to the end of the
+        /// BitVector.
+        ///
+        /// This method will panic, if the count is greater than
+        /// 16. If the `count` is 0, then no bits are pushed and the
+        /// method has no effect.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use deepmesa::collections::bitvec::BitOrder;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u16 = 0b1100_0000_0000_0101;
+        /// bv.push_bits_u16(val, 3, BitOrder::Msb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], true);
+        /// assert_eq!(bv[2], false);
+        ///
+        /// bv.clear();
+        /// bv.push_bits_u16(val, 3, BitOrder::Lsb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// ```
+        u16,
+        16,
+        push_bits_u16
+    );
+    push_bits_unsigned!(
+        /// Pushes at most `count` bits from the specified u32 `val` to
+        /// the end of the BitVector. The bits to be pushed are
+        /// counted depending on the `order`. If the `count` is equal
+        /// to 32 the order is ignored and all bits are pushed from the
+        /// MSB (bit position 31) to the LSB (bit position 0). If the
+        /// count is less than 32, then the bits are pushed in the
+        /// specified Order as follows:
+        ///
+        /// If the order is Msb0, the leading `count` bits starting from the
+        /// MSB (from bit position 31) are pushed to the end of the
+        /// BitVector
+        ///
+        /// If the order is Lsb0, then trailing `count` bits starting from
+        /// the LSB (from bit position 0) are pushed to the end of the
+        /// BitVector.
+        ///
+        /// This method will panic, if the count is greater than
+        /// 32. If the `count` is 0, then no bits are pushed and the
+        /// method has no effect.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use deepmesa::collections::bitvec::BitOrder;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u32 = 0b1100_0000_0000_0000_0000_0000_0000_0101;
+        /// bv.push_bits_u32(val, 3, BitOrder::Msb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], true);
+        /// assert_eq!(bv[2], false);
+        ///
+        /// bv.clear();
+        /// bv.push_bits_u32(val, 3, BitOrder::Lsb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// ```
+        u32,
+        32,
+        push_bits_u32
+    );
+    push_bits_unsigned!(
+        /// Pushes at most `count` bits from the specified u64 `val` to
+        /// the end of the BitVector. The bits to be pushed are
+        /// counted depending on the `order`. If the `count` is equal
+        /// to 64 the order is ignored and all bits are pushed from the
+        /// MSB (bit position 63) to the LSB (bit position 0). If the
+        /// count is less than 64, then the bits are pushed in the
+        /// specified Order as follows:
+        ///
+        /// If the order is Msb0, the leading `count` bits starting from the
+        /// MSB (from bit position 63) are pushed to the end of the
+        /// BitVector
+        ///
+        /// If the order is Lsb0, then trailing `count` bits starting from
+        /// the LSB (from bit position 0) are pushed to the end of the
+        /// BitVector.
+        ///
+        /// This method will panic, if the count is greater than
+        /// 64. If the `count` is 0, then no bits are pushed and the
+        /// method has no effect.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use deepmesa::collections::bitvec::BitOrder;
+        ///
+        /// let mut bv = BitVector::new();
+        /// // 4 MSB bits are 1100 and 4 LSB bits are 0101
+        /// let val:u64 = 0xc0_00_00_00_00_00_00_05;
+        /// bv.push_bits_u64(val, 3, BitOrder::Msb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], true);
+        /// assert_eq!(bv[2], false);
+        ///
+        /// bv.clear();
+        /// bv.push_bits_u64(val, 3, BitOrder::Lsb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// ```
+        u64,
+        64,
+        push_bits_u64
+    );
+    push_bits_unsigned!(
+        /// Pushes at most `count` bits from the specified u128 `val` to
+        /// the end of the BitVector. The bits to be pushed are
+        /// counted depending on the `order`. If the `count` is equal
+        /// to 128 the order is ignored and all bits are pushed from the
+        /// MSB (bit position 127) to the LSB (bit position 0). If the
+        /// count is less than 128, then the bits are pushed in the
+        /// specified Order as follows:
+        ///
+        /// If the order is Msb0, the leading `count` bits starting from the
+        /// MSB (from bit position 127) are pushed to the end of the
+        /// BitVector
+        ///
+        /// If the order is Lsb0, then trailing `count` bits starting from
+        /// the LSB (from bit position 0) are pushed to the end of the
+        /// BitVector.
+        ///
+        /// This method will panic, if the count is greater than
+        /// 128. If the `count` is 0, then no bits are pushed and the
+        /// method has no effect.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use deepmesa::collections::bitvec::BitOrder;
+        ///
+        /// let mut bv = BitVector::new();
+        /// // 4 MSB bits are 1100 and 4 LSB bits are 0101
+        /// let val:u128 = 0xc0_00_00_00_00_00_00_00_00_00_00_00_00_00_00_05;
+        /// bv.push_bits_u128(val, 3, BitOrder::Msb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], true);
+        /// assert_eq!(bv[2], false);
+        ///
+        /// bv.clear();
+        /// bv.push_bits_u128(val, 3, BitOrder::Lsb0);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// ```
+        u128,
+        128,
+        push_bits_u128
+    );
+
+    push_unsigned!(
+        /// Pushes bits from the specified u8 `val` excluding the
+        /// leading zeros unless the `min_width` is specified. The
+        /// `min_width` is the minimum number of bits to push
+        /// (including leading zeros for padding). If the `min_width`
+        /// is specified, then leading zeros are pushed before pushing
+        /// the bits in the u8 to the BitVector.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u8 = 0b101;
+        /// bv.push_u8(val, None);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// bv.clear();
+        /// bv.push_u8(val, Some(5));
+        /// assert_eq!(bv.len(), 5);
+        /// assert_eq!(bv[0], false);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        /// assert_eq!(bv[3], false);
+        /// assert_eq!(bv[4], true);
+        /// ```
+        u8,
+        8,
+        push_u8
+    );
+    push_unsigned!(
+        /// Pushes bits from the specified u16 `val` excluding the
+        /// leading zeros unless the `min_width` is specified. The
+        /// `min_width` is the minimum number of bits to push
+        /// (including leading zeros for padding). If the `min_width`
+        /// is specified, then leading zeros are pushed before pushing
+        /// the bits in the u16 to the BitVector.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u16 = 0b101;
+        /// bv.push_u16(val, None);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// bv.clear();
+        /// bv.push_u16(val, Some(5));
+        /// assert_eq!(bv.len(), 5);
+        /// assert_eq!(bv[0], false);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        /// assert_eq!(bv[3], false);
+        /// assert_eq!(bv[4], true);
+        /// ```
+        u16,
+        16,
+        push_u16
+    );
+    push_unsigned!(
+        /// Pushes bits from the specified u32 `val` excluding the
+        /// leading zeros unless the `min_width` is specified. The
+        /// `min_width` is the minimum number of bits to push
+        /// (including leading zeros for padding). If the `min_width`
+        /// is specified, then leading zeros are pushed before pushing
+        /// the bits in the u32 to the BitVector.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u32 = 0b101;
+        /// bv.push_u32(val, None);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// bv.clear();
+        /// bv.push_u32(val, Some(5));
+        /// assert_eq!(bv.len(), 5);
+        /// assert_eq!(bv[0], false);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        /// assert_eq!(bv[3], false);
+        /// assert_eq!(bv[4], true);
+        /// ```
+        u32,
+        32,
+        push_u32
+    );
+    push_unsigned!(
+        /// Pushes bits from the specified u64 `val` excluding the
+        /// leading zeros unless the `min_width` is specified. The
+        /// `min_width` is the minimum number of bits to push
+        /// (including leading zeros for padding). If the `min_width`
+        /// is specified, then leading zeros are pushed before pushing
+        /// the bits in the u64 to the BitVector.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u64 = 0b101;
+        /// bv.push_u64(val, None);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// bv.clear();
+        /// bv.push_u64(val, Some(5));
+        /// assert_eq!(bv.len(), 5);
+        /// assert_eq!(bv[0], false);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        /// assert_eq!(bv[3], false);
+        /// assert_eq!(bv[4], true);
+        /// ```
+        u64,
+        64,
+        push_u64
+    );
+    push_unsigned!(
+        /// Pushes bits from the specified u128 `val` excluding the
+        /// leading zeros unless the `min_width` is specified. The
+        /// `min_width` is the minimum number of bits to push
+        /// (including leading zeros for padding). If the `min_width`
+        /// is specified, then leading zeros are pushed before pushing
+        /// the bits in the u128 to the BitVector.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// let val:u128 = 0b101;
+        /// bv.push_u128(val, None);
+        /// assert_eq!(bv.len(), 3);
+        /// assert_eq!(bv[0], true);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        ///
+        /// bv.clear();
+        /// bv.push_u128(val, Some(5));
+        /// assert_eq!(bv.len(), 5);
+        /// assert_eq!(bv[0], false);
+        /// assert_eq!(bv[1], false);
+        /// assert_eq!(bv[2], true);
+        /// assert_eq!(bv[3], false);
+        /// assert_eq!(bv[4], true);
+        /// ```
+        u128,
+        128,
+        push_u128
+    );
+
+    /// Returns an immutable reference to a [BitSlice](BitSlice)
+    /// containing all the bits of the BitVector. This call is
+    /// equivalent to &bv[..].
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1011_1100, None);
+    /// let slice = bv.as_bitslice();
+    /// assert_eq!(slice.len(), 8);
+    /// let slice = &bv[..];
+    /// assert_eq!(slice.len(), 8);
+    /// ```
     pub fn as_bitslice(&self) -> &BitSlice {
         self.index(0..self.bit_len)
     }
 
+    /// Returns a mutable reference to a [BitSlice](BitSlice)
+    /// containing all the bits of the BitVector. This call is
+    /// equivalent to &mut bv[..].
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1011_1100, None);
+    /// let slice = bv.as_mut_bitslice();
+    /// assert_eq!(slice.len(), 8);
+    /// let slice = &mut bv[..];
+    /// assert_eq!(slice.len(), 8);
+    /// ```
     pub fn as_mut_bitslice(&mut self) -> &mut BitSlice {
         self.index_mut(0..self.bit_len)
     }
 
+    /// Returns an immutable slice of the underlying [Vec](Vec)
+    /// containing the u8 values that encode the bits of the
+    /// BitVector. Reading the bytes directly from this raw slice is
+    /// not recommended since the BitVector manages the bytes in the
+    /// underlying Vector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b0100_1101, Some(8));
+    /// let raw_slice = bv.as_raw_slice();
+    /// assert_eq!(raw_slice.len(), 1);
+    /// assert_eq!(raw_slice, &[0x4D]);
+    /// ```
     pub fn as_raw_slice(&self) -> &[u8] {
         unsafe {
             let ptr = self.bits.as_ptr();
@@ -368,6 +1285,22 @@ impl BitVector {
         }
     }
 
+    /// Returns a mutable slice of the underlying [Vec](Vec)
+    /// containing the u8 values that encode the bits of the
+    /// BitVector. Reading from or modifying the bytes directly in
+    /// this raw slice is not recommended since the BitVector manages
+    /// the bytes in the underlying Vector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b0100_1101, Some(8));
+    /// let raw_slice = bv.as_mut_raw_slice();
+    /// assert_eq!(raw_slice.len(), 1);
+    /// assert_eq!(raw_slice, &[0x4D]);
+    /// ```
     pub fn as_mut_raw_slice(&mut self) -> &mut [u8] {
         unsafe {
             let ptr = self.bits.as_mut_ptr();
@@ -375,14 +1308,57 @@ impl BitVector {
         }
     }
 
+    /// Returns a raw pointer to the underlying [Vec](Vec) containing
+    /// the u8 values that encode the bits of the BitVector. Reading
+    /// from the bytes directly from this raw pointer is not
+    /// recommended since the BitVector manages the bytes in the
+    /// underlying Vector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b0100_1101, Some(8));
+    /// let raw_ptr = bv.as_raw_ptr();
+    /// ```
     pub fn as_raw_ptr(&self) -> *const u8 {
         self.bits.as_ptr()
     }
 
-    pub fn as_mut_raw_ptr(&mut self) -> *const u8 {
+    /// Returns a mutable raw pointer to the underlying [Vec](Vec)
+    /// containing the u8 values that encode the bits of the
+    /// BitVector. Reading from or writing to the bytes directly in
+    /// this raw pointer is not recommended since the BitVector
+    /// manages the bytes in the underlying Vector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b0100_1101, Some(8));
+    /// let raw_ptr = bv.as_mut_raw_ptr();
+    /// ```
+    pub fn as_mut_raw_ptr(&mut self) -> *mut u8 {
         self.bits.as_mut_ptr()
     }
 
+    /// Moves all the bits of `other` into `self`, leaving `other`
+    /// empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1101, None);
+    /// let mut other = BitVector::new();
+    /// other.push_u8(0b1111_0011, Some(8));
+    /// bv.append(&mut other);
+    /// assert_eq!(bv.len(), 12);
+    /// assert_eq!(other.len(), 0);
+    /// ```
     pub fn append(&mut self, other: &mut BitVector) {
         let mut iter = other.iter_u8();
         while let Some((val, bitcount)) = iter.next() {
@@ -392,6 +1368,21 @@ impl BitVector {
         other.clear()
     }
 
+    /// Copies all the bits from the specified [BitSlice] into the
+    /// BitVector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1101, None);
+    /// let mut other = BitVector::new();
+    /// other.push_u8(0b1111_0011, Some(8));
+    /// let other_slice = &other[..];
+    /// bv.extend_from_bitslice(other_slice);
+    /// assert_eq!(bv.len(), 12);
+    /// ```
     pub fn extend_from_bitslice(&mut self, other: &BitSlice) {
         let mut iter = other.iter_u8();
         while let Some((val, bitcount)) = iter.next() {
@@ -399,6 +1390,19 @@ impl BitVector {
         }
     }
 
+    /// Creates a new BitVector by copying the contents of the
+    /// specified [BitSlice].
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1101, None);
+    ///
+    /// let bv2 = BitVector::from_bitslice(&bv[..]);
+    /// assert_eq!(bv2.len(), 4);
+    /// ```
     pub fn from_bitslice(slice: &BitSlice) -> Self {
         let mut bv = BitVector::with_capacity(slice.len());
         let mut iter = slice.iter_u8();
@@ -408,6 +1412,15 @@ impl BitVector {
         bv
     }
 
+    /// Creates a new BitVector with a bit repeated `len` times
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let bv = BitVector::repeat(true, 4);
+    /// assert_eq!(bv.len(), 4);
+    /// ```
     pub fn repeat(bit: bool, len: usize) -> Self {
         let mut bv = BitVector::with_capacity(len);
         bv.fill(bit, len);
@@ -528,6 +1541,17 @@ impl BitVector {
         retval
     }
 
+    /// Extends the BitVector by pushing the specified `bit`, `count`
+    /// times to the end of the BitVector.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.fill(true, 4);
+    /// assert_eq!(bv.len(), 4);
+    /// ```
     pub fn fill(&mut self, bit: bool, count: usize) -> BitCount {
         let mut push_val: u128 = 0;
         if bit {
@@ -552,7 +1576,7 @@ impl Debug for BitVector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "BitVec {{ bit_len: {}, capacity_bits: {}, bits:\n",
+            "BitVector {{ bit_len: {}, capacity_bits: {}, bits:\n",
             self.bit_len, self.capacity_bits
         )?;
 
@@ -583,20 +1607,6 @@ impl Index<usize> for BitVector {
             Some(true) => &true,
             Some(false) => &false,
         }
-    }
-}
-
-impl Deref for BitVector {
-    type Target = BitSlice;
-    fn deref(&self) -> &Self::Target {
-        &self[0..self.len()]
-    }
-}
-
-impl DerefMut for BitVector {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        let len = self.len();
-        &mut self[0..len]
     }
 }
 
@@ -679,7 +1689,7 @@ macro_rules! impl_bitwise_assign {
                         if s_bits == 8 {
                             b_expr!(*byte $op s_byte);
                         } else {
-                            b_expr!(*byte $op (s_byte).lsb0_to_msb0(s_bits));
+                            b_expr!(*byte $op (s_byte).as_msb0(s_bits));
                         }
                     } else {
                         break;
@@ -832,7 +1842,7 @@ impl BitVector {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::bitvector;
     #[test]
     fn test_bit_at() {
         let mut bv = BitVector::with_capacity(32);
@@ -1179,11 +2189,6 @@ mod tests {
         let (byte, numbits) = bv.read_bits_u8(15, 8);
         assert_eq!(numbits, 1);
         assert_eq!(byte, 0b0000_0001);
-
-        //Read a byte from start = 16
-        let (byte, numbits) = bv.read_bits_u8(16, 8);
-        assert_eq!(numbits, 0);
-        assert_eq!(byte, 0b0000_0000);
     }
 
     #[test]
@@ -1286,13 +2291,6 @@ mod tests {
         let (val2, bit_count) = bv.read_u8(0);
         assert_eq!(bit_count, 6);
         assert_eq!(val2, 0b0011_0000);
-        // bv.clear();
-        // assert_eq!(bv.len(), 0);
-        // bv.push_bits_u8(val, 4, BitOrder::Msb0); //1111 or 0011
-        // assert_eq!(bv.len(), 4);
-        // let (val2, bit_count) = bv.read_u8(0);
-        // assert_eq!(bit_count, 8); //HWAT?
-        // assert_eq!(val2, 0b0011_0000);
     }
 
     #[test]
@@ -1323,7 +2321,6 @@ mod tests {
 
         bv.push_u8(0b0000_0000, Some(0));
         assert_eq!(bv.len(), 0);
-        assert_eq!(bv.read_u8(0), (0b0000_0000, 0));
         bv.clear();
 
         bv.push_u8(0b0000_0000, Some(2));
@@ -1569,10 +2566,18 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "start index 19 out of range for length 16")]
-    fn test_read_bits_bounds() {
+    fn test_read_bits_bounds_exceeds() {
         let mut bv = BitVector::with_capacity(128);
         bv.push_u16(0b1011_0101_0011_1100, Some(16));
         bv.read_bits_u8(19, 5);
+    }
+
+    #[test]
+    #[should_panic(expected = "start index 16 out of range for length 16")]
+    fn test_read_bits_bounds_equals() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1011_0101_0011_1100, Some(16));
+        bv.read_bits_u8(16, 5);
     }
 
     #[test]
@@ -1691,12 +2696,12 @@ mod tests {
 
     #[test]
     fn test_bitvec_macro() {
-        let bv = bitvec!();
+        let bv = bitvector!();
         assert_eq!(bv.len(), 0);
-        let bv = bitvec![1, 0, 1, 1];
+        let bv = bitvector![1, 0, 1, 1];
         assert_eq!(bv.len(), 4);
         assert_eq!(bv.read_u8(0), (0b1011, 4));
-        let bv = bitvec![1;100];
+        let bv = bitvector![1;100];
         assert_eq!(bv.len(), 100);
         assert_eq!(bv.read_u64(0), (u64::MAX, 64));
         assert_eq!(bv.read_u32(64), (u32::MAX, 32));
