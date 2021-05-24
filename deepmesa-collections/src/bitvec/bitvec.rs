@@ -21,9 +21,9 @@
 
 use crate::bitvec::{
     bitops,
-    bitslice::BitPtr,
+    bitslice::BitRef,
     bitslice::BitSlice,
-    iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
+    iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
     traits::{AsMsb0, BitwiseClear, BitwiseClearAssign},
     BitCount, BitOrder,
 };
@@ -338,6 +338,11 @@ impl BitVector {
     /// ```
     pub fn iter(&self) -> Iter {
         Iter::new(&self.bits, 0, self.bit_len)
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut {
+        let len = self.len();
+        IterMut::new(&mut self.bits, 0, len)
     }
 
     iter_unsigned!(
@@ -1482,9 +1487,12 @@ impl BitVector {
         get_unchecked!(index, self.bits);
     }
 
-    pub fn get_mut(&mut self, index: usize) -> Option<BitPtr> {
+    pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
         if let Some(bit) = self.get(index) {
-            return Some(BitPtr::new(bit, &mut self.bits, index));
+            //            let offset = self.offset();
+            //let index = index + offset;
+            let byte_ptr = self.bits[index..index].as_mut_ptr();
+            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
         }
         return None;
     }
@@ -2706,5 +2714,24 @@ mod tests {
         assert_eq!(bv.read_u64(0), (u64::MAX, 64));
         assert_eq!(bv.read_u32(64), (u32::MAX, 32));
         assert_eq!(bv.read_u8(96), (0b1111, 4));
+    }
+
+    #[test]
+    fn test_iter_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, Some(8));
+        bv.push_u8(0b0011_1001, Some(8));
+        let iter = bv.iter_mut();
+        for mut bit in iter {
+            *bit = true;
+        }
+
+        assert_eq!(bv.read_u8(0), (0b1111_1111, 8));
+        assert_eq!(bv.read_u8(8), (0b1111_1111, 8));
+        for mut bit in bv.iter_mut() {
+            *bit = false;
+        }
+        assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
+        assert_eq!(bv.read_u8(8), (0b0000_0000, 8));
     }
 }

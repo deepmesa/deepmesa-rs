@@ -17,7 +17,6 @@ build:
 test:
     cargo test --package deepmesa-collections
 
-
 doc:
     cargo doc --no-deps --all
 

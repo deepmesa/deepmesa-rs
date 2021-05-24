@@ -19,7 +19,7 @@
    limitations under the License.
 */
 
-use crate::bitvec::{bitops, bitslice::BitSlice, bitvec::BitVector, BitCount};
+use crate::bitvec::{bitops, bitslice::BitRef, bitslice::BitSlice, bitvec::BitVector, BitCount};
 
 macro_rules! iter_unsigned {
     (
@@ -213,9 +213,27 @@ pub struct Iter<'a> {
     slice_offset: usize,
 }
 
+pub struct IterMut<'a> {
+    bits: &'a mut [u8],
+    cursor: usize,
+    bit_len: usize,
+    slice_offset: usize,
+}
+
 impl<'a> Iter<'a> {
     pub(super) fn new(bits: &'a [u8], slice_offset: usize, bit_len: usize) -> Iter<'a> {
         Iter {
+            bits,
+            cursor: 0,
+            bit_len,
+            slice_offset,
+        }
+    }
+}
+
+impl<'a> IterMut<'a> {
+    pub(super) fn new(bits: &'a mut [u8], slice_offset: usize, bit_len: usize) -> IterMut<'a> {
+        IterMut {
             bits,
             cursor: 0,
             bit_len,
@@ -234,6 +252,27 @@ impl<'a> Iterator for Iter<'a> {
         let index = self.cursor + self.slice_offset;
         self.cursor += 1;
         get_unchecked!(index, self.bits);
+    }
+}
+
+impl<'a> Iterator for IterMut<'a> {
+    type Item = BitRef<'a, bool>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cursor >= self.bit_len {
+            return None;
+        }
+
+        let slice_index = self.cursor / 8;
+        let byte_ptr = self.bits[slice_index..slice_index].as_mut_ptr();
+        let index = self.cursor + self.slice_offset;
+
+        unsafe {
+            let byte = *byte_ptr;
+            let bit = bitops::is_msb_nset(byte, (index % 8) as u8);
+
+            self.cursor += 1;
+            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
+        }
     }
 }
 

@@ -21,7 +21,7 @@
 
 use crate::bitvec::{
     bitops,
-    iter::{Iter, IterU128, IterU16, IterU32, IterU64, IterU8},
+    iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
     traits::{
         AsLsb0, AsMsb0, BitwiseClear, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign,
         BitwisePartialAssign, NotLsbAssign, NotMsbAssign, NotPartialAssign,
@@ -31,6 +31,7 @@ use crate::bitvec::{
 use core::convert::TryFrom;
 use core::fmt;
 use core::fmt::Debug;
+use core::marker;
 use core::ops::BitAndAssign;
 use core::ops::BitOrAssign;
 use core::ops::BitXorAssign;
@@ -160,46 +161,53 @@ try_from_bitslice!(u32, 32);
 try_from_bitslice!(u64, 64);
 try_from_bitslice!(u128, 128);
 
-pub struct BitPtr<'a> {
+#[derive(Debug)]
+pub struct BitRef<'a, T> {
     bit: bool,
-    bits: &'a mut [u8],
     mut_bit: bool,
+    byte_ptr: *mut u8,
+    _marker: marker::PhantomData<&'a T>,
     index: usize,
 }
 
-impl<'a> BitPtr<'a> {
-    pub(super) fn new(bit: bool, bits: &'a mut [u8], index: usize) -> BitPtr {
-        BitPtr {
+impl<'a, T> BitRef<'a, T> {
+    pub(super) fn new(bit: bool, byte_ptr: *mut u8, index: usize) -> BitRef<'a, T> {
+        BitRef {
             bit,
-            bits,
             mut_bit: bit,
-            index,
+            byte_ptr: byte_ptr,
+            _marker: marker::PhantomData,
+            index: index,
         }
     }
 }
 
-impl<'a> Deref for BitPtr<'a> {
+impl<'a, T> Drop for BitRef<'a, T> {
+    fn drop(&mut self) {
+        if self.bit != self.mut_bit {
+            if self.mut_bit {
+                unsafe {
+                    bitops::set_msb_n(&mut *self.byte_ptr, (self.index % 8) as u8);
+                }
+            } else {
+                unsafe {
+                    (*self.byte_ptr).clear_msb_nth_assign((self.index % 8) as u8);
+                }
+            }
+        }
+    }
+}
+
+impl<'a, T> Deref for BitRef<'a, T> {
     type Target = bool;
     fn deref(&self) -> &Self::Target {
         &self.mut_bit
     }
 }
 
-impl<'a> DerefMut for BitPtr<'a> {
+impl<'a, T> DerefMut for BitRef<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.mut_bit
-    }
-}
-
-impl<'a> Drop for BitPtr<'a> {
-    fn drop(&mut self) {
-        if self.bit != self.mut_bit {
-            if self.mut_bit {
-                bitops::set_msb_n(&mut self.bits[self.index / 8], (self.index % 8) as u8);
-            } else {
-                self.bits[self.index / 8].clear_msb_nth_assign((self.index % 8) as u8);
-            }
-        }
     }
 }
 
@@ -366,12 +374,6 @@ impl Not for &mut BitSlice {
         if len == 0 {
             return self;
         }
-        // underlying slice is [u8] = self.0
-        // goes from self.0[0] -> self.0[(self.len() - 1) / 8]
-        // first bit in the slice starts at offset within self.0[0]
-        // last bit in the slice is bit # self.len)( % 8 within self.0[self.len() / 8]
-        // iterating over the bytes of the slice means iterating from 0..self.len() / 8
-        // 16 bits = 0..16 -> 0..2 -> [0], [1]
 
         let offset = self.offset();
         if len < 8 {
@@ -419,10 +421,12 @@ impl BitSlice {
         get_unchecked!(index, self.0);
     }
 
-    pub fn get_mut(&mut self, index: usize) -> Option<BitPtr> {
+    pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
         if let Some(bit) = self.get(index) {
             let offset = self.offset();
-            return Some(BitPtr::new(bit, &mut self.0, index + offset));
+            let index = index + offset;
+            let byte_ptr = self.0[index..index].as_mut_ptr();
+            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
         }
         return None;
     }
@@ -474,6 +478,12 @@ impl BitSlice {
 
     pub fn iter(&self) -> Iter {
         Iter::new(&self.0, self.offset(), self.len())
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut {
+        let offset = self.offset();
+        let len = self.len();
+        IterMut::new(&mut self.0, offset, len)
     }
 
     iter_unsigned!(iter_u8, IterU8);
@@ -763,16 +773,6 @@ mod tests {
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 4, 2), (0b0000_0011, 2));
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 0, 1), (0b0000_0001, 1));
         assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 7, 8), (0b0000_0001, 1));
-    }
-
-    #[test]
-    fn test_get_mut() {
-        let mut bv = BitVector::with_capacity(20);
-        bv.push_u8(0b1011_1100, None);
-        assert_eq!(bv[0], true);
-        let s = &mut bv[0..7];
-        *s.get_mut(0).unwrap() = false;
-        assert_eq!(bv[0], false);
     }
 
     #[test]
@@ -1684,5 +1684,34 @@ mod tests {
         assert_eq!(bv[1..3].any(), false);
         assert_eq!(bv[6..].any(), true);
         assert_eq!(bv[12..].any(), false);
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        let s = &mut bv[0..7];
+        *s.get_mut(0).unwrap() = false;
+        assert_eq!(bv[0], false);
+    }
+
+    #[test]
+    fn test_iter_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        let s = &mut bv[0..7];
+        let iter = s.iter_mut();
+        for mut bit in iter {
+            *bit = true;
+        }
+        assert_eq!(bv.read_u8(0), (0b1111_1110, 8));
+
+        let s = &mut bv[0..7];
+        for mut bit in s.iter_mut() {
+            *bit = false;
+        }
+        assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
     }
 }
