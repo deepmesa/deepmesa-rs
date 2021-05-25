@@ -47,6 +47,37 @@ use core::ops::RangeInclusive;
 use core::ops::RangeTo;
 use core::ops::RangeToInclusive;
 
+///
+/// The `BitSlice` is an unsized type and is a view into a range
+/// within a [`BitVector`](BitVector). A [`BitVector`](BitVector) can
+/// produce mutable or immutable slices which in turn can be
+/// subsliced.
+///
+/// The `BitSlice` is a wrapper around `[u8]` and borrows memory via
+/// reference types `&BitSlice` and `&mut BitSlice`. The memory in a
+/// `BitSlice` is owned and managed by the underlying
+/// [`BitVector`](BitVector).
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+///
+/// let mut bv = BitVector::with_capacity(20);
+/// bv.push_u8(0b1011_0011, None);
+/// bv.push_u8(0b1011_0011, None);
+///
+/// let slice = &bv[0..16];
+///
+/// assert_eq!(slice.len(), 16);
+/// assert_eq!(slice[0], true);
+/// assert_eq!(slice[1], false);
+///
+/// let slice_mut = &mut bv[9..11];
+/// assert_eq!(slice_mut[0], false);
+/// slice_mut.set(0, true);
+/// assert_eq!(slice_mut[0], true);
+///
+/// ```
 #[repr(transparent)]
 pub struct BitSlice([u8]);
 
@@ -397,13 +428,34 @@ impl Not for &mut BitSlice {
 }
 
 impl BitSlice {
-    /// zeros out the three most significant bits of the length to
-    /// return the actual length.
+    /// Returns the number of bits in the [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(22);
+    /// bv.push_u8(0b1001_1011, None);
+    /// let s = &bv[2..4];
+    /// assert_eq!(s.len(), 2);
+    /// ```
     #[inline(always)]
     pub fn len(&self) -> usize {
         slice_unpack_len!(self.0.len())
     }
 
+    /// Fills the slice with the specified bit.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1000_0001, None);
+    /// let s = &mut bv[1..7];
+    /// s.fill(true);
+    /// assert_eq!(bv.read_u8(0), (0b1111_1111, 8));
+    /// ```
     pub fn fill(&mut self, bit: bool) {
         if bit {
             *self |= true;
@@ -412,6 +464,21 @@ impl BitSlice {
         }
     }
 
+    /// Returns a boolean value indicating whether the bit at the
+    /// specified index is set or `None` if the index is greater than
+    /// or equal to the number of bits in the slice.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1010_0011, None);
+    /// let s = &bv[1..7];
+    /// assert_eq!(s.get(0), Some(false));
+    /// assert_eq!(s.get(1), Some(true));
+    /// assert_eq!(s.get(7), None);
+    /// ```
     pub fn get(&self, index: usize) -> Option<bool> {
         if index >= self.len() {
             return None;
@@ -421,6 +488,22 @@ impl BitSlice {
         get_unchecked!(index, self.0);
     }
 
+    /// Returns a mutable reference to the bit at the specified index
+    /// or `None` if the index is greater than or equal to the number
+    /// of bits in the slice.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_1100, None);
+    /// assert_eq!(bv[0], true);
+    ///
+    /// let s = &mut bv[0..7];
+    /// *s.get_mut(0).unwrap() = false;
+    /// assert_eq!(bv[0], false);
+    /// ```
     pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
         if let Some(bit) = self.get(index) {
             let offset = self.offset();
@@ -431,6 +514,21 @@ impl BitSlice {
         return None;
     }
 
+    /// Returns true if any bit in the slice is set to `1` and false
+    /// otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_0000, None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.any(), true);
+    /// let s = &bv[4..8];
+    /// assert_eq!(s.any(), false);
+    /// ```
     pub fn any(&self) -> bool {
         if self.len() == 0 {
             return false;
@@ -444,6 +542,21 @@ impl BitSlice {
         return false;
     }
 
+    /// Returns true if all the bits in the slice are set to `1` and
+    /// false otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_1111, None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.all(), false);
+    /// let s = &bv[4..8];
+    /// assert_eq!(s.all(), true);
+    /// ```
     pub fn all(&self) -> bool {
         if self.len() == 0 {
             return true;
@@ -463,6 +576,21 @@ impl BitSlice {
         return true;
     }
 
+    /// Sets the bit at the specified index with the given bit
+    /// `value`.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_1111, None);
+    /// assert_eq!(bv.get(1), Some(false));
+    ///
+    /// let s = &mut bv[0..4];
+    /// s.set(1, true);
+    /// assert_eq!(bv.get(1), Some(true));
+    /// ```
     pub fn set(&mut self, index: usize, value: bool) {
         if index >= self.len() {
             panic!(
@@ -476,39 +604,795 @@ impl BitSlice {
         set_unchecked!(index, value, &mut self.0);
     }
 
+    /// Returns an iterator over the bits of this
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::new();
+    /// bv.push_u8(0b1011_0011, None);
+    ///
+    /// let s = &bv[0..3];
+    /// let mut iter = s.iter();
+    /// assert_eq!(iter.next(), Some(true));
+    /// assert_eq!(iter.next(), Some(false));
+    /// assert_eq!(iter.next(), Some(true));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     pub fn iter(&self) -> Iter {
         Iter::new(&self.0, self.offset(), self.len())
     }
 
+    /// Returns a mutable iterator that allows modifying the bits of
+    /// this [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_1100, None);
+    /// assert_eq!(bv[0], true);
+    ///
+    /// let s = &mut bv[0..7];
+    /// let iter = s.iter_mut();
+    /// for mut bit in iter {
+    ///    *bit = true;
+    /// }
+    /// assert_eq!(bv.read_u8(0), (0b1111_1110, 8));
+    /// ```
     pub fn iter_mut(&mut self) -> IterMut {
         let offset = self.offset();
         let len = self.len();
         IterMut::new(&mut self.0, offset, len)
     }
 
-    iter_unsigned!(iter_u8, IterU8);
-    iter_unsigned!(iter_u16, IterU16);
-    iter_unsigned!(iter_u32, IterU32);
-    iter_unsigned!(iter_u64, IterU64);
-    iter_unsigned!(iter_u128, IterU128);
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the
+        /// [`BitSlice`](BitSlice) 8 bits at a time. Each invocation
+        /// of `iter.next` returns a u8 value and the number of bits
+        /// read. The bits are read from the lower to the higher index
+        /// from the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let mut iter = s.iter_u8();
+        /// assert_eq!(iter.next(), Some((0b0101_1101, 8)));
+        /// assert_eq!(iter.next(), Some((0b0011_1010, 8)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u8,
+        IterU8
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the
+        /// [`BitSlice`](BitSlice) 16 bits at a time. Each invocation
+        /// of `iter.next` returns a u16 value and the number of bits
+        /// read. The bits are read from the lower to the higher index
+        /// from the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let mut iter = s.iter_u16();
+        /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010, 16)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u16,
+        IterU16
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the
+        /// [`BitSlice`](BitSlice) 32 bits at a time. Each invocation
+        /// of `iter.next` returns a u32 value and the number of bits
+        /// read. The bits are read from the lower to the higher index
+        /// from the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
+        /// bv.push_u16(0b1111_0011_1100_0000, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let mut iter = s.iter_u32();
+        /// assert_eq!(iter.next(), Some((0b0101_1101_0011_1010_1111_0011_1100_0000, 32)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u32,
+        IterU32
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the
+        /// [`BitSlice`](BitSlice) 64 bits at a time. Each invocation
+        /// of `iter.next` returns a u64 value and the number of bits
+        /// read. The bits are read from the lower to the higher index
+        /// from the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let s = &bv[..];
+        /// let mut iter = s.iter_u64();
+        /// assert_eq!(iter.next(), Some((u64::MAX, 64)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u64,
+        IterU64
+    );
+    iter_unsigned!(
+        /// Returns an iterator that iterates over the
+        /// [`BitSlice`](BitSlice) 128 bits at a time. Each invocation
+        /// of `iter.next` returns a u128 value and the number of bits
+        /// read. The bits are read from the lower to the higher index
+        /// from the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// The iterator returns None if there are no more bits to
+        /// return
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let s = &bv[..];
+        /// let mut iter = s.iter_u128();
+        /// assert_eq!(iter.next(), Some((u128::MAX, 128)));
+        /// assert_eq!(iter.next(), None);
+        /// ```
+        iter_u128,
+        IterU128
+    );
 
-    as_unsigned!(u8, 8, as_u8);
-    as_unsigned!(u16, 16, as_u16);
-    as_unsigned!(u32, 32, as_u32);
-    as_unsigned!(u64, 64, as_u64);
-    as_unsigned!(u128, 128, as_u128);
+    as_unsigned!(
+        /// Returns the contents of this slice as a [`u8`]. This
+        /// method will panic if the length of the slice is greater
+        /// than or equal to 8. The bits are read from the lower to
+        /// the higher index from the slice and shifted right, so the
+        /// bit at the lower index is the MSB of returned value while
+        /// the bit at the highest index is the LSB.
+        ///
+        /// Returns a [`u8`] value and the number of bits read as a
+        /// tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// assert_eq!(s.as_u8(), (0b0011_0110, 8));
+        /// ```
+        /// If a Result is preferred over a panic, then
+        /// using the `TryFrom<&BitSlice>` trait may be used.
+        ///
+        /// # Example of `TryFrom<&BitSlice> for u8`
+        ///
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use core::convert::TryFrom;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[0..8];
+        /// match u8::try_from(s) {
+        ///     Ok(val) => assert_eq!(val, 0b0011_0110),
+        ///     Err(e) => assert!(false, "{}", e),
+        /// }
+        /// ```
+        u8,
+        8,
+        as_u8
+    );
+    as_unsigned!(
+        /// Returns the contents of this slice as a [`u16`]. This
+        /// method will panic if the length of the slice is greater
+        /// than or equal to 16. The bits are read from the lower to
+        /// the higher index from the slice and shifted right, so the
+        /// bit at the lower index is the MSB of returned value while
+        /// the bit at the highest index is the LSB.
+        ///
+        /// Returns a [`u16`] value and the number of bits read as a
+        /// tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// assert_eq!(s.as_u16(), (0b0011_0110_0011_0110, 16));
+        /// ```
+        ///
+        /// If a Result is preferred over a panic, then
+        /// using the `TryFrom<&BitSlice>` trait may be used.
+        ///
+        /// # Example of `TryFrom<&BitSlice> for u16`
+        ///
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use core::convert::TryFrom;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// match u16::try_from(s) {
+        ///     Ok(val) => assert_eq!(val, 0b0011_0110_0011_0110),
+        ///     Err(e) => assert!(false, "{}", e),
+        /// }
+        /// ```
+        u16,
+        16,
+        as_u16
+    );
+    as_unsigned!(
+        /// Returns the contents of this slice as a [`u32`]. This
+        /// method will panic if the length of the slice is greater
+        /// than or equal to 32. The bits are read from the lower
+        /// to the higher index from the slice and shifted right, so
+        /// the bit at the lower index is the MSB of returned value
+        /// while the bit at the highest index is the LSB.
+        ///
+        /// Returns a [`u32`] value and the number of bits read as a
+        /// tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u32(u32::MAX, Some(32));
+        ///
+        /// let s = &bv[..];
+        /// assert_eq!(s.as_u32(), (u32::MAX, 32));
+        /// ```
+        ///
+        /// If a Result is preferred over a panic, then
+        /// using the `TryFrom<&BitSlice>` trait may be used.
+        ///
+        /// # Example of `TryFrom<&BitSlice> for u32`
+        ///
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use core::convert::TryFrom;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u32(u32::MAX, Some(32));
+        ///
+        /// let s = &bv[..];
+        /// match u32::try_from(s) {
+        ///     Ok(val) => assert_eq!(val, u32::MAX),
+        ///     Err(e) => assert!(false, "{}", e),
+        /// }
+        /// ```
+        u32,
+        32,
+        as_u32
+    );
+    as_unsigned!(
+        /// Returns the contents of this slice as a [`u64`]. This
+        /// method will panic if the length of the slice is greater
+        /// than or equal to 64. The bits are read from the lower
+        /// to the higher index from the slice and shifted right, so
+        /// the bit at the lower index is the MSB of returned value
+        /// while the bit at the highest index is the LSB.
+        ///
+        /// Returns a [`u64`] value and the number of bits read as a
+        /// tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let s = &bv[..];
+        /// assert_eq!(s.as_u64(), (u64::MAX, 64));
+        /// ```
+        ///
+        /// If a Result is preferred over a panic, then
+        /// using the `TryFrom<&BitSlice>` trait may be used.
+        ///
+        /// # Example of `TryFrom<&BitSlice> for u64`
+        ///
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use core::convert::TryFrom;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u64(u64::MAX, Some(64));
+        ///
+        /// let s = &bv[..];
+        /// match u64::try_from(s) {
+        ///     Ok(val) => assert_eq!(val, u64::MAX),
+        ///     Err(e) => assert!(false, "{}", e),
+        /// }
+        /// ```
+        u64,
+        64,
+        as_u64
+    );
+    as_unsigned!(
+        /// Returns the contents of this slice as a [`u128`]. This
+        /// method will panic if the length of the slice is greater
+        /// than or equal to 128. The bits are read from the lower
+        /// to the higher index from the slice and shifted right, so
+        /// the bit at the lower index is the MSB of returned value
+        /// while the bit at the highest index is the LSB.
+        ///
+        /// Returns a [`u128`] value and the number of bits read as a
+        /// tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u128(u64::MAX, Some(128));
+        ///
+        /// let s = &bv[..];
+        /// assert_eq!(s.as_u64(), (u128::MAX, 128));
+        /// ```
+        ///
+        /// If a Result is preferred over a panic, then
+        /// using the `TryFrom<&BitSlice>` trait may be used.
+        ///
+        /// # Example of `TryFrom<&BitSlice> for u128`
+        ///
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// use core::convert::TryFrom;
+        ///
+        /// let mut bv = BitVector::new();
+        /// bv.push_u128(u64::MAX, Some(128));
+        ///
+        /// let s = &bv[..];
+        /// match u128::try_from(s) {
+        ///     Ok(val) => assert_eq!(val, u128::MAX),
+        ///     Err(e) => assert!(false, "{}", e),
+        /// }
+        /// ```
+        u128,
+        128,
+        as_u128
+    );
 
-    read_unsigned!(u8, 8, read_u8);
-    read_unsigned!(u16, 16, read_u16);
-    read_unsigned!(u32, 32, read_u32);
-    read_unsigned!(u64, 64, read_u64);
-    read_unsigned!(u128, 128, read_u128);
+    read_unsigned!(
+        /// Reads upto 8 bits from this [`BitSlice`](BitSlice) into
+        /// a u8 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_u8(0);
+        /// assert_eq!(read, 8);
+        /// assert_eq!(val, 0b0011_0110);
+        ///
+        /// let (val, read) = s.read_u8(4);
+        /// assert_eq!(read, 4);
+        /// assert_eq!(val, 0b0000_0110);
+        /// ```
+        u8,
+        8,
+        read_u8
+    );
+    read_unsigned!(
+        /// Reads upto 16 bits from this [`BitSlice`](BitSlice) into a
+        /// u16 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_u16(0);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b0011_0110_1100_0011);
+        ///
+        /// let (val, read) = s.read_u16(4);
+        /// assert_eq!(read, 12);
+        /// assert_eq!(val, 0b0000_0110_1100_0011);
+        /// ```
+        u16,
+        16,
+        read_u16
+    );
+    read_unsigned!(
+        /// Reads upto 32 bits from this [`BitSlice`](BitSlice) into
+        /// a u32 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_u32(0);
+        /// assert_eq!(read, 32);
+        /// assert_eq!(val, 0b0011_0110_1100_0011_1100_1010_0100_1100);
+        ///
+        /// let (val, read) = s.read_u16(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u32,
+        32,
+        read_u32
+    );
+    read_unsigned!(
+        /// Reads upto 64 bits from this [`BitSlice`](BitSlice) into
+        /// a u64 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_u64(20);
+        /// assert_eq!(read, 12);
+        //
+        /// assert_eq!(val, 0b1010_0100_1100);
+        ///
+        /// let (val, read) = s.read_u64(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u64,
+        64,
+        read_u64
+    );
+    read_unsigned!(
+        /// Reads upto 128 bits from this [`BitSlice`](BitSlice)
+        /// into a u128 starting at the specified `start`
+        /// position. This method will panic if `start` is greater
+        /// than or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
+        /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = bv.read_u128(20);
+        /// assert_eq!(read, 12);
+        //
+        /// assert_eq!(val, 0b1010_0100_1100);
+        ///
+        /// let (val, read) = s.read_u128(16);
+        /// assert_eq!(read, 16);
+        /// assert_eq!(val, 0b1100_1010_0100_1100);
+        /// ```
+        u128,
+        128,
+        read_u128
+    );
 
-    read_bits_unsigned!(u8, 8, read_bits_u8);
-    read_bits_unsigned!(u16, 16, read_bits_u16);
-    read_bits_unsigned!(u32, 32, read_bits_u32);
-    read_bits_unsigned!(u64, 64, read_bits_u64);
-    read_bits_unsigned!(u128, 128, read_bits_u128);
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this
+        /// [`BitSlice`](BitSlice) into a u8 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 8 or if `start` is greater than
+        /// or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower index
+        /// is the MSB of returned value while the bit at the highest
+        /// index is the LSB.
+        ///
+        /// Here is an illustrative example for a slice with 8
+        /// bits.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u8 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_bits_u8(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u8,
+        8,
+        read_bits_u8
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this
+        /// [`BitSlice`](BitSlice) into a u16 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 16 or if `start` is greater
+        /// than or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a slice with 8
+        /// bits.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u16 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_bits_u16(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u16,
+        16,
+        read_bits_u16
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this
+        /// [`BitSlice`](BitSlice) into a u32 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 32 or if `start` is greater
+        /// than or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a slice with 8
+        /// bits.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u32 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_bits_u32(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u32,
+        32,
+        read_bits_u32
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this
+        /// [`BitSlice`](BitSlice) into a u64 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 64 or if `start` is greater
+        /// than or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a slice with 8
+        /// elements.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u64 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_bits_u64(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        u64,
+        64,
+        read_bits_u64
+    );
+    read_bits_unsigned!(
+        /// Reads upto `max_bits` bits from this
+        /// [`BitSlice`](BitSlice) into a u128 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 128 or if `start` is greater
+        /// than or equal to the length of the slice.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the slice and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
+        ///
+        /// Here is an illustrative example for a slice with 8
+        /// bits.
+        ///
+        /// ```text
+        ///   0 1 2 3 4 5 6 7
+        /// [ 0,0,1,1,0,1,1,0 ]
+        ///  MSB [_______] LSB
+        ///       ^ Start = 2
+        ///
+        /// value read = 0b1101
+        /// ```
+        /// Reading 4 bits from the start position of 2, results in a
+        /// u128 value of decimal 13.
+        ///
+        /// This method returns the read value as well as the number of
+        /// bits read as a tuple.
+        ///
+        /// # Examples
+        /// ```
+        /// use deepmesa::collections::BitVector;
+        /// let mut bv = BitVector::new();
+        /// // Push 8 bits: 0b0011_0110
+        /// bv.push_u8(0b0011_0110, Some(8));
+        ///
+        /// let s = &bv[..];
+        /// let (val, read) = s.read_bits_u128(2, 4);
+        /// assert_eq!(read,4);
+        /// assert_eq!(val, 0b0000_1101);
+        /// assert_eq!(val, 13);
+        /// ```
+        ///
+        u128,
+        128,
+        read_bits_u128
+    );
 }
 
 // Helpers and private methods

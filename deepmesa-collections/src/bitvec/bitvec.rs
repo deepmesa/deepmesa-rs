@@ -261,7 +261,7 @@ impl BitVector {
         self.capacity_bits
     }
 
-    /// Returns the number of bits in the bitvector
+    /// Returns the number of bits in the [`BitVector`](BitVector)
     ///
     /// # Examples
     /// ```
@@ -322,11 +322,13 @@ impl BitVector {
         clr_lsb_last_byte!(self)
     }
 
-    /// Returns an iterator over the bits of this BitVector
+    /// Returns an iterator over the bits of this
+    /// [`BitVector`](BitVector)
     ///
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;
+    ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b101, None);
     ///
@@ -340,15 +342,32 @@ impl BitVector {
         Iter::new(&self.bits, 0, self.bit_len)
     }
 
+    /// Returns a mutable iterator that allows modifyingthe bits of
+    /// this [`BitVector`](BitVector)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1011_1100, Some(8));
+    /// bv.push_u8(0b0011_1001, Some(8));
+    /// let iter = bv.iter_mut();
+    /// for mut bit in iter {
+    ///     *bit = true;
+    /// }
+    /// assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
+    /// ```
     pub fn iter_mut(&mut self) -> IterMut {
         let len = self.len();
         IterMut::new(&mut self.bits, 0, len)
     }
 
     iter_unsigned!(
-        /// Returns an iterator that iterates over the bitvector 8
-        /// bits at a time. Each invocation of `iter.next` returns a
-        /// u8 value and the number of bits read.
+        /// Returns an iterator that iterates over the
+        /// [`BitVector`](BitVector) 8 bits at a time. Each invocation
+        /// of `iter.next` returns a u8 value and the number of bits
+        /// read.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -455,10 +474,10 @@ impl BitVector {
     );
 
     read_unsigned!(
-        /// Reads upto 8 bits from this BitVector into a u8 starting
-        /// at the specified `start` position. This method will panic
-        /// if `start` is greater than or equal to the length of the
-        /// BitVector.
+        /// Reads upto 8 bits from this [`BitVector`](BitVector) into
+        /// a u8 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -484,10 +503,10 @@ impl BitVector {
         read_u8
     );
     read_unsigned!(
-        /// Reads upto 16 bits from this BitVector into a u16 starting
-        /// at the specified `start` position. This method will panic
-        /// if `start` is greater than or equal to the length of the
-        /// BitVector.
+        /// Reads upto 16 bits from this [`BitVector`](BitVector) into
+        /// a u16 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -513,10 +532,10 @@ impl BitVector {
         read_u16
     );
     read_unsigned!(
-        /// Reads upto 32 bits from this BitVector into a u32 starting
-        /// at the specified `start` position. This method will panic
-        /// if `start` is greater than or equal to the length of the
-        /// BitVector.
+        /// Reads upto 32 bits from this [`BitVector`](BitVector) into
+        /// a u32 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -544,10 +563,10 @@ impl BitVector {
         read_u32
     );
     read_unsigned!(
-        /// Reads upto 64 bits from this BitVector into a u64 starting
-        /// at the specified `start` position. This method will panic
-        /// if `start` is greater than or equal to the length of the
-        /// BitVector.
+        /// Reads upto 64 bits from this [`BitVector`](BitVector) into
+        /// a u64 starting at the specified `start` position. This
+        /// method will panic if `start` is greater than or equal to
+        /// the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -575,10 +594,10 @@ impl BitVector {
         read_u64
     );
     read_unsigned!(
-        /// Reads upto 128 bits from this BitVector into a u128 starting
-        /// at the specified `start` position. This method will panic
-        /// if `start` is greater than or equal to the length of the
-        /// BitVector.
+        /// Reads upto 128 bits from this [`BitVector`](BitVector)
+        /// into a u128 starting at the specified `start`
+        /// position. This method will panic if `start` is greater
+        /// than or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -607,10 +626,11 @@ impl BitVector {
     );
 
     read_bits_unsigned!(
-        /// Reads upto `max_bits` bits from this BitVector into a u8
-        /// starting at the specified `start` position. This method
-        /// will panic if `max_bits` is greater than 8 or if `start`
-        /// is greater than or equal to the length of the BitVector.
+        /// Reads upto `max_bits` bits from this
+        /// [`BitVector`](BitVector) into a u8 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 8 or if `start` is greater than
+        /// or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -618,7 +638,7 @@ impl BitVector {
         /// highest index is the LSB.
         ///
         /// Here is an illustrative example for a bitvector with 8
-        /// elements.
+        /// bits.
         ///
         /// ```text
         ///   0 1 2 3 4 5 6 7
@@ -651,10 +671,11 @@ impl BitVector {
         read_bits_u8
     );
     read_bits_unsigned!(
-        /// Reads upto `max_bits` bits from this BitVector into a u16
-        /// starting at the specified `start` position. This method
-        /// will panic if `max_bits` is greater than 16 or if `start`
-        /// is greater than or equal to the length of the BitVector.
+        /// Reads upto `max_bits` bits from this
+        /// [`BitVector`](BitVector) into a u16 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 16 or if `start` is greater
+        /// than or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -662,7 +683,7 @@ impl BitVector {
         /// highest index is the LSB.
         ///
         /// Here is an illustrative example for a bitvector with 8
-        /// elements.
+        /// bits.
         ///
         /// ```text
         ///   0 1 2 3 4 5 6 7
@@ -696,10 +717,11 @@ impl BitVector {
     );
 
     read_bits_unsigned!(
-        /// Reads upto `max_bits` bits from this BitVector into a u32
-        /// starting at the specified `start` position. This method
-        /// will panic if `max_bits` is greater than 32 or if `start`
-        /// is greater than or equal to the length of the BitVector.
+        /// Reads upto `max_bits` bits from this
+        /// [`BitVector`](BitVector) into a u32 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 32 or if `start` is greater
+        /// than or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -707,7 +729,7 @@ impl BitVector {
         /// highest index is the LSB.
         ///
         /// Here is an illustrative example for a bitvector with 8
-        /// elements.
+        /// bits.
         ///
         /// ```text
         ///   0 1 2 3 4 5 6 7
@@ -718,7 +740,7 @@ impl BitVector {
         /// value read = 0b1101
         /// ```
         /// Reading 4 bits from the start position of 2, results in a
-        /// u8 value of decimal 13.
+        /// u32 value of decimal 13.
         ///
         /// This method returns the read value as well as the number of
         /// bits read as a tuple.
@@ -740,10 +762,11 @@ impl BitVector {
         read_bits_u32
     );
     read_bits_unsigned!(
-        /// Reads upto `max_bits` bits from this BitVector into a u64
-        /// starting at the specified `start` position. This method
-        /// will panic if `max_bits` is greater than 64 or if `start`
-        /// is greater than or equal to the length of the BitVector.
+        /// Reads upto `max_bits` bits from this
+        /// [`BitVector`](BitVector) into a u64 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 64 or if `start` is greater
+        /// than or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -751,7 +774,7 @@ impl BitVector {
         /// highest index is the LSB.
         ///
         /// Here is an illustrative example for a bitvector with 8
-        /// elements.
+        /// bits.
         ///
         /// ```text
         ///   0 1 2 3 4 5 6 7
@@ -762,7 +785,7 @@ impl BitVector {
         /// value read = 0b1101
         /// ```
         /// Reading 4 bits from the start position of 2, results in a
-        /// u8 value of decimal 13.
+        /// u64 value of decimal 13.
         ///
         /// This method returns the read value as well as the number of
         /// bits read as a tuple.
@@ -784,10 +807,11 @@ impl BitVector {
         read_bits_u64
     );
     read_bits_unsigned!(
-        /// Reads upto `max_bits` bits from this BitVector into a u128
-        /// starting at the specified `start` position. This method
-        /// will panic if `max_bits` is greater than 128 or if `start`
-        /// is greater than or equal to the length of the BitVector.
+        /// Reads upto `max_bits` bits from this
+        /// [`BitVector`](BitVector) into a u128 starting at the
+        /// specified `start` position. This method will panic if
+        /// `max_bits` is greater than 128 or if `start` is greater
+        /// than or equal to the length of the BitVector.
         ///
         /// The bits are read from the lower to the higher index from
         /// the BitVector and shifted right, so the bit at the lower
@@ -795,7 +819,7 @@ impl BitVector {
         /// highest index is the LSB.
         ///
         /// Here is an illustrative example for a bitvector with 8
-        /// elements.
+        /// bits.
         ///
         /// ```text
         ///   0 1 2 3 4 5 6 7
@@ -806,7 +830,7 @@ impl BitVector {
         /// value read = 0b1101
         /// ```
         /// Reading 4 bits from the start position of 2, results in a
-        /// u8 value of decimal 13.
+        /// u128 value of decimal 13.
         ///
         /// This method returns the read value as well as the number of
         /// bits read as a tuple.
@@ -1464,8 +1488,9 @@ impl BitVector {
     }
 
     /// Returns a boolean value indicating whether the bit at the
-    /// specified index is set or None if the index exceeds the number
-    /// of bits in the BitVector.
+    /// specified index is set or `None` if the index is greater than
+    /// or equal to the number of bits in the BitVector.
+    ///
     /// # Examples
     /// ```
     /// use deepmesa::collections::BitVector;

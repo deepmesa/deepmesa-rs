@@ -206,7 +206,13 @@ macro_rules! try_from_bitslice {
             fn try_from(bitslice: &BitSlice) -> Result<Self, Self::Error> {
                 let len = bitslice.len();
                 if len > $b {
-                    return Err(format!("len {} bits is too big to fit into a $i", len));
+                    return Err(format!(
+                        concat!(
+                            "slice of len {} bits is too big to fit into a ",
+                            stringify!($i)
+                        ),
+                        len
+                    ));
                 }
                 let offset = bitslice.offset();
                 Ok(BitSlice::read_bits_lsb0(&bitslice.0, offset, len + offset, $b).0 as $i)

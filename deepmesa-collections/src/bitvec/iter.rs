@@ -213,6 +213,25 @@ pub struct Iter<'a> {
     slice_offset: usize,
 }
 
+///
+/// This struct is created by the
+/// [`.iter_mut()`](BitVector#method.iter_mut) method of
+/// [`BitVector`](../struct.BitVector.html) and [`BitSlice`](BitSlice)
+///
+/// # Examples
+/// ```
+/// use deepmesa::collections::BitVector;
+/// use deepmesa::collections::bitvec::IterMut;
+///
+/// let mut bv = BitVector::with_capacity(20);
+/// bv.push_u8(0b1011_1100, Some(8));
+/// bv.push_u8(0b0011_1001, Some(8));
+/// let iter: IterMut = bv.iter_mut();
+/// for mut bit in iter {
+///     *bit = true;
+/// }
+/// assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
+/// ```
 pub struct IterMut<'a> {
     bits: &'a mut [u8],
     cursor: usize,
