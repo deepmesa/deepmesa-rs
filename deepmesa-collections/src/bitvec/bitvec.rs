@@ -47,8 +47,8 @@ use core::ops::RangeToInclusive;
 
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
-/// bits. This collection is backed by a Vector<u8> which manages the
-/// underlying memory.
+/// bits. This collection is backed by a [`Vector<u8>`](Vec) which
+/// manages the underlying memory.
 ///
 /// # Getting Started
 /// To get started add the deepmesa dependency to Cargo.toml and the
