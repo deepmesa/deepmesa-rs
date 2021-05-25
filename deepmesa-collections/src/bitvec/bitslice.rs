@@ -47,6 +47,7 @@ use core::ops::RangeInclusive;
 use core::ops::RangeTo;
 use core::ops::RangeToInclusive;
 
+/// A slice of bits backed by a [`BitVector`](../struct.BitVector.html).
 ///
 /// The `BitSlice` is an unsized type and is a view into a range
 /// within a [`BitVector`](BitVector). A [`BitVector`](BitVector) can
@@ -977,10 +978,10 @@ impl BitSlice {
         /// use deepmesa::collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
-        /// bv.push_u128(u64::MAX, Some(128));
+        /// bv.push_u128(u128::MAX, Some(128));
         ///
         /// let s = &bv[..];
-        /// assert_eq!(s.as_u64(), (u128::MAX, 128));
+        /// assert_eq!(s.as_u128(), (u128::MAX, 128));
         /// ```
         ///
         /// If a Result is preferred over a panic, then
@@ -993,7 +994,7 @@ impl BitSlice {
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
-        /// bv.push_u128(u64::MAX, Some(128));
+        /// bv.push_u128(u128::MAX, Some(128));
         ///
         /// let s = &bv[..];
         /// match u128::try_from(s) {

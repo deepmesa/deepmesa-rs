@@ -67,6 +67,7 @@ const LSB_NTH_ZERO: [u8; 8] = [
     0b0111_1111,
 ];
 
+/// Returns a value with some bits of self cleared.
 pub trait BitwiseClear {
     type Output;
     /// Returns a value with the `n` LSB bits of `self` cleared.
@@ -107,6 +108,7 @@ pub trait BitwiseClear {
     fn clear_msb_nth(self, n: u8) -> Self::Output;
 }
 
+/// Clears some bits of self.
 pub trait BitwiseClearAssign {
     /// Clears `n` LSB bits of `self`
     /// # Examples
@@ -151,33 +153,45 @@ pub trait BitwiseClearAssign {
     fn clear_msb_nth_assign(&mut self, n: u8);
 }
 
+/// Bitwise `!` (not) operation on the Lsb bits of self.
 pub trait NotLsb {
     type Output;
     fn not_lsb(self, n: u8) -> Self::Output;
 }
 
+/// Bitwise `!=` (not assign) operation on the Lsb bits of
+/// self.
 pub trait NotLsbAssign {
     fn not_lsb_assign(&mut self, n: u8);
 }
 
+/// Bitwise `!` (not) operation on the Msb bits of self.
 pub trait NotMsb {
     type Output;
     fn not_msb(self, n: u8) -> Self::Output;
 }
 
+/// Bitwise `!=` (not assign) operation on the Msb bits of
+/// self.
 pub trait NotMsbAssign {
     fn not_msb_assign(&mut self, n: u8);
 }
 
+/// Bitwise `!` (not) operation on a subset of the bits of
+/// self.
 pub trait NotPartial {
     type Output;
     fn not_partial(self, start: u8, len: u8) -> Self::Output;
 }
 
+/// Bitwise `!=` (not assign) operation on a subset of the
+/// bits of self.
 pub trait NotPartialAssign {
     fn not_partial_assign(&mut self, start: u8, len: u8);
 }
 
+/// Bitwise `&` (and), `|` (or) and `^` (xor) operations on
+/// the Lsb bits of self.
 pub trait BitwiseLsb<Rhs = bool> {
     type Output;
     fn and_lsb(self, n: u8, rhs: Rhs) -> Self::Output;
@@ -185,6 +199,8 @@ pub trait BitwiseLsb<Rhs = bool> {
     fn xor_lsb(self, n: u8, rhs: Rhs) -> Self::Output;
 }
 
+/// Bitwise `&` (and), `|` (or) and `^` (xor) operations on
+/// the Msb bits of self.
 pub trait BitwiseMsb<Rhs = bool> {
     type Output;
     fn and_msb(self, n: u8, rhs: Rhs) -> Self::Output;
@@ -192,6 +208,8 @@ pub trait BitwiseMsb<Rhs = bool> {
     fn xor_msb(self, n: u8, rhs: Rhs) -> Self::Output;
 }
 
+/// Bitwise `&` (and), `|` (or) and `^` (xor) operations on a
+/// subset of the bits of self.
 pub trait BitwisePartial<Rhs = bool> {
     type Output;
     fn and_partial(self, start: u8, len: u8, rhs: Rhs) -> Self::Output;
@@ -199,18 +217,24 @@ pub trait BitwisePartial<Rhs = bool> {
     fn xor_partial(self, start: u8, len: u8, rhs: Rhs) -> Self::Output;
 }
 
+/// Bitwise `&=` (and assign), `|=` (or assign) and `^=` (xor
+/// assign) operations on the Lsb bits of self.
 pub trait BitwiseLsbAssign<Rhs = bool> {
     fn and_lsb_assign(&mut self, n: u8, rhs: Rhs);
     fn or_lsb_assign(&mut self, n: u8, rhs: Rhs);
     fn xor_lsb_assign(&mut self, n: u8, rhs: Rhs);
 }
 
+/// Bitwise `&=` (and assign), `|=` (or assign) and `^=` (xor
+/// assign) operations on the Msb bits of self.
 pub trait BitwiseMsbAssign<Rhs = bool> {
     fn and_msb_assign(&mut self, n: u8, rhs: Rhs);
     fn or_msb_assign(&mut self, n: u8, rhs: Rhs);
     fn xor_msb_assign(&mut self, n: u8, rhs: Rhs);
 }
 
+/// Bitwise `&=` (and assign), `|=` (or assign) and `^=` (xor
+/// assign) operations on a subset of bits of self.
 pub trait BitwisePartialAssign<Rhs = bool> {
     fn and_partial_assign(&mut self, start: u8, len: u8, rhs: Rhs);
     fn or_partial_assign(&mut self, start: u8, len: u8, rhs: Rhs);
@@ -640,6 +664,7 @@ impl NotPartialAssign for u8 {
     }
 }
 
+/// Converts bits to an `Msb0` ordering.
 ///
 /// Given a specified number of bits, shift them left (towards the
 /// MSB) to produce an ordering such that those bits are counted from
@@ -669,6 +694,7 @@ pub trait AsMsb0 {
     fn as_msb0(&self, n: BitCount) -> Self;
 }
 
+/// Converts bits to an `Lsb0` ordering.
 ///
 /// Given a specified number of bits, shift them right (towards the
 /// LSB) to produce an ordering such that those bits are counted from

@@ -26,6 +26,33 @@ enum IterDirection {
     TailToHead,
 }
 
+/// A bidirectional iterator over the nodes of the
+/// [`LinkedList`](LinkedList).
+///
+/// This struct is created by the [`.iter()`](LinkedList#method.iter)
+/// of the [`LinkedList`](LinkedList).
+///
+/// # Examples
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// use deepmesa::lists::linkedlist::Iter;
+///
+/// let mut list = LinkedList::<u8>::new();
+/// list.push_front(1);
+/// list.push_front(2);
+/// list.push_front(3);
+/// list.push_front(4);
+/// list.push_front(5);
+///
+/// let mut iter:Iter<u8> = list.iter();
+/// assert_eq!(iter.next(), Some(&5));
+/// assert_eq!(iter.next(), Some(&4));
+/// assert_eq!(iter.next(), Some(&3));
+/// iter = iter.reverse();
+/// assert_eq!(iter.next(), Some(&4));
+/// assert_eq!(iter.next(), Some(&5));
+/// assert_eq!(iter.next(), None);
+/// ```
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     list: &'a LinkedList<T>,
@@ -33,6 +60,36 @@ pub struct Iter<'a, T> {
     dir: IterDirection,
 }
 
+/// A bidirectional iterator over the node of the [`LinkedList`] with
+/// mutable references that allows the value to be modified.
+///
+/// This struct is created by the
+/// [`.iter_mut()`](LinkedList#method.iter_mut) method of the
+/// [`LinkedList`](LinkedList).
+///
+/// # Examples
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// use deepmesa::lists::linkedlist::IterMut;
+/// use deepmesa::lists::linkedlist::Iter;
+///
+/// let mut list = LinkedList::<u8>::new();
+/// list.push_front(1);
+/// list.push_front(2);
+/// list.push_front(3);
+///
+/// let mut iter_mut: IterMut<u8> = list.iter_mut();
+/// for e in iter_mut {
+///     *e += 100;
+/// }
+///
+/// let mut iter:Iter<u8> = list.iter();
+/// assert_eq!(iter.next(), Some(&103));
+/// assert_eq!(iter.next(), Some(&102));
+/// assert_eq!(iter.next(), Some(&101));
+/// assert_eq!(iter.next(), None);
+/// ```
+#[derive(Debug)]
 pub struct IterMut<'a, T> {
     list: &'a mut LinkedList<T>,
     cursor: Option<Node<T>>,
@@ -41,6 +98,7 @@ pub struct IterMut<'a, T> {
 
 macro_rules! iter_reverse {
     ($self: ident) => {
+        /// Reverses the direction of the iterator
         pub fn reverse(mut $self) -> Self {
             match &$self.cursor {
                 None => match $self.dir {

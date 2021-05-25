@@ -27,6 +27,7 @@ macro_rules! iter_unsigned {
         $iter_name: ident, $i:ident, $max_bits: literal
     ) => {
         $(#[$outer])*
+        #[derive(Debug)]
         pub struct $iter_name<'a> {
             bits: &'a [u8],
             cursor: usize,
@@ -70,6 +71,8 @@ macro_rules! iter_unsigned {
 }
 
 iter_unsigned!(
+    /// An iterator that iterates over the bits of the
+    /// [`BitVector`](../struct.BitVector.html) 8 bits at a time.
     ///
     /// This struct is created by the
     /// [`.iter_u8()`](BitVector#method.iter_u8)
@@ -94,6 +97,8 @@ iter_unsigned!(
     8
 );
 iter_unsigned!(
+    /// An iterator that iterates over the bits of the
+    /// [`BitVector`](../struct.BitVector.html) 16 bits at a time.
     ///
     /// This struct is created by the
     /// [`.iter_u16()`](BitVector#method.iter_u16)
@@ -117,6 +122,8 @@ iter_unsigned!(
     16
 );
 iter_unsigned!(
+    /// An iterator that iterates over the bits of the
+    /// [`BitVector`](../struct.BitVector.html) 32 bits at a time.
     ///
     /// This struct is created by the
     /// [`.iter_u32()`](BitVector#method.iter_u32)
@@ -141,6 +148,8 @@ iter_unsigned!(
     32
 );
 iter_unsigned!(
+    /// An iterator that iterates over the bits of the
+    /// [`BitVector`](../struct.BitVector.html) 64 bits at a time.
     ///
     /// This struct is created by the
     /// [`.iter_u64()`](BitVector#method.iter_u64)
@@ -163,6 +172,8 @@ iter_unsigned!(
     64
 );
 iter_unsigned!(
+    /// An iterator that iterates over the bits of the
+    /// [`BitVector`](../struct.BitVector.html) 128 bits at a time.
     ///
     /// This struct is created by the
     /// [`.iter_u128()`](BitVector#method.iter_u128)
@@ -187,6 +198,8 @@ iter_unsigned!(
     128
 );
 
+/// An immutable iterator over the bits of the
+/// [`BitVector`](../struct.BitVector.html) or [`BitSlice`](BitSlice).
 ///
 /// This struct is created by the [`.iter()`](BitVector#method.iter)
 /// method of [`BitVector`](../struct.BitVector.html) and
@@ -206,6 +219,7 @@ iter_unsigned!(
 /// assert_eq!(iter.next(), Some(true));
 /// assert_eq!(iter.next(), None);
 /// ```
+#[derive(Debug)]
 pub struct Iter<'a> {
     bits: &'a [u8],
     cursor: usize,
@@ -213,6 +227,8 @@ pub struct Iter<'a> {
     slice_offset: usize,
 }
 
+/// A mutable iterator over the bits of the
+/// [`BitVector`](../struct.BitVector.html) or [`BitSlice`](BitSlice).
 ///
 /// This struct is created by the
 /// [`.iter_mut()`](BitVector#method.iter_mut) method of
@@ -232,6 +248,7 @@ pub struct Iter<'a> {
 /// }
 /// assert_eq!(bv.read_u16(0), (0b1111_1111_1111_1111, 16));
 /// ```
+#[derive(Debug)]
 pub struct IterMut<'a> {
     bits: &'a mut [u8],
     cursor: usize,

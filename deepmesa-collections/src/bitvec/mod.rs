@@ -10,6 +10,8 @@ pub mod traits;
 
 type BitCount = usize;
 
+/// This enum indicates the order in which bits are traversed
+/// and counted.
 ///
 /// [`Msb0`](#variant.Msb0) indicates that the MSB (Most Significant
 /// Bit) should be considered as position `0` and consequently bits
