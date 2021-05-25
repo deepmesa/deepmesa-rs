@@ -72,9 +72,10 @@ use core::ops::RangeToInclusive;
 /// assert_eq!(bv.get(2), Some(true));
 /// ```
 ///
-/// In addition to the [new()](#method.new) and
-/// [with_capacity()(#method.with_capacity) methods, the bitvector! macro
-/// is also provided for convenient initialization.
+/// In addition to the [`new()`](#method.new) and
+/// [`with_capacity()`](#method.with_capacity) methods, the
+/// [`bitvector!`](macro.bitvector.html) macro is also provided for convenient
+/// initialization.
 ///
 /// # Examples
 /// ```
