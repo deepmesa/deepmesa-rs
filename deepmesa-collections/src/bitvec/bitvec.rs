@@ -277,7 +277,7 @@ impl BitVector {
         self.bit_len
     }
 
-    /// Returns true if the vector contains no bits.
+    /// Returns true if the [`BitVector`](BitVector) contains no bits.
     ///
     /// # Examples
     /// ```
@@ -291,8 +291,9 @@ impl BitVector {
         self.bit_len == 0
     }
 
-    /// Clears the vector, removing all the bits. This method has no
-    /// effect on the allocated capacity of the vector.
+    /// Clears the [`BitVector`](BitVector), removing all the
+    /// bits. This method has no effect on the allocated capacity of
+    /// the [`BitVector`](BitVector).
     ///
     /// # Examples
     /// ```
@@ -367,8 +368,13 @@ impl BitVector {
     iter_unsigned!(
         /// Returns an iterator that iterates over the
         /// [`BitVector`](BitVector) 8 bits at a time. Each invocation
-        /// of `iter.next` returns a u8 value and the number of bits
+        /// of `iter.next` returns a [`u8`] value and the number of bits
         /// read.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -390,7 +396,12 @@ impl BitVector {
     iter_unsigned!(
         /// Returns an iterator that iterates over the bitvector 16
         /// bits at a time. Each invocation of `iter.next` returns a
-        /// u16 value and the number of bits read.
+        /// [`u16`] value and the number of bits read.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -411,7 +422,12 @@ impl BitVector {
     iter_unsigned!(
         /// Returns an iterator that iterates over the bitvector 32
         /// bits at a time. Each invocation of `iter.next` returns a
-        /// u32 value and the number of bits read.
+        /// [`u32`] value and the number of bits read.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -433,7 +449,12 @@ impl BitVector {
     iter_unsigned!(
         /// Returns an iterator that iterates over the bitvector 64
         /// bits at a time. Each invocation of `iter.next` returns a
-        /// u64 value and the number of bits read.
+        /// [`u64`] value and the number of bits read.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -454,7 +475,12 @@ impl BitVector {
     iter_unsigned!(
         /// Returns an iterator that iterates over the bitvector 128
         /// bits at a time. Each invocation of `iter.next` returns a
-        /// u128 value and the number of bits read.
+        /// [`u128`] value and the number of bits read.
+        ///
+        /// The bits are read from the lower to the higher index from
+        /// the BitVector and shifted right, so the bit at the lower
+        /// index is the MSB of returned value while the bit at the
+        /// highest index is the LSB.
         ///
         /// The iterator returns None if there are no more bits to
         /// return
@@ -476,7 +502,7 @@ impl BitVector {
 
     read_unsigned!(
         /// Reads upto 8 bits from this [`BitVector`](BitVector) into
-        /// a u8 starting at the specified `start` position. This
+        /// a [`u8`] starting at the specified `start` position. This
         /// method will panic if `start` is greater than or equal to
         /// the length of the BitVector.
         ///
@@ -505,7 +531,7 @@ impl BitVector {
     );
     read_unsigned!(
         /// Reads upto 16 bits from this [`BitVector`](BitVector) into
-        /// a u16 starting at the specified `start` position. This
+        /// a [`u16`] starting at the specified `start` position. This
         /// method will panic if `start` is greater than or equal to
         /// the length of the BitVector.
         ///
@@ -534,7 +560,7 @@ impl BitVector {
     );
     read_unsigned!(
         /// Reads upto 32 bits from this [`BitVector`](BitVector) into
-        /// a u32 starting at the specified `start` position. This
+        /// a [`u32`] starting at the specified `start` position. This
         /// method will panic if `start` is greater than or equal to
         /// the length of the BitVector.
         ///
@@ -565,7 +591,7 @@ impl BitVector {
     );
     read_unsigned!(
         /// Reads upto 64 bits from this [`BitVector`](BitVector) into
-        /// a u64 starting at the specified `start` position. This
+        /// a [`u64`] starting at the specified `start` position. This
         /// method will panic if `start` is greater than or equal to
         /// the length of the BitVector.
         ///
@@ -596,7 +622,7 @@ impl BitVector {
     );
     read_unsigned!(
         /// Reads upto 128 bits from this [`BitVector`](BitVector)
-        /// into a u128 starting at the specified `start`
+        /// into a [`u128`] starting at the specified `start`
         /// position. This method will panic if `start` is greater
         /// than or equal to the length of the BitVector.
         ///
@@ -628,7 +654,7 @@ impl BitVector {
 
     read_bits_unsigned!(
         /// Reads upto `max_bits` bits from this
-        /// [`BitVector`](BitVector) into a u8 starting at the
+        /// [`BitVector`](BitVector) into a [`u8`] starting at the
         /// specified `start` position. This method will panic if
         /// `max_bits` is greater than 8 or if `start` is greater than
         /// or equal to the length of the BitVector.
@@ -673,7 +699,7 @@ impl BitVector {
     );
     read_bits_unsigned!(
         /// Reads upto `max_bits` bits from this
-        /// [`BitVector`](BitVector) into a u16 starting at the
+        /// [`BitVector`](BitVector) into a [`u16`] starting at the
         /// specified `start` position. This method will panic if
         /// `max_bits` is greater than 16 or if `start` is greater
         /// than or equal to the length of the BitVector.
@@ -719,7 +745,7 @@ impl BitVector {
 
     read_bits_unsigned!(
         /// Reads upto `max_bits` bits from this
-        /// [`BitVector`](BitVector) into a u32 starting at the
+        /// [`BitVector`](BitVector) into a [`u32`] starting at the
         /// specified `start` position. This method will panic if
         /// `max_bits` is greater than 32 or if `start` is greater
         /// than or equal to the length of the BitVector.
@@ -764,7 +790,7 @@ impl BitVector {
     );
     read_bits_unsigned!(
         /// Reads upto `max_bits` bits from this
-        /// [`BitVector`](BitVector) into a u64 starting at the
+        /// [`BitVector`](BitVector) into a [`u64`] starting at the
         /// specified `start` position. This method will panic if
         /// `max_bits` is greater than 64 or if `start` is greater
         /// than or equal to the length of the BitVector.
@@ -809,7 +835,7 @@ impl BitVector {
     );
     read_bits_unsigned!(
         /// Reads upto `max_bits` bits from this
-        /// [`BitVector`](BitVector) into a u128 starting at the
+        /// [`BitVector`](BitVector) into a [`u128`] starting at the
         /// specified `start` position. This method will panic if
         /// `max_bits` is greater than 128 or if `start` is greater
         /// than or equal to the length of the BitVector.
@@ -855,7 +881,7 @@ impl BitVector {
     );
 
     push_bits_unsigned!(
-        /// Pushes at most `count` bits from the specified u8 `val` to
+        /// Pushes at most `count` bits from the specified [`u8`] `val` to
         /// the end of the BitVector. The bits to be pushed are
         /// counted depending on the `order`. If the `count` is equal
         /// to 8 the order is ignored and all bits are pushed from the
@@ -902,13 +928,13 @@ impl BitVector {
     );
 
     push_bits_unsigned!(
-        /// Pushes at most `count` bits from the specified u16 `val` to
-        /// the end of the BitVector. The bits to be pushed are
-        /// counted depending on the `order`. If the `count` is equal
-        /// to 16 the order is ignored and all bits are pushed from the
-        /// MSB (bit position 15) to the LSB (bit position 0). If the
-        /// count is less than 16, then the bits are pushed in the
-        /// specified Order as follows:
+        /// Pushes at most `count` bits from the specified [`u16`]
+        /// `val` to the end of the BitVector. The bits to be pushed
+        /// are counted depending on the `order`. If the `count` is
+        /// equal to 16 the order is ignored and all bits are pushed
+        /// from the MSB (bit position 15) to the LSB (bit position
+        /// 0). If the count is less than 16, then the bits are pushed
+        /// in the specified Order as follows:
         ///
         /// If the order is Msb0, the leading `count` bits starting from the
         /// MSB (from bit position 15) are pushed to the end of the
@@ -948,13 +974,13 @@ impl BitVector {
         push_bits_u16
     );
     push_bits_unsigned!(
-        /// Pushes at most `count` bits from the specified u32 `val` to
-        /// the end of the BitVector. The bits to be pushed are
-        /// counted depending on the `order`. If the `count` is equal
-        /// to 32 the order is ignored and all bits are pushed from the
-        /// MSB (bit position 31) to the LSB (bit position 0). If the
-        /// count is less than 32, then the bits are pushed in the
-        /// specified Order as follows:
+        /// Pushes at most `count` bits from the specified [`u32`]
+        /// `val` to the end of the BitVector. The bits to be pushed
+        /// are counted depending on the `order`. If the `count` is
+        /// equal to 32 the order is ignored and all bits are pushed
+        /// from the MSB (bit position 31) to the LSB (bit position
+        /// 0). If the count is less than 32, then the bits are pushed
+        /// in the specified Order as follows:
         ///
         /// If the order is Msb0, the leading `count` bits starting from the
         /// MSB (from bit position 31) are pushed to the end of the
@@ -994,7 +1020,7 @@ impl BitVector {
         push_bits_u32
     );
     push_bits_unsigned!(
-        /// Pushes at most `count` bits from the specified u64 `val` to
+        /// Pushes at most `count` bits from the specified [`u64`] `val` to
         /// the end of the BitVector. The bits to be pushed are
         /// counted depending on the `order`. If the `count` is equal
         /// to 64 the order is ignored and all bits are pushed from the
@@ -1041,13 +1067,13 @@ impl BitVector {
         push_bits_u64
     );
     push_bits_unsigned!(
-        /// Pushes at most `count` bits from the specified u128 `val` to
-        /// the end of the BitVector. The bits to be pushed are
-        /// counted depending on the `order`. If the `count` is equal
-        /// to 128 the order is ignored and all bits are pushed from the
-        /// MSB (bit position 127) to the LSB (bit position 0). If the
-        /// count is less than 128, then the bits are pushed in the
-        /// specified Order as follows:
+        /// Pushes at most `count` bits from the specified [`u128`]
+        /// `val` to the end of the BitVector. The bits to be pushed
+        /// are counted depending on the `order`. If the `count` is
+        /// equal to 128 the order is ignored and all bits are pushed
+        /// from the MSB (bit position 127) to the LSB (bit position
+        /// 0). If the count is less than 128, then the bits are
+        /// pushed in the specified Order as follows:
         ///
         /// If the order is Msb0, the leading `count` bits starting from the
         /// MSB (from bit position 127) are pushed to the end of the
@@ -1089,7 +1115,7 @@ impl BitVector {
     );
 
     push_unsigned!(
-        /// Pushes bits from the specified u8 `val` excluding the
+        /// Pushes bits from the specified [`u8`] `val` excluding the
         /// leading zeros unless the `min_width` is specified. The
         /// `min_width` is the minimum number of bits to push
         /// (including leading zeros for padding). If the `min_width`
@@ -1122,7 +1148,7 @@ impl BitVector {
         push_u8
     );
     push_unsigned!(
-        /// Pushes bits from the specified u16 `val` excluding the
+        /// Pushes bits from the specified [`u16`] `val` excluding the
         /// leading zeros unless the `min_width` is specified. The
         /// `min_width` is the minimum number of bits to push
         /// (including leading zeros for padding). If the `min_width`
@@ -1155,7 +1181,7 @@ impl BitVector {
         push_u16
     );
     push_unsigned!(
-        /// Pushes bits from the specified u32 `val` excluding the
+        /// Pushes bits from the specified [`u32`] `val` excluding the
         /// leading zeros unless the `min_width` is specified. The
         /// `min_width` is the minimum number of bits to push
         /// (including leading zeros for padding). If the `min_width`
@@ -1188,7 +1214,7 @@ impl BitVector {
         push_u32
     );
     push_unsigned!(
-        /// Pushes bits from the specified u64 `val` excluding the
+        /// Pushes bits from the specified [`u64`] `val` excluding the
         /// leading zeros unless the `min_width` is specified. The
         /// `min_width` is the minimum number of bits to push
         /// (including leading zeros for padding). If the `min_width`
@@ -1221,7 +1247,7 @@ impl BitVector {
         push_u64
     );
     push_unsigned!(
-        /// Pushes bits from the specified u128 `val` excluding the
+        /// Pushes bits from the specified [`u128`] `val` excluding the
         /// leading zeros unless the `min_width` is specified. The
         /// `min_width` is the minimum number of bits to push
         /// (including leading zeros for padding). If the `min_width`
@@ -1296,7 +1322,7 @@ impl BitVector {
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading the bytes directly from this raw slice is
     /// not recommended since the BitVector manages the bytes in the
-    /// underlying Vector.
+    /// underlying [`Vector`](Vec).
     ///
     /// # Examples
     /// ```
@@ -1319,7 +1345,7 @@ impl BitVector {
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or modifying the bytes directly in
     /// this raw slice is not recommended since the BitVector manages
-    /// the bytes in the underlying Vector.
+    /// the bytes in the underlying [`Vector`](Vec).
     ///
     /// # Examples
     /// ```
@@ -1342,7 +1368,7 @@ impl BitVector {
     /// the u8 values that encode the bits of the BitVector. Reading
     /// from the bytes directly from this raw pointer is not
     /// recommended since the BitVector manages the bytes in the
-    /// underlying Vector.
+    /// underlying [`Vector`](Vec).
     ///
     /// # Examples
     /// ```
@@ -1360,7 +1386,7 @@ impl BitVector {
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or writing to the bytes directly in
     /// this raw pointer is not recommended since the BitVector
-    /// manages the bytes in the underlying Vector.
+    /// manages the bytes in the underlying [`Vector`](Vec).
     ///
     /// # Examples
     /// ```
