@@ -885,9 +885,8 @@ impl<T> LinkedList<T> {
         !self.tail.is_null()
     }
 
-    /// Returns the number of elements the list can hold without
-    /// before new memory is allocated.
-    ///
+    /// Returns the number of elements the list can hold before new
+    /// memory is allocated.
     /// # Examples
     /// ```
     /// use deepmesa::lists::LinkedList;
