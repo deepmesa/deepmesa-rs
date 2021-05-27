@@ -189,7 +189,7 @@ macro_rules! read_unsigned {
         $(#[$outer])*
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
             start_bounds_check!(start, self.bit_len);
-            let (val, bit_count) = BitSlice::read_bits_lsb0(&self.bits, start, self.bit_len, $max_bits);
+            let (val, bit_count) = BitSlice::read_bits(&self.bits, start, self.bit_len, $max_bits, BitOrder::Lsb0);
             (val as $i, bit_count)
         }
     };
@@ -211,7 +211,8 @@ macro_rules! read_bits_unsigned {
                 );
             }
             let (val, bit_count) =
-                BitSlice::read_bits_lsb0(&self.bits, start, self.bit_len, max_bits);
+                BitSlice::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
+
             (val as $i, bit_count)
         }
     };

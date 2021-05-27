@@ -21,51 +21,51 @@
 
 use crate::bitvec::BitCount;
 
-const MSB_ONES: [u8; 9] = [
-    0b0000_0000,
-    0b1000_0000,
-    0b1100_0000,
-    0b1110_0000,
-    0b1111_0000,
-    0b1111_1000,
-    0b1111_1100,
-    0b1111_1110,
-    0b1111_1111,
-];
+macro_rules! msb_ones {
+    ($n:expr) => {
+        (255u16 << (8 - $n)) as u8
+    };
+}
 
-const LSB_ONES: [u8; 9] = [
-    0b0000_0000,
-    0b0000_0001,
-    0b0000_0011,
-    0b0000_0111,
-    0b0000_1111,
-    0b0001_1111,
-    0b0011_1111,
-    0b0111_1111,
-    0b1111_1111,
-];
+macro_rules! lsb_ones {
+    ($n:expr) => {
+        (255u16 >> (8 - $n)) as u8
+    };
+}
 
-const MSB_NTH_ZERO: [u8; 8] = [
-    0b0111_1111,
-    0b1011_1111,
-    0b1101_1111,
-    0b1110_1111,
-    0b1111_0111,
-    0b1111_1011,
-    0b1111_1101,
-    0b1111_1110,
-];
+macro_rules! msb_nth_zero {
+    ($n:expr) => {
+        msb_ones!($n) | lsb_ones!(7 - $n)
+    };
+}
 
-const LSB_NTH_ZERO: [u8; 8] = [
-    0b1111_1110,
-    0b1111_1101,
-    0b1111_1011,
-    0b1111_0111,
-    0b1110_1111,
-    0b1101_1111,
-    0b1011_1111,
-    0b0111_1111,
-];
+macro_rules! lsb_nth_zero {
+    ($n:expr) => {
+        msb_ones!(7 - $n) | lsb_ones!($n)
+    };
+}
+
+// const MSB_NTH_ZERO: [u8; 8] = [
+//     0b0111_1111,
+//     0b1011_1111,
+//     0b1101_1111,
+//     0b1110_1111,
+//     0b1111_0111,
+//     0b1111_1011,
+//     0b1111_1101,
+//     0b1111_1110,
+// ];
+
+// const LSB_NTH_ZERO: [u8; 8] = [
+//     0b1111_1110,
+//     0b1111_1101,
+//     0b1111_1011,
+//     0b1111_0111,
+//     0b1110_1111,
+//     0b1101_1111,
+//     0b1011_1111,
+//     0b0111_1111,
+// ];
 
 /// Returns a value with some bits of self cleared.
 pub trait BitwiseClear {
@@ -257,23 +257,25 @@ impl BitwiseClear for u8 {
     #[inline(always)]
     fn clear_lsb(self, n: u8) -> Self::Output {
         bounds_check!(n, 8);
-        self & MSB_ONES[8 - n as usize]
+        (self >> n) << n
     }
     #[inline(always)]
     fn clear_msb(self, n: u8) -> Self::Output {
         bounds_check!(n, 8);
-        self & LSB_ONES[8 - n as usize]
+        (self << n) >> n
     }
 
     #[inline(always)]
     fn clear_lsb_nth(self, n: u8) -> Self::Output {
         bounds_check!(n, 7);
-        self & LSB_NTH_ZERO[n as usize]
+        self & lsb_nth_zero!(n)
+        //self & LSB_NTH_ZERO[n as usize]
     }
     #[inline(always)]
     fn clear_msb_nth(self, n: u8) -> Self::Output {
         bounds_check!(n, 7);
-        self & MSB_NTH_ZERO[n as usize]
+        self & msb_nth_zero!(n)
+        //self & MSB_NTH_ZERO[n as usize]
     }
 }
 
@@ -281,25 +283,27 @@ impl BitwiseClearAssign for u8 {
     #[inline(always)]
     fn clear_lsb_assign(&mut self, n: u8) {
         bounds_check!(n, 8);
-        *self &= MSB_ONES[8 - n as usize];
+        *self = (*self >> n) << n;
     }
 
     #[inline(always)]
     fn clear_msb_assign(&mut self, n: u8) {
         bounds_check!(n, 8);
-        *self &= LSB_ONES[8 - n as usize];
+        *self = (*self << n) >> n;
     }
 
     #[inline(always)]
     fn clear_lsb_nth_assign(&mut self, n: u8) {
         bounds_check!(n, 7);
-        *self &= LSB_NTH_ZERO[n as usize];
+        *self &= lsb_nth_zero!(n);
+        //*self &= LSB_NTH_ZERO[n as usize];
     }
 
     #[inline(always)]
     fn clear_msb_nth_assign(&mut self, n: u8) {
         bounds_check!(n, 7);
-        *self &= MSB_NTH_ZERO[n as usize];
+        *self &= msb_nth_zero!(n);
+        //*self &= MSB_NTH_ZERO[n as usize];
     }
 }
 
@@ -308,18 +312,17 @@ impl BitwiseLsb<u8> for u8 {
     #[inline(always)]
     fn and_lsb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self & (rhs | MSB_ONES[8 - n as usize]);
+        return self & (rhs | msb_ones!(8 - n));
     }
     #[inline(always)]
     fn or_lsb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self | (rhs & LSB_ONES[n as usize]);
+        return self | (rhs & lsb_ones!(n));
     }
-
     #[inline(always)]
     fn xor_lsb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self ^ (rhs & LSB_ONES[n as usize]);
+        return self ^ (rhs & lsb_ones!(n));
     }
 }
 
@@ -328,27 +331,27 @@ impl BitwiseLsb<bool> for u8 {
     #[inline(always)]
     fn and_lsb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if !rhs {
-            return self & MSB_ONES[8 - n as usize];
+        match rhs {
+            true => self,
+            false => self & msb_ones!(8 - n),
         }
-        return self;
     }
     #[inline(always)]
     fn or_lsb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if rhs {
-            return self | LSB_ONES[n as usize];
+        match rhs {
+            true => self | lsb_ones!(n),
+            false => self,
         }
-        return self;
     }
 
     #[inline(always)]
     fn xor_lsb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if rhs {
-            return self ^ LSB_ONES[n as usize];
+        match rhs {
+            true => self ^ lsb_ones!(n),
+            false => self,
         }
-        return self;
     }
 }
 
@@ -357,7 +360,7 @@ impl NotLsb for u8 {
     #[inline(always)]
     fn not_lsb(self, n: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return !(self ^ MSB_ONES[8 - n as usize]);
+        return !(self ^ msb_ones!(8 - n));
     }
 }
 
@@ -365,23 +368,26 @@ impl BitwiseLsbAssign<bool> for u8 {
     #[inline(always)]
     fn and_lsb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if !rhs {
-            *self &= MSB_ONES[8 - n as usize];
+        match rhs {
+            true => {}
+            false => *self &= msb_ones!(8 - n),
         }
     }
     #[inline(always)]
     fn or_lsb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if rhs {
-            *self |= LSB_ONES[n as usize];
+        match rhs {
+            true => *self |= lsb_ones!(n),
+            false => {}
         }
     }
 
     #[inline(always)]
     fn xor_lsb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if rhs {
-            *self ^= LSB_ONES[n as usize];
+        match rhs {
+            true => *self ^= lsb_ones!(n),
+            false => {}
         }
     }
 }
@@ -390,19 +396,19 @@ impl BitwiseLsbAssign<u8> for u8 {
     #[inline(always)]
     fn and_lsb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self &= rhs | MSB_ONES[8 - n as usize];
+        *self &= rhs | msb_ones!(8 - n);
     }
 
     #[inline(always)]
     fn or_lsb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self |= rhs & LSB_ONES[n as usize];
+        *self |= rhs & lsb_ones!(n);
     }
 
     #[inline(always)]
     fn xor_lsb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self ^= rhs & LSB_ONES[n as usize];
+        *self ^= rhs & lsb_ones!(n);
     }
 }
 
@@ -410,7 +416,7 @@ impl NotLsbAssign for u8 {
     #[inline(always)]
     fn not_lsb_assign(&mut self, n: u8) {
         bounds_check!(n, 8);
-        *self = !(*self ^ MSB_ONES[8 - n as usize]);
+        *self = !(*self ^ msb_ones!(8 - n));
     }
 }
 
@@ -419,26 +425,26 @@ impl BitwiseMsb<bool> for u8 {
     #[inline(always)]
     fn and_msb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if !rhs {
-            return self & LSB_ONES[8 - n as usize];
+        match rhs {
+            true => self,
+            false => self & lsb_ones!(8 - n),
         }
-        return self;
     }
     #[inline(always)]
     fn or_msb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if rhs {
-            return self | MSB_ONES[n as usize];
+        match rhs {
+            true => self | msb_ones!(n),
+            false => self,
         }
-        return self;
     }
     #[inline(always)]
     fn xor_msb(self, n: u8, rhs: bool) -> Self::Output {
         bounds_check!(n, 8);
-        if rhs {
-            return self ^ MSB_ONES[n as usize];
+        match rhs {
+            true => self ^ msb_ones!(n),
+            false => self,
         }
-        return self;
     }
 }
 
@@ -447,17 +453,17 @@ impl BitwiseMsb<u8> for u8 {
     #[inline(always)]
     fn and_msb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self & (rhs | LSB_ONES[8 - n as usize]);
+        return self & (rhs | lsb_ones!(8 - n));
     }
     #[inline(always)]
     fn or_msb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self | (rhs & MSB_ONES[n as usize]);
+        return self | (rhs & msb_ones!(n));
     }
     #[inline(always)]
     fn xor_msb(self, n: u8, rhs: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return self ^ (rhs & MSB_ONES[n as usize]);
+        return self ^ (rhs & msb_ones!(n));
     }
 }
 
@@ -466,7 +472,7 @@ impl NotMsb for u8 {
     #[inline(always)]
     fn not_msb(self, n: u8) -> Self::Output {
         bounds_check!(n, 8);
-        return !(self ^ LSB_ONES[8 - n as usize]);
+        return !(self ^ lsb_ones!(8 - n));
     }
 }
 
@@ -474,22 +480,26 @@ impl BitwiseMsbAssign<bool> for u8 {
     #[inline(always)]
     fn and_msb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if !rhs {
-            *self &= LSB_ONES[8 - n as usize];
+        match rhs {
+            true => {}
+            false => *self &= lsb_ones!(8 - n),
         }
     }
     #[inline(always)]
     fn or_msb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if rhs {
-            *self |= MSB_ONES[n as usize];
+        match rhs {
+            true => *self |= msb_ones!(n),
+            false => {}
         }
     }
+
     #[inline(always)]
     fn xor_msb_assign(&mut self, n: u8, rhs: bool) {
         bounds_check!(n, 8);
-        if rhs {
-            *self ^= MSB_ONES[n as usize];
+        match rhs {
+            true => *self ^= msb_ones!(n),
+            false => {}
         }
     }
 }
@@ -498,17 +508,17 @@ impl BitwiseMsbAssign<u8> for u8 {
     #[inline(always)]
     fn and_msb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self &= rhs | LSB_ONES[8 - n as usize];
+        *self &= rhs | lsb_ones!(8 - n);
     }
     #[inline(always)]
     fn or_msb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self |= rhs & MSB_ONES[n as usize];
+        *self |= rhs & msb_ones!(n);
     }
     #[inline(always)]
     fn xor_msb_assign(&mut self, n: u8, rhs: u8) {
         bounds_check!(n, 8);
-        *self ^= rhs & MSB_ONES[n as usize];
+        *self ^= rhs & msb_ones!(n);
     }
 }
 
@@ -516,7 +526,7 @@ impl NotMsbAssign for u8 {
     #[inline(always)]
     fn not_msb_assign(&mut self, n: u8) {
         bounds_check!(n, 8);
-        *self = !(*self ^ LSB_ONES[8 - n as usize]);
+        *self = !(*self ^ lsb_ones!(8 - n));
     }
 }
 
@@ -527,30 +537,30 @@ impl BitwisePartial<bool> for u8 {
     fn and_partial(self, start: u8, len: u8, rhs: bool) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        if !rhs {
-            return self & (LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize]);
+        match rhs {
+            true => self,
+            false => self & (lsb_ones!(8 - start) ^ msb_ones!(start + len)),
         }
-        return self;
     }
 
     #[inline(always)]
     fn or_partial(self, start: u8, len: u8, rhs: bool) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        if rhs {
-            return self | (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]);
+        match rhs {
+            true => self | (lsb_ones!(8 - start) & msb_ones!(start + len)),
+            false => self,
         }
-        return self;
     }
 
     #[inline(always)]
     fn xor_partial(self, start: u8, len: u8, rhs: bool) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        if rhs {
-            return self ^ (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]);
+        match rhs {
+            true => self ^ (lsb_ones!(8 - start) & msb_ones!(start + len)),
+            false => self,
         }
-        return self;
     }
 }
 
@@ -560,32 +570,22 @@ impl BitwisePartial<u8> for u8 {
     fn and_partial(self, start: u8, len: u8, rhs: u8) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        // ...._....
-        // ..^._.    start = 2, len = 3
-        // 11rr_r111
-        // 0011_1111 LSB_ONES[8-start]
-        // 1111_1100 MSB_ONES[start+len]
-        // 1100_0011 XOR
-        // rrrr_rrrr RHS
-        // 11rr_rr11 |
-        // ...._.... &
-        // ..xx_xx..
 
-        return self & (rhs | (LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize]));
+        return self & (rhs | (lsb_ones!(8 - start) ^ msb_ones!(start + len)));
     }
 
     #[inline(always)]
     fn or_partial(self, start: u8, len: u8, rhs: u8) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        return self | (rhs & (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]));
+        return self | (rhs & (lsb_ones!(8 - start) & msb_ones!(start + len)));
     }
 
     #[inline(always)]
     fn xor_partial(self, start: u8, len: u8, rhs: u8) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        return self ^ (rhs & (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]));
+        return self ^ (rhs & (lsb_ones!(8 - start) & msb_ones!(start + len)));
     }
 }
 
@@ -595,7 +595,7 @@ impl NotPartial for u8 {
     fn not_partial(self, start: u8, len: u8) -> Self::Output {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        return !(self ^ (LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize]));
+        return !(self ^ (lsb_ones!(8 - start) ^ msb_ones!(start + len)));
     }
 }
 
@@ -604,8 +604,9 @@ impl BitwisePartialAssign<bool> for u8 {
     fn and_partial_assign(&mut self, start: u8, len: u8, rhs: bool) {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        if !rhs {
-            *self &= LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize];
+        match rhs {
+            true => {}
+            false => *self &= lsb_ones!(8 - start) ^ msb_ones!(start + len),
         }
     }
 
@@ -613,9 +614,9 @@ impl BitwisePartialAssign<bool> for u8 {
     fn or_partial_assign(&mut self, start: u8, len: u8, rhs: bool) {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-
-        if rhs {
-            *self |= LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize];
+        match rhs {
+            true => *self |= lsb_ones!(8 - start) & msb_ones!(start + len),
+            false => {}
         }
     }
 
@@ -623,9 +624,9 @@ impl BitwisePartialAssign<bool> for u8 {
     fn xor_partial_assign(&mut self, start: u8, len: u8, rhs: bool) {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-
-        if rhs {
-            *self ^= LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize];
+        match rhs {
+            true => *self ^= lsb_ones!(8 - start) & msb_ones!(start + len),
+            false => {}
         }
     }
 }
@@ -635,7 +636,7 @@ impl BitwisePartialAssign<u8> for u8 {
     fn and_partial_assign(&mut self, start: u8, len: u8, rhs: u8) {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        *self &= rhs | (LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize]);
+        *self &= rhs | (lsb_ones!(8 - start) ^ msb_ones!(start + len));
     }
 
     #[inline(always)]
@@ -643,7 +644,7 @@ impl BitwisePartialAssign<u8> for u8 {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
 
-        *self |= rhs & (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]);
+        *self |= rhs & (lsb_ones!(8 - start) & msb_ones!(start + len));
     }
 
     #[inline(always)]
@@ -651,7 +652,7 @@ impl BitwisePartialAssign<u8> for u8 {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
 
-        *self ^= rhs & (LSB_ONES[8 - start as usize] & MSB_ONES[(start + len) as usize]);
+        *self ^= rhs & (lsb_ones!(8 - start) & msb_ones!(start + len));
     }
 }
 
@@ -660,7 +661,7 @@ impl NotPartialAssign for u8 {
     fn not_partial_assign(&mut self, start: u8, len: u8) {
         bounds_check!(start, 7);
         bounds_check!(len, 8 - start);
-        *self = !(*self ^ (LSB_ONES[8 - start as usize] ^ MSB_ONES[(start + len) as usize]));
+        *self = !(*self ^ (lsb_ones!(8 - start) ^ msb_ones!(start + len)));
     }
 }
 
@@ -728,21 +729,12 @@ macro_rules! impl_as_lsb0 {
     ($t: ty, $sz:literal) => {
         impl AsLsb0 for $t {
             fn as_lsb0(&self, n: BitCount) -> Self {
-                const TYPE_LEN: usize = $sz;
-                if n == 0 {
-                    return *self;
-                }
-
-                if n > TYPE_LEN {
-                    panic!(
-                        "Cannot convert BitOrder for BitCount ({}) > {}",
-                        n, TYPE_LEN
-                    );
-                }
-                if n == TYPE_LEN {
-                    return *self;
-                }
-                return *self >> (TYPE_LEN - n);
+                debug_assert!(n <= $sz);
+                match n {
+                    0 => return *self,
+                    $sz => return *self,
+                    _ => return *self >> ($sz - n),
+                };
             }
         }
     };
@@ -752,20 +744,12 @@ macro_rules! impl_as_msb0 {
     ($t:ty, $sz:literal) => {
         impl AsMsb0 for $t {
             fn as_msb0(&self, n: BitCount) -> Self {
-                const TYPE_LEN: usize = $sz;
-                if n == 0 {
-                    return *self;
+                debug_assert!(n <= $sz);
+                match n {
+                    0 => return *self,
+                    $sz => return *self,
+                    _ => return *self << ($sz - n),
                 }
-                if n > TYPE_LEN {
-                    panic!(
-                        "Cannot convert BitOrder for BitCount ({}) > {}",
-                        n, TYPE_LEN
-                    );
-                }
-                if n == TYPE_LEN {
-                    return *self;
-                }
-                return *self << (TYPE_LEN - n);
             }
         }
     };
@@ -1020,7 +1004,7 @@ mod tests {
     }
 
     #[test]
-    fn test_and_msb_u8() {
+    fn test_an_msb_u8() {
         let val = 0b1010_0011;
         assert_eq!(val.and_msb(0, 0b1100_0011), val);
         assert_eq!(val.and_msb(3, 0b1100_0011), 0b1000_0011);
@@ -1622,5 +1606,23 @@ mod tests {
         let val: u8 = 0b0000_0000;
         assert_eq!(0, val.as_lsb0(0));
         assert_eq!(0, val.as_msb0(0));
+    }
+
+    #[test]
+    pub fn test_lsb_macro() {
+        let mut ones: u16 = 255; //0b 1111_1111
+        println!("ONES: {:08b}", ones);
+        // // LSB ONES = 3 -> 0b 0000_0111
+        // Shift rt by 8 - n
+        let n = 3;
+        let ones_u8 = (ones >> (8 - n)) as u8;
+        println!("ONES: {:08b}", ones_u8);
+        // ones = (ones >> (8 - 3)) << (8 - 3);
+        // println!("ONES: {:08b}", ones);
+        // // ones = ones << 5;
+        // // println!("ONES: {:08b}", ones);
+        // let n = 8;
+        // let ones = msb_ones!(8 - n);
+        // println!("ONES: {:08b}", ones);
     }
 }

@@ -19,7 +19,9 @@
    limitations under the License.
 */
 
-use crate::bitvec::{bitops, bitslice::BitRef, bitslice::BitSlice, bitvec::BitVector, BitCount};
+use crate::bitvec::{
+    bitops, bitslice::BitRef, bitslice::BitSlice, bitvec::BitVector, BitCount, BitOrder,
+};
 
 macro_rules! iter_unsigned {
     (
@@ -62,7 +64,7 @@ macro_rules! iter_unsigned {
                 let st_index = self.cursor + offset;
 
                 let (val, bit_count) =
-                    BitSlice::read_bits_lsb0(&self.bits, st_index, len, $max_bits);
+                    BitSlice::read_bits(&self.bits, st_index, len, $max_bits, BitOrder::Lsb0);
                 self.cursor += bit_count;
                 Some((val as $i, bit_count))
             }

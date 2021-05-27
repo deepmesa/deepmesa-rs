@@ -34,8 +34,10 @@ pub(super) fn shl_into(dst: &mut u8, src: u8, count: u8) {
 /// Returns true if the n MSB bits of the val are set
 #[inline(always)]
 pub(super) fn is_msb_nset(val: u8, n: u8) -> bool {
-    let mask = msb_nset(n);
-    val & mask == mask
+    match (val >> (7 - n)) << 7 {
+        0 => false,
+        _ => true,
+    }
 }
 
 /// Returns a byte with the 'n'th MSB bit set. This method will
@@ -43,18 +45,7 @@ pub(super) fn is_msb_nset(val: u8, n: u8) -> bool {
 #[inline(always)]
 pub(super) fn msb_nset(n: u8) -> u8 {
     debug_assert!(n <= 7, "n ({}) exceeds 7", n);
-
-    const VALUES: [u8; 8] = [
-        0b1000_0000,
-        0b0100_0000,
-        0b0010_0000,
-        0b0001_0000,
-        0b0000_1000,
-        0b0000_0100,
-        0b0000_0010,
-        0b0000_0001,
-    ];
-    VALUES[n as usize]
+    1u8 << (7 - n)
 }
 
 /// Returns the specified 'val' with the 'count' MSB bits
@@ -254,5 +245,26 @@ mod tests {
         let count: u8 = 3;
         shl_into(&mut dst, src, count);
         assert_eq!(dst, 0b0000_0101);
+    }
+
+    #[test]
+    fn test_is_msb_nset() {
+        assert_eq!(is_msb_nset(0b1000_0000, 0), true);
+        assert_eq!(is_msb_nset(0b0100_0000, 1), true);
+        assert_eq!(is_msb_nset(0b0010_0000, 2), true);
+        assert_eq!(is_msb_nset(0b0001_0000, 3), true);
+        assert_eq!(is_msb_nset(0b0000_1000, 4), true);
+        assert_eq!(is_msb_nset(0b0000_0100, 5), true);
+        assert_eq!(is_msb_nset(0b0000_0010, 6), true);
+        assert_eq!(is_msb_nset(0b0000_0001, 7), true);
+
+        assert_eq!(is_msb_nset(0b0000_0000, 0), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 1), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 2), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 3), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 4), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 5), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 6), false);
+        assert_eq!(is_msb_nset(0b0000_0000, 7), false);
     }
 }
