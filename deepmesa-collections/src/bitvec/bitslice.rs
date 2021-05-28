@@ -2557,7 +2557,8 @@ mod tests {
         let mut bv = BitVector::new();
         bv.push_u16(0b1010_1100_0011_0101, None);
         let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 12, BitOrder::Lsb0);
-        println!("VAL: {:08b}\nRead: {}", val, read);
+        assert_eq!(read, 12);
+        assert_eq!(val, 0b10_1100_0011_01);
     }
 
     #[test]
@@ -2565,6 +2566,7 @@ mod tests {
         let mut bv = BitVector::new();
         bv.push_u16(0b1010_1100_0011_0101, None);
         let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 3, BitOrder::Msb0);
-        println!("VAL: {:08b}\nRead: {}", val, read);
+        assert_eq!(read, 3);
+        assert_eq!(val, 0xa000_0000_0000_0000_0000_0000_0000_0000);
     }
 }

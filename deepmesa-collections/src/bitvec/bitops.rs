@@ -52,7 +52,8 @@ pub(super) fn msb_nset(n: u8) -> u8 {
 /// cleared. This method will panic if 'count' is greater than 8
 #[inline(always)]
 pub(super) fn clr_msb_usize(val: usize, count: u8) -> usize {
-    val & msb_zeros_usize(count)
+    debug_assert!(count <= 8, "count {} exceeds 8", count);
+    (val << count) >> count
 }
 
 /// Returns the 8 bits of the LSB byte
@@ -64,8 +65,7 @@ pub(super) fn ls_byte(val: u128) -> u8 {
 /// Set the n'th bit (starting from the MSB)
 #[inline(always)]
 pub(super) fn set_msb_n(val: &mut u8, n: u8) {
-    let mask = msb_nset(n);
-    *val |= mask;
+    *val |= msb_nset(n);
 }
 
 /// Returns the 'count' MSB bits of the usize 'val' as a u8. This
@@ -93,46 +93,6 @@ pub(super) fn msbn_usize(val: usize, count: u8) -> usize {
     }
 }
 
-/// Returns a usize with 'count' msb bits set to zero with all other
-/// bits set to one. This method panics if count is greater than 8.
-#[inline(always)]
-
-pub(super) fn msb_zeros_usize(count: u8) -> usize {
-    debug_assert!(count <= 8, "count {} exceeds 8", count);
-
-    #[cfg(target_pointer_width = "64")]
-    const VALUES: [usize; 9] = [
-        0xff_ff_ff_ff_ff_ff_ff_ff,
-        0x7f_ff_ff_ff_ff_ff_ff_ff,
-        0x3f_ff_ff_ff_ff_ff_ff_ff,
-        0x1f_ff_ff_ff_ff_ff_ff_ff,
-        0x0f_ff_ff_ff_ff_ff_ff_ff,
-        0x07_ff_ff_ff_ff_ff_ff_ff,
-        0x03_ff_ff_ff_ff_ff_ff_ff,
-        0x01_ff_ff_ff_ff_ff_ff_ff,
-        0x00_ff_ff_ff_ff_ff_ff_ff,
-    ];
-    #[cfg(target_pointer_width = "32")]
-    const VALUES: [usize; 9] = [
-        0xff_ff_ff_ff,
-        0x7f_ff_ff_ff,
-        0x3f_ff_ff_ff,
-        0x1f_ff_ff_ff,
-        0x0f_ff_ff_ff,
-        0x07_ff_ff_ff,
-        0x03_ff_ff_ff,
-        0x01_ff_ff_ff,
-        0x00_ff_ff_ff,
-    ];
-
-    #[cfg(target_pointer_width = "16")]
-    const VALUES: [usize; 9] = [
-        0xff_ff, 0x7f_ff, 0x3f_ff, 0x1f_ff, 0x0f_ff, 0x07_ff, 0x03_fff, 0x01_ff, 0x00_ff,
-    ];
-
-    VALUES[count as usize]
-}
-
 /// Take the 'count' least significant bits of 'src' and set them as
 /// the 'count' most significant bits of 'dst' and return the
 /// result. This method panics if 'count' is greater than 8
@@ -142,13 +102,12 @@ pub(super) fn msb_set_usize(dst: usize, src: usize, count: u8) -> usize {
 
     // Until usize::BITS is in stable
     #[cfg(target_pointer_width = "64")]
-    const BITS: usize = 64;
+    let src_shl = src << (64 - count as usize);
     #[cfg(target_pointer_width = "32")]
-    const BITS: usize = 32;
+    let src_shl = src << (32 - count as usize);
     #[cfg(target_pointer_width = "16")]
-    const BITS: usize = 16;
+    let src_shl = src << (16 - count as usize);
 
-    let src_shl = src << BITS - count as usize;
     let dst_clrd = clr_msb_usize(dst, count);
     dst_clrd | src_shl
 }
@@ -194,47 +153,44 @@ mod tests {
     fn test_clr_msb_usize() {
         #[cfg(target_pointer_width = "64")]
         {
-            const TEST_VALUES: [usize; 5] = [
-                0xff_ff_ff_ff_ff_ff_ff_ff,
-                0xbf_ff_ff_ff_ff_ff_ff_af,
-                0x1f_ff_ff_ff_ff_ff_7f_ff,
-                0xb0_ff_ff_ff_ff_5f_ff_ff,
-                0x10_ff_ff_3f_ff_ff_ff_ff,
-            ];
-
-            assert_eq!(clr_msb_usize(TEST_VALUES[0], 3), 0x1f_ff_ff_ff_ff_ff_ff_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[1], 3), 0x1f_ff_ff_ff_ff_ff_ff_af);
-            assert_eq!(clr_msb_usize(TEST_VALUES[2], 4), 0x0f_ff_ff_ff_ff_ff_7f_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[3], 3), 0x10_ff_ff_ff_ff_5f_ff_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[4], 4), 0x00_ff_ff_3f_ff_ff_ff_ff);
+            let val: usize = 0xff_ff_ff_ff_ff_ff_ff_ff;
+            assert_eq!(clr_msb_usize(val, 0), 0xff_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 1), 0x7f_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 2), 0x3f_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 3), 0x1f_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 4), 0x0f_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 5), 0x07_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 6), 0x03_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 7), 0x01_ff_ff_ff_ff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 8), 0x00_ff_ff_ff_ff_ff_ff_ff);
         }
 
         #[cfg(target_pointer_width = "32")]
         {
-            const TEST_VALUES: [usize; 5] = [
-                0xff_ff_ff_bc,
-                0xbf_ff_1b_ff,
-                0x1f_ff_2f_ff,
-                0xb0_fa_ff_ff,
-                0x10_ff_ff_3f,
-            ];
-
-            assert_eq!(clr_msb_usize(TEST_VALUES[0], 3), 0x1f_ff_ff_bc);
-            assert_eq!(clr_msb_usize(TEST_VALUES[1], 3), 0x1f_ff_1b_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[2], 4), 0x0f_ff_2f_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[3], 3), 0x10_fa_ff_ff);
-            assert_eq!(clr_msb_usize(TEST_VALUES[4], 4), 0x00_ff_ff_3f);
+            let val: usize = 0xff_ff_ff_ff;
+            assert_eq!(clr_msb_usize(val, 0), 0xff_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 1), 0x7f_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 2), 0x3f_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 3), 0x1f_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 4), 0x0f_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 5), 0x07_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 6), 0x03_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 7), 0x01_ff_ff_ff);
+            assert_eq!(clr_msb_usize(val, 8), 0x00_ff_ff_ff);
         }
 
         #[cfg(target_pointer_width = "16")]
         {
-            const TEST_VALUES: [usize; 5] = [0xff_bc, 0xbf_1b, 0x1f_2f, 0xb0_fa, 0x10_3f];
-
-            assert_eq!(clr_msb_usize(TEST_VALUES[0], 3), 0x1f_bc);
-            assert_eq!(clr_msb_usize(TEST_VALUES[1], 3), 0x1f_1b);
-            assert_eq!(clr_msb_usize(TEST_VALUES[2], 4), 0x0f_2f);
-            assert_eq!(clr_msb_usize(TEST_VALUES[3], 3), 0x10_fa);
-            assert_eq!(clr_msb_usize(TEST_VALUES[4], 4), 0x00_3f);
+            let val: usize = 0xff_ff;
+            assert_eq!(clr_msb_usize(val, 0), 0xff_ff);
+            assert_eq!(clr_msb_usize(val, 1), 0x7f_ff);
+            assert_eq!(clr_msb_usize(val, 2), 0x3f_ff);
+            assert_eq!(clr_msb_usize(val, 3), 0x1f_ff);
+            assert_eq!(clr_msb_usize(val, 4), 0x0f_ff);
+            assert_eq!(clr_msb_usize(val, 5), 0x07_ff);
+            assert_eq!(clr_msb_usize(val, 6), 0x03_ff);
+            assert_eq!(clr_msb_usize(val, 7), 0x01_ff);
+            assert_eq!(clr_msb_usize(val, 8), 0x00_ff);
         }
     }
 
