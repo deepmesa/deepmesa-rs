@@ -215,7 +215,10 @@ macro_rules! try_from_bitslice {
                     ));
                 }
                 let offset = bitslice.offset();
-                Ok(BitSlice::read_bits_lsb0(&bitslice.0, offset, len + offset, $b).0 as $i)
+                Ok(
+                    BitSlice::read_bits(&bitslice.0, offset, len + offset, $b, BitOrder::Lsb0).0
+                        as $i,
+                )
             }
         }
     };
@@ -229,8 +232,7 @@ macro_rules! b_expr {
 
 macro_rules! get_unchecked {
     ($index:expr, $bits: expr) => {
-        let byte = $bits[$index / 8];
-        return Some(bitops::is_msb_nset(byte, ($index % 8) as u8));
+        return Some(bitops::is_msb_nset($bits[$index / 8], ($index % 8) as u8));
     };
 }
 

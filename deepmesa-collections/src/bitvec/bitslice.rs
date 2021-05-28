@@ -23,10 +23,10 @@ use crate::bitvec::{
     bitops,
     iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
     traits::{
-        AsLsb0, AsMsb0, BitwiseClear, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign,
-        BitwisePartialAssign, NotLsbAssign, NotMsbAssign, NotPartialAssign,
+        AsMsb0, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign, BitwisePartialAssign,
+        NotLsbAssign, NotMsbAssign, NotPartialAssign,
     },
-    BitCount,
+    BitCount, BitOrder,
 };
 use core::convert::TryFrom;
 use core::fmt;
@@ -136,7 +136,8 @@ macro_rules! read_unsigned {
 
             let offset = self.offset();
             let (val, bit_count) =
-                BitSlice::read_bits_lsb0(&self.0, start + offset, len + offset, $max_bits);
+                BitSlice::read_bits(&self.0, start + offset, len + offset, $max_bits, BitOrder::Lsb0);
+
             (val as $u_type, bit_count)
         }
     };
@@ -160,7 +161,8 @@ macro_rules! read_bits_unsigned {
             }
             let offset = self.offset();
             let (val, bit_count) =
-                BitSlice::read_bits_lsb0(&self.0, start + offset, len + offset, max_bits);
+                BitSlice::read_bits(&self.0, start + offset, len + offset, max_bits, BitOrder::Lsb0);
+
             (val as $i, bit_count)
         }
     };
@@ -181,7 +183,7 @@ macro_rules! as_unsigned {
                 );
             }
             let offset = self.offset();
-            let (val, count) = BitSlice::read_bits_lsb0(&self.0, offset, len + offset, $max_bits);
+            let (val, count) = BitSlice::read_bits(&self.0, offset, len + offset, $max_bits, BitOrder::Lsb0);
             (val as $u_type, count)
         }
     };
@@ -1403,65 +1405,12 @@ impl BitSlice {
         slice_unpack_offset!(self.0.len())
     }
 
-    #[inline(always)]
-    pub(super) fn read_bits_lsb0(
+    pub fn read_bits(
         bits: &[u8],
         start: usize,
         len: usize,
         max_bits: BitCount,
-    ) -> (u128, BitCount) {
-        let (val, bits_read): (u128, BitCount) =
-            BitSlice::read_bits_msb0(bits, start, len, max_bits);
-        return ((val).as_lsb0(bits_read), bits_read);
-    }
-
-    /// Reads a byte containing upto 8 or `bit_count` lsb bits
-    /// (whichever is lower) from the specified byte starting from
-    /// `start` with bitorder MSB0 (the MSB is start position
-    /// 0). Returns the new byte as well as the bits read. This method
-    /// can return fewer than count bits (when start > 0) if there are
-    /// fewer than `count` bits in the lsb of the specified byte.
-    ///
-    /// The bits in the return byte are ordered in BitOrder::LSB0.
-    ///
-    /// byte: 0b1100_1101 start: 5, count: 3 returns (0b0000_0101, 3)
-    /// byte: 0b1100_1101 start: 0, count: 3 returns (0b0000_0110, 3)
-    /// byte: 0b1100_1101 start: 4, count: 6 returns (0b0000_1101, 4)
-    /// byte: 0b1100_1101 start: 0, count: 8 returns (0b1100_1101, 8)
-    /// byte: 0b1100_1101 start: 4, count: 2 returns (0b1100_0011, 2)
-    #[inline(always)]
-    fn sub_byte_lsb0(byte: u8, start: u8, max_bits: BitCount) -> (u8, BitCount) {
-        debug_assert!(start <= 7, "start {} cannot be greater than 7", start);
-        let count: u8;
-        if max_bits < 8 {
-            count = max_bits as u8;
-        } else {
-            count = 8;
-        }
-
-        match start {
-            0 => match count {
-                8 => (byte, 8),
-                _ => (byte >> (8 - count), count as usize),
-                //                _ => (bitops::shr_u8(byte, 8 - count), count as usize),
-            },
-
-            _ => {
-                //
-                let avail = 8 - start;
-                if count >= avail {
-                    return (byte.clear_msb(start), avail as usize);
-                }
-                return (byte.clear_msb(start) >> (avail - count), count as usize);
-            }
-        }
-    }
-
-    pub(super) fn read_bits_msb0(
-        bits: &[u8],
-        start: usize,
-        len: usize,
-        max_bits: BitCount,
+        order: BitOrder,
     ) -> (u128, BitCount) {
         debug_assert!(
             max_bits <= 128,
@@ -1469,34 +1418,48 @@ impl BitSlice {
             max_bits
         );
 
-        //at most read 128 bits
-        let mut retval: u128 = 0;
-        let mut bitsread = 0;
-        let mut cursor = start;
+        let start_byte_index = start / 8;
+        let partial_bits = 8 - (start % 8);
         let mut bits_remaining = max_bits;
-        if bits_remaining > len - start {
-            bits_remaining = len - start;
+        let limit = len - start;
+        if bits_remaining > limit {
+            bits_remaining = limit;
         }
 
-        loop {
-            if bits_remaining == 0 {
-                break;
+        let mut retval: u128 = 0;
+        let mut bits_read: usize = 0;
+        let mut byte_cursor = start_byte_index;
+        while bits_remaining > 0 {
+            let byte = bits[byte_cursor];
+
+            if byte_cursor == start_byte_index {
+                retval |= (byte as u128) << ((128 - partial_bits) as u128);
+                if bits_remaining >= partial_bits {
+                    bits_remaining -= partial_bits;
+                    bits_read += partial_bits;
+                } else {
+                    bits_read += bits_remaining;
+                    bits_remaining = 0;
+                }
+            } else {
+                retval |= (byte as u128) << ((128 - bits_read - 8) as u128);
+                if bits_remaining < 8 {
+                    bits_read += bits_remaining;
+                    bits_remaining = 0;
+                } else {
+                    bits_remaining -= 8;
+                    bits_read += 8;
+                }
             }
-            let byte = bits[cursor / 8];
-            let (byte_val, read) =
-                BitSlice::sub_byte_lsb0(byte, (cursor % 8) as u8, bits_remaining);
-            if read == 0 {
-                //No more to read. So return. TODO: What should we return?
-                return (retval, bitsread);
-            }
-            // Shift left by: 128-read-bitsread
-            retval |= (byte_val as u128) << ((128 - read - bitsread) as u8);
-            cursor += read;
-            bitsread += read;
-            bits_remaining -= read;
+            byte_cursor += 1;
         }
 
-        return (retval, bitsread);
+        retval = retval >> (128 - bits_read);
+        if order == BitOrder::Lsb0 {
+            return (retval, bits_read);
+        } else {
+            return (retval << (128 - bits_read), bits_read);
+        }
     }
 }
 
@@ -1647,17 +1610,6 @@ mod tests {
         assert_eq!(val, 0b1010_0101);
         let val2: u16 = u16::try_from(slice).unwrap();
         assert_eq!(val2, 0b1010_0101);
-    }
-
-    #[test]
-    fn test_sub_byte() {
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 5, 3), (0b0000_0101, 3));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 0, 3), (0b0000_0110, 3));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 4, 6), (0b0000_1101, 4));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 0, 8), (0b1100_1101, 8));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 4, 2), (0b0000_0011, 2));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 0, 1), (0b0000_0001, 1));
-        assert_eq!(BitSlice::sub_byte_lsb0(0b1100_1101, 7, 8), (0b0000_0001, 1));
     }
 
     #[test]
@@ -2598,5 +2550,23 @@ mod tests {
             *bit = false;
         }
         assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
+    }
+
+    #[test]
+    fn test_read_bits_12() {
+        let mut bv = BitVector::new();
+        bv.push_u16(0b1010_1100_0011_0101, None);
+        let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 12, BitOrder::Lsb0);
+        assert_eq!(read, 12);
+        assert_eq!(val, 0b10_1100_0011_01);
+    }
+
+    #[test]
+    fn test_read_bits_3() {
+        let mut bv = BitVector::new();
+        bv.push_u16(0b1010_1100_0011_0101, None);
+        let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 3, BitOrder::Msb0);
+        assert_eq!(read, 3);
+        assert_eq!(val, 0xa000_0000_0000_0000_0000_0000_0000_0000);
     }
 }
