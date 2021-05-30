@@ -23,4 +23,5 @@ members = [
     ".",
     "deepmesa-lists",
     "deepmesa-collections",
+    "deepmesa-encoding",
 ]
