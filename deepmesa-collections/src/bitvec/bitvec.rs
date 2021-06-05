@@ -21,9 +21,10 @@
 
 use crate::bitvec::{
     bitops,
-    bitslice::BitRef,
+    bitref::{BitRef, BitRefMut},
     bitslice::BitSlice,
-    iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
+    bytes,
+    iter::{Iter, IterMut, IterOnes, IterU128, IterU16, IterU32, IterU64, IterU8, IterZeros},
     traits::{AsMsb0, BitwiseClear, BitwiseClearAssign},
     BitCount, BitOrder,
 };
@@ -189,7 +190,7 @@ macro_rules! read_unsigned {
         $(#[$outer])*
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
             start_bounds_check!(start, self.bit_len);
-            let (val, bit_count) = BitSlice::read_bits(&self.bits, start, self.bit_len, $max_bits, BitOrder::Lsb0);
+            let (val, bit_count) = bytes::read_bits(&self.bits, start, self.bit_len, $max_bits, BitOrder::Lsb0);
             (val as $i, bit_count)
         }
     };
@@ -211,7 +212,7 @@ macro_rules! read_bits_unsigned {
                 );
             }
             let (val, bit_count) =
-                BitSlice::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
+                bytes::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
 
             (val as $i, bit_count)
         }
@@ -364,6 +365,110 @@ impl BitVector {
     pub fn iter_mut(&mut self) -> IterMut {
         let len = self.len();
         IterMut::new(&mut self.bits, 0, len)
+    }
+
+    pub fn leading_ones(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::leading_ones(&self.bits, start, self.bit_len)
+    }
+
+    pub fn leading_zeros(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::leading_zeros(&self.bits, start, self.bit_len)
+    }
+
+    pub fn trailing_ones(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::trailing_ones(&self.bits, start, self.bit_len)
+    }
+
+    pub fn trailing_zeros(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::trailing_zeros(&self.bits, start, self.bit_len)
+    }
+
+    pub fn count_ones(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::count_ones(&self.bits, start, self.bit_len)
+    }
+
+    pub fn count_zeros(&self, start: usize) -> usize {
+        start_bounds_check!(start, self.bit_len);
+        bytes::count_zeros(&self.bits, start, self.bit_len)
+    }
+
+    pub fn first_zero(&self, start: usize) -> Option<usize> {
+        start_bounds_check!(start, self.bit_len);
+        bytes::first_zero(&self.bits, start, self.bit_len)
+    }
+
+    pub fn first_one(&self, start: usize) -> Option<usize> {
+        start_bounds_check!(start, self.bit_len);
+        bytes::first_one(&self.bits, start, self.bit_len)
+    }
+
+    pub fn last_zero(&self, start: usize) -> Option<usize> {
+        start_bounds_check!(start, self.bit_len);
+        bytes::last_zero(&self.bits, start, self.bit_len)
+    }
+
+    pub fn last_one(&self, start: usize) -> Option<usize> {
+        start_bounds_check!(start, self.bit_len);
+        bytes::last_one(&self.bits, start, self.bit_len)
+    }
+
+    pub fn first(&self) -> Option<BitRef<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(0, self.bits);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    pub fn first_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(0, self.bits);
+
+                let byte_ptr = self.bits[0..0].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, 0));
+            }
+        }
+    }
+
+    pub fn last(&self) -> Option<BitRef<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(self.bit_len - 1, self.bits);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    pub fn last_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit_idx = self.len() - 1;
+                let bit = bit_at_unchecked!(bit_idx, self.bits);
+
+                let byte_idx = bit_idx / 8;
+                let byte_ptr = self.bits[byte_idx..byte_idx].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, bit_idx));
+            }
+        }
+    }
+
+    pub fn iter_ones(&self) -> IterOnes {
+        IterOnes::new(&self.bits, 0, self.bit_len)
+    }
+
+    pub fn iter_zeros(&self) -> IterZeros {
+        IterZeros::new(&self.bits, 0, self.bit_len)
     }
 
     iter_unsigned!(
@@ -1537,17 +1642,18 @@ impl BitVector {
             return None;
         }
 
-        get_unchecked!(index, self.bits);
+        return Some(bit_at_unchecked!(index, self.bits));
     }
 
-    pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
-        if let Some(bit) = self.get(index) {
-            //            let offset = self.offset();
-            //let index = index + offset;
-            let byte_ptr = self.bits[index..index].as_mut_ptr();
-            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
+    pub fn get_mut(&mut self, index: usize) -> Option<BitRefMut<bool>> {
+        if index >= self.bit_len {
+            return None;
         }
-        return None;
+        let bit = bit_at_unchecked!(index, self.bits);
+
+        let byte_idx = index / 8;
+        let byte_ptr = self.bits[byte_idx..byte_idx].as_mut_ptr();
+        return Some(BitRefMut::<bool>::new(bit, byte_ptr, index));
     }
 
     /// Pushes a single bit to the end of the BitVector.
@@ -2358,9 +2464,13 @@ mod tests {
     fn test_get_mut() {
         let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b1011_1100, None);
-        assert_eq!(bv[0], true);
-        *bv.get_mut(0).unwrap() = false;
-        assert_eq!(bv[0], false);
+        assert_eq!(bv[2], true);
+        *bv.get_mut(2).unwrap() = false;
+        assert_eq!(bv[2], false);
+
+        assert_eq!(bv[7], false);
+        *bv.get_mut(7).unwrap() = true;
+        assert_eq!(bv[7], true);
     }
 
     #[test]
@@ -2786,5 +2896,48 @@ mod tests {
         }
         assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
         assert_eq!(bv.read_u8(8), (0b0000_0000, 8));
+    }
+
+    #[test]
+    fn test_first() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        assert_eq!(*(bv.first().unwrap()), true);
+        assert_eq!(bv.first().as_deref(), Some(&true));
+    }
+
+    #[test]
+    fn test_first_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        assert_eq!(*(bv.first_mut().unwrap()), true);
+        *bv.first_mut().unwrap() = false;
+        assert_eq!(*(bv.first_mut().unwrap()), false);
+        assert_eq!(bv.first().as_deref(), Some(&false));
+        assert_eq!(bv[0], false);
+    }
+
+    #[test]
+    fn test_last() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[7], false);
+        assert_eq!(*(bv.last().unwrap()), false);
+        assert_eq!(bv.last().as_deref(), Some(&false));
+        assert_eq!(bv[7], false);
+    }
+
+    #[test]
+    fn test_last_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b0000_0000, Some(8));
+        assert_eq!(bv[7], false);
+        assert_eq!(*(bv.last_mut().unwrap()), false);
+        *bv.last_mut().unwrap() = true;
+        assert_eq!(*(bv.last().unwrap()), true);
+        assert_eq!(bv.last().as_deref(), Some(&true));
+        assert_eq!(bv[7], true);
     }
 }

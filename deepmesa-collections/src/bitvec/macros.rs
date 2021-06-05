@@ -19,6 +19,17 @@
    limitations under the License.
 */
 
+macro_rules! debug_assert_bounds_check {
+    ($v: ident, $l: expr) => {
+        debug_assert!(
+            $v <= $l,
+            concat!(stringify!($v), " ({}) ", "exceeds {}"),
+            $v,
+            $l
+        );
+    };
+}
+
 macro_rules! index_range_fn {
     ($bits:expr, $start: expr, $end:expr, $len:expr) => {
         unsafe {
@@ -215,10 +226,7 @@ macro_rules! try_from_bitslice {
                     ));
                 }
                 let offset = bitslice.offset();
-                Ok(
-                    BitSlice::read_bits(&bitslice.0, offset, len + offset, $b, BitOrder::Lsb0).0
-                        as $i,
-                )
+                Ok(bytes::read_bits(&bitslice.0, offset, len + offset, $b, BitOrder::Lsb0).0 as $i)
             }
         }
     };
@@ -230,9 +238,9 @@ macro_rules! b_expr {
     };
 }
 
-macro_rules! get_unchecked {
+macro_rules! bit_at_unchecked {
     ($index:expr, $bits: expr) => {
-        return Some(bitops::is_msb_nset($bits[$index / 8], ($index % 8) as u8));
+        bitops::is_msb_nset($bits[$index / 8], ($index % 8) as u8);
     };
 }
 
@@ -243,5 +251,20 @@ macro_rules! set_unchecked {
         } else {
             $bits[$index / 8].clear_msb_nth_assign(($index % 8) as u8);
         }
+    };
+}
+
+macro_rules! flip_bits {
+    ($b:expr, IterOnes) => {};
+    ($b:ident, last_one) => {};
+    ($b:ident, first_one) => {};
+    ($b:ident, first_zero) => {
+        $b = !$b
+    };
+    ($b:ident, last_zero) => {
+        $b = !$b
+    };
+    ($b:expr, IterZeros) => {
+        $b = !$b
     };
 }
