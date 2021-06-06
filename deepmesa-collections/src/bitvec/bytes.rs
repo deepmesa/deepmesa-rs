@@ -169,15 +169,10 @@ macro_rules! trailing_bits {
             for byte_c in (sb_idx..=eb_idx).rev() {
                 let byte: u8 = bits[byte_c];
                 let ct;
-                let offset;
-                if byte_c == eb_idx {
-                    offset = end % 8;
-                    if offset > 0 {
-                        let b: u8 = byte >> (8 - offset);
-                        ct = trailing_count!(b, offset, $fn_name);
-                    } else {
-                        ct = trailing_count!(byte, offset, $fn_name);
-                    }
+                let mut offset = end % 8;
+                if byte_c == eb_idx && offset > 0 {
+                    let b: u8 = byte >> (8 - offset);
+                    ct = trailing_count!(b, offset, $fn_name);
                 } else {
                     offset = 8;
                     ct = trailing_count!(byte, offset, $fn_name);
@@ -216,7 +211,7 @@ macro_rules! first_bit {
 
             let sb_idx = start / 8;
             let eb_idx = (end - 1) / 8;
-            let mut idx: usize = 0;
+            let mut idx: usize = sb_idx * 8;
             for byte_c in sb_idx..=eb_idx {
                 let mut byte: u8 = bits[byte_c];
                 flip_bits!(byte, $fn_name);
@@ -235,7 +230,7 @@ macro_rules! first_bit {
                 if idx >= end {
                     break;
                 }
-                return Some(idx + (sb_idx * 8));
+                return Some(idx);
             }
 
             return None;
@@ -491,6 +486,11 @@ mod tests {
         let mut bv = BitVector::new();
         bv.push_u8(0b0111_1100, Some(8));
         assert_eq!(trailing_ones(&bv.bits, 0, 6), 5);
+
+        let mut bv = BitVector::new();
+        bv.push_u8(0b0000_1111, Some(8));
+        bv.push_u8(0b0011_1111, Some(8));
+        assert_eq!(trailing_ones(&bv.bits, 0, bv.len()), 6);
     }
 
     #[test]
@@ -507,6 +507,11 @@ mod tests {
         bv.push_u8(0b0000_0011, Some(8));
 
         assert_eq!(trailing_zeros(&bv.bits, 0, 22), 8);
+
+        let mut bv = BitVector::new();
+        bv.push_u8(0b1111_0000, Some(8));
+        bv.push_u8(0b1100_0000, Some(8));
+        assert_eq!(trailing_zeros(&bv.bits, 0, bv.len()), 6);
     }
 
     #[test]
@@ -531,13 +536,33 @@ mod tests {
         assert_eq!(first_one(&bv.bits, 0, bv.len()), Some(31));
         assert_eq!(first_one(&bv.bits, 30, bv.len()), Some(31));
         assert_eq!(first_one(&bv.bits, 7, 24), None);
+
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b0000_0111, Some(8));
+        bv.push_u8(0b1111_0100, Some(8));
+
+        assert_eq!(bv.first_one(0), Some(5));
+        assert_eq!(bv.first_one(8), Some(8));
+        assert_eq!(bv.first_one(12), Some(13));
+        assert_eq!(bv.first_one(14), None);
     }
 
     #[test]
     fn test_first_zero() {
         let mut bv = BitVector::new();
+        assert_eq!(bv.first_zero(0), None);
+
         bv.push_u8(0b1111_1101, Some(8));
         assert_eq!(first_zero(&bv.bits, 0, bv.len()), Some(6));
+
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1111_1000, Some(8));
+        bv.push_u8(0b0000_1011, Some(8));
+
+        assert_eq!(bv.first_zero(0), Some(5));
+        assert_eq!(bv.first_zero(8), Some(8));
+        assert_eq!(bv.first_zero(12), Some(13));
+        assert_eq!(bv.first_zero(14), None);
     }
 
     #[test]

@@ -25,13 +25,13 @@ use core::marker;
 use core::ops::Deref;
 use core::ops::DerefMut;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BitRef<'a, T> {
     bit: bool,
     _marker: marker::PhantomData<&'a T>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BitRefMut<'a, T> {
     bit: bool,
     mut_bit: bool,
