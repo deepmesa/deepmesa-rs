@@ -21,9 +21,10 @@
 
 use crate::bitvec::{
     bitops,
-    bitslice::BitRef,
+    bitref::{BitRef, BitRefMut},
     bitslice::BitSlice,
-    iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
+    bytes,
+    iter::{Iter, IterMut, IterOnes, IterU128, IterU16, IterU32, IterU64, IterU8, IterZeros},
     traits::{AsMsb0, BitwiseClear, BitwiseClearAssign},
     BitCount, BitOrder,
 };
@@ -189,7 +190,7 @@ macro_rules! read_unsigned {
         $(#[$outer])*
         pub fn $read_fn(&self, start: usize) -> ($i, BitCount) {
             start_bounds_check!(start, self.bit_len);
-            let (val, bit_count) = BitSlice::read_bits(&self.bits, start, self.bit_len, $max_bits, BitOrder::Lsb0);
+            let (val, bit_count) = bytes::read_bits(&self.bits, start, self.bit_len, $max_bits, BitOrder::Lsb0);
             (val as $i, bit_count)
         }
     };
@@ -211,7 +212,7 @@ macro_rules! read_bits_unsigned {
                 );
             }
             let (val, bit_count) =
-                BitSlice::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
+                bytes::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
 
             (val as $i, bit_count)
         }
@@ -364,6 +365,444 @@ impl BitVector {
     pub fn iter_mut(&mut self) -> IterMut {
         let len = self.len();
         IterMut::new(&mut self.bits, 0, len)
+    }
+
+    /// Counts the number of bits from the specified `start` index to
+    /// the first bit set to `0`. Panics if start is non-zero and
+    /// greater than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.leading_ones(0), 0);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1101, Some(8));
+    ///
+    /// assert_eq!(bv.leading_ones(0), 5);
+    /// assert_eq!(bv.leading_ones(8), 0);
+    /// assert_eq!(bv.leading_ones(10), 4);
+    /// ```
+    pub fn leading_ones(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::leading_ones(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the specified `start` index to
+    /// the first bit set to `1`. Panics if start is non-zero and
+    /// greater than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.leading_zeros(0), 0);
+    ///
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0010, Some(8));
+    ///
+    /// assert_eq!(bv.leading_zeros(0), 5);
+    /// assert_eq!(bv.leading_zeros(8), 0);
+    /// assert_eq!(bv.leading_zeros(10), 4);
+    /// ```
+    pub fn leading_zeros(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::leading_zeros(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Counts the number of bits from end of the BitVector to the
+    /// specified `start` index or to the first bit set to `0`
+    /// whichever is smaller. Panics if start is non-zero and greater
+    /// than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.trailing_ones(0), 0);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1111, Some(8));
+    ///
+    /// assert_eq!(bv.trailing_ones(0), 6);
+    /// assert_eq!(bv.trailing_ones(8), 6);
+    /// assert_eq!(bv.leading_ones(12), 4);
+    /// ```
+    pub fn trailing_ones(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::trailing_ones(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Counts the number of bits from end of the BitVector to the
+    /// specified `start` index or to the first bit set to `1`
+    /// whichever is smaller. Panics if start is non-zero and greater
+    /// than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.trailing_zeros(0), 0);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b1100_0000, Some(8));
+    ///
+    /// assert_eq!(bv.trailing_zeros(0), 6);
+    /// //assert_eq!(bv.trailing_zeros(8), 6);
+    /// //assert_eq!(bv.trailing_zeros(12), 4);
+    /// ```
+    pub fn trailing_zeros(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::trailing_zeros(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the specified `start` that are
+    /// set to `1` in the BitVector. Panics if start is non-zero and
+    /// greater than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.count_ones(0), 0);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b1100_0000, Some(8));
+    ///
+    /// assert_eq!(bv.count_ones(0), 7);
+    /// assert_eq!(bv.count_ones(8), 2);
+    /// assert_eq!(bv.count_ones(12), 0);
+    /// ```
+    pub fn count_ones(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::count_ones(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the specified `start` that are
+    /// set to `0` in the BitVector. Panics if start is non-zero and
+    /// greater than or equal to the length of the `BitVector`.
+    ///
+    /// Returns `0` if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.count_zeros(0), 0);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0000_1111, Some(8));
+    ///
+    /// assert_eq!(bv.count_zeros(0), 7);
+    /// assert_eq!(bv.count_zeros(8), 4);
+    /// assert_eq!(bv.count_zeros(12), 0);
+    /// ```
+    pub fn count_zeros(&self, start: usize) -> usize {
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::count_zeros(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Returns the index of the first bit after the specified `start`
+    /// that is set to `0`. Returns `None` if the `BitVector` is empty
+    /// or if there are no zero bits.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.first_zero(0), None);
+    ///
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0000_1011, Some(8));
+    ///
+    /// assert_eq!(bv.first_zero(0), Some(5));
+    /// assert_eq!(bv.first_zero(8), Some(8));
+    /// assert_eq!(bv.first_zero(12), Some(13));
+    /// assert_eq!(bv.first_zero(14), None);
+    /// ```
+    pub fn first_zero(&self, start: usize) -> Option<usize> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::first_zero(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Returns the index of the first bit after the specified `start`
+    /// that is set to `1`. Returns `None` if the `BitVector` is empty
+    /// or if there are no one bits.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.first_one(0), None);
+    ///
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1111_0100, Some(8));
+    ///
+    /// assert_eq!(bv.first_one(0), Some(5));
+    /// assert_eq!(bv.first_one(8), Some(8));
+    /// assert_eq!(bv.first_one(12), Some(13));
+    /// assert_eq!(bv.first_one(14), None);
+    /// ```
+    pub fn first_one(&self, start: usize) -> Option<usize> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::first_one(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Returns the index of the last bit set to `0` after the
+    /// specified `start`. Returns `None` if the `BitVector` is empty
+    /// or if there are no zero bits.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.last_zero(0), None);
+    ///
+    /// bv.push_u8(0b1101_1011, Some(8));
+    ///
+    /// assert_eq!(bv.last_zero(0), Some(5));
+    /// assert_eq!(bv.last_zero(6), None);
+    /// ```
+    pub fn last_zero(&self, start: usize) -> Option<usize> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::last_zero(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Returns the index of the last bit set to `1` after the
+    /// specified `start`. Returns `None` if the `BitVector` is empty
+    /// or if there are no one bits.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.last_one(0), None);
+    ///
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// assert_eq!(bv.last_one(0), Some(5));
+    /// assert_eq!(bv.last_one(6), None);
+    /// ```
+    pub fn last_one(&self, start: usize) -> Option<usize> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::last_one(&self.bits, start, self.bit_len)
+            }
+        }
+    }
+
+    /// Returns an immutable reference to the first bit in the
+    /// `BitVector` or None if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.first(), None);
+    ///
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// assert_eq!(bv.first().as_deref(), Some(&false));
+    /// ```
+    pub fn first(&self) -> Option<BitRef<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(0, self.bits);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    /// Returns a mutable reference to the first bit in the
+    /// `BitVector` or None if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.first(), None);
+    ///
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// assert_eq!(bv.first_mut().as_deref(), Some(&false));
+    /// *bv.first_mut().unwrap() = true;
+    /// assert_eq!(bv.first_mut().as_deref(), Some(&true));
+    /// ```
+    pub fn first_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(0, self.bits);
+
+                let byte_ptr = self.bits[0..0].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, 0));
+            }
+        }
+    }
+
+    /// Returns an immutable reference to the last bit in the
+    /// `BitVector` or None if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.last(), None);
+    ///
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// assert_eq!(bv.last().as_deref(), Some(&true));
+    /// ```
+    pub fn last(&self) -> Option<BitRef<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(self.bit_len - 1, self.bits);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    /// Returns a mutable reference to the last bit in the
+    /// `BitVector` or None if the `BitVector` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// assert_eq!(bv.first(), None);
+    ///
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// assert_eq!(bv.last_mut().as_deref(), Some(&true));
+    /// *bv.last_mut().unwrap() = false;
+    /// assert_eq!(bv.last_mut().as_deref(), Some(&false));
+    /// ```
+    pub fn last_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.bit_len {
+            0 => None,
+            _ => {
+                let bit_idx = self.len() - 1;
+                let bit = bit_at_unchecked!(bit_idx, self.bits);
+
+                let byte_idx = bit_idx / 8;
+                let byte_ptr = self.bits[byte_idx..byte_idx].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, bit_idx));
+            }
+        }
+    }
+
+    /// Iterates over all the bits in the `BitVector` that are set to
+    /// `1`.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// let mut iter = bv.iter_ones();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter_ones(&self) -> IterOnes {
+        IterOnes::new(&self.bits, 0, self.bit_len)
+    }
+
+    /// Iterates over all the bits in the `BitVector` that are set to
+    /// `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1101_1010, Some(8));
+    ///
+    /// let mut iter = bv.iter_zeros();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter_zeros(&self) -> IterZeros {
+        IterZeros::new(&self.bits, 0, self.bit_len)
     }
 
     iter_unsigned!(
@@ -1537,17 +1976,18 @@ impl BitVector {
             return None;
         }
 
-        get_unchecked!(index, self.bits);
+        return Some(bit_at_unchecked!(index, self.bits));
     }
 
-    pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
-        if let Some(bit) = self.get(index) {
-            //            let offset = self.offset();
-            //let index = index + offset;
-            let byte_ptr = self.bits[index..index].as_mut_ptr();
-            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
+    pub fn get_mut(&mut self, index: usize) -> Option<BitRefMut<bool>> {
+        if index >= self.bit_len {
+            return None;
         }
-        return None;
+        let bit = bit_at_unchecked!(index, self.bits);
+
+        let byte_idx = index / 8;
+        let byte_ptr = self.bits[byte_idx..byte_idx].as_mut_ptr();
+        return Some(BitRefMut::<bool>::new(bit, byte_ptr, index));
     }
 
     /// Pushes a single bit to the end of the BitVector.
@@ -2358,9 +2798,13 @@ mod tests {
     fn test_get_mut() {
         let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b1011_1100, None);
-        assert_eq!(bv[0], true);
-        *bv.get_mut(0).unwrap() = false;
-        assert_eq!(bv[0], false);
+        assert_eq!(bv[2], true);
+        *bv.get_mut(2).unwrap() = false;
+        assert_eq!(bv[2], false);
+
+        assert_eq!(bv[7], false);
+        *bv.get_mut(7).unwrap() = true;
+        assert_eq!(bv[7], true);
     }
 
     #[test]
@@ -2786,5 +3230,63 @@ mod tests {
         }
         assert_eq!(bv.read_u8(0), (0b0000_0000, 8));
         assert_eq!(bv.read_u8(8), (0b0000_0000, 8));
+    }
+
+    #[test]
+    fn test_first() {
+        let mut bv = BitVector::with_capacity(20);
+        assert_eq!(bv.first(), None);
+
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        assert_eq!(*(bv.first().unwrap()), true);
+        assert_eq!(bv.first().as_deref(), Some(&true));
+    }
+
+    #[test]
+    fn test_first_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        assert_eq!(bv.first_mut(), None);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        assert_eq!(*(bv.first_mut().unwrap()), true);
+        *bv.first_mut().unwrap() = false;
+        assert_eq!(*(bv.first_mut().unwrap()), false);
+        assert_eq!(bv.first().as_deref(), Some(&false));
+        assert_eq!(bv[0], false);
+    }
+
+    #[test]
+    fn test_last() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[7], false);
+        assert_eq!(*(bv.last().unwrap()), false);
+        assert_eq!(bv.last().as_deref(), Some(&false));
+        assert_eq!(bv[7], false);
+    }
+
+    #[test]
+    fn test_last_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b0000_0000, Some(8));
+        assert_eq!(bv[7], false);
+        assert_eq!(*(bv.last_mut().unwrap()), false);
+        *bv.last_mut().unwrap() = true;
+        assert_eq!(*(bv.last().unwrap()), true);
+        assert_eq!(bv.last().as_deref(), Some(&true));
+        assert_eq!(bv[7], true);
+    }
+
+    #[test]
+    fn test_count_ones() {
+        let bv = BitVector::new();
+        assert_eq!(bv.count_ones(0), 0);
+    }
+
+    #[test]
+    fn test_count_zeros() {
+        let bv = BitVector::new();
+        assert_eq!(bv.count_zeros(0), 0);
     }
 }

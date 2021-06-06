@@ -21,7 +21,10 @@
 
 use crate::bitvec::{
     bitops,
-    iter::{Iter, IterMut, IterU128, IterU16, IterU32, IterU64, IterU8},
+    bitref::{BitRef, BitRefMut},
+    bitvec::BitVector,
+    bytes,
+    iter::{Iter, IterMut, IterOnes, IterU128, IterU16, IterU32, IterU64, IterU8, IterZeros},
     traits::{
         AsMsb0, BitwiseClearAssign, BitwiseLsbAssign, BitwiseMsbAssign, BitwisePartialAssign,
         NotLsbAssign, NotMsbAssign, NotPartialAssign,
@@ -31,12 +34,9 @@ use crate::bitvec::{
 use core::convert::TryFrom;
 use core::fmt;
 use core::fmt::Debug;
-use core::marker;
 use core::ops::BitAndAssign;
 use core::ops::BitOrAssign;
 use core::ops::BitXorAssign;
-use core::ops::Deref;
-use core::ops::DerefMut;
 use core::ops::Index;
 use core::ops::IndexMut;
 use core::ops::Not;
@@ -136,7 +136,7 @@ macro_rules! read_unsigned {
 
             let offset = self.offset();
             let (val, bit_count) =
-                BitSlice::read_bits(&self.0, start + offset, len + offset, $max_bits, BitOrder::Lsb0);
+                bytes::read_bits(&self.0, start + offset, len + offset, $max_bits, BitOrder::Lsb0);
 
             (val as $u_type, bit_count)
         }
@@ -161,7 +161,7 @@ macro_rules! read_bits_unsigned {
             }
             let offset = self.offset();
             let (val, bit_count) =
-                BitSlice::read_bits(&self.0, start + offset, len + offset, max_bits, BitOrder::Lsb0);
+                bytes::read_bits(&self.0, start + offset, len + offset, max_bits, BitOrder::Lsb0);
 
             (val as $i, bit_count)
         }
@@ -183,7 +183,7 @@ macro_rules! as_unsigned {
                 );
             }
             let offset = self.offset();
-            let (val, count) = BitSlice::read_bits(&self.0, offset, len + offset, $max_bits, BitOrder::Lsb0);
+            let (val, count) = bytes::read_bits(&self.0, offset, len + offset, $max_bits, BitOrder::Lsb0);
             (val as $u_type, count)
         }
     };
@@ -194,56 +194,6 @@ try_from_bitslice!(u16, 16);
 try_from_bitslice!(u32, 32);
 try_from_bitslice!(u64, 64);
 try_from_bitslice!(u128, 128);
-
-#[derive(Debug)]
-pub struct BitRef<'a, T> {
-    bit: bool,
-    mut_bit: bool,
-    byte_ptr: *mut u8,
-    _marker: marker::PhantomData<&'a T>,
-    index: usize,
-}
-
-impl<'a, T> BitRef<'a, T> {
-    pub(super) fn new(bit: bool, byte_ptr: *mut u8, index: usize) -> BitRef<'a, T> {
-        BitRef {
-            bit,
-            mut_bit: bit,
-            byte_ptr: byte_ptr,
-            _marker: marker::PhantomData,
-            index: index,
-        }
-    }
-}
-
-impl<'a, T> Drop for BitRef<'a, T> {
-    fn drop(&mut self) {
-        if self.bit != self.mut_bit {
-            if self.mut_bit {
-                unsafe {
-                    bitops::set_msb_n(&mut *self.byte_ptr, (self.index % 8) as u8);
-                }
-            } else {
-                unsafe {
-                    (*self.byte_ptr).clear_msb_nth_assign((self.index % 8) as u8);
-                }
-            }
-        }
-    }
-}
-
-impl<'a, T> Deref for BitRef<'a, T> {
-    type Target = bool;
-    fn deref(&self) -> &Self::Target {
-        &self.mut_bit
-    }
-}
-
-impl<'a, T> DerefMut for BitRef<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.mut_bit
-    }
-}
 
 macro_rules! bitwise_partial_assign {
     ($val: expr, $start:expr, $len: expr, $rhs: expr, &=) => {
@@ -447,6 +397,25 @@ impl BitSlice {
         slice_unpack_len!(self.0.len())
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn repeat(&self, n: usize) -> BitVector {
+        let new_len = n * self.len();
+        //TODO: check that new_len isn't greater than max
+        // capacity. Ideally do the check in the BitVector Constructor
+        let mut bv = BitVector::with_capacity(new_len);
+        for _ in 0..n {
+            bv.extend_from_bitslice(self);
+        }
+        bv
+    }
+
+    pub fn set_all(&mut self, value: bool) {
+        self.fill(value);
+    }
+
     /// Fills the slice with the specified bit.
     ///
     /// # Examples
@@ -488,7 +457,7 @@ impl BitSlice {
         }
 
         let index = index + self.offset();
-        get_unchecked!(index, self.0);
+        return Some(bit_at_unchecked!(index, self.0));
     }
 
     /// Returns a mutable reference to the bit at the specified index
@@ -507,14 +476,17 @@ impl BitSlice {
     /// *s.get_mut(0).unwrap() = false;
     /// assert_eq!(bv[0], false);
     /// ```
-    pub fn get_mut(&mut self, index: usize) -> Option<BitRef<bool>> {
-        if let Some(bit) = self.get(index) {
-            let offset = self.offset();
-            let index = index + offset;
-            let byte_ptr = self.0[index..index].as_mut_ptr();
-            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
+    pub fn get_mut(&mut self, index: usize) -> Option<BitRefMut<bool>> {
+        if index >= self.len() {
+            return None;
         }
-        return None;
+
+        let bit_idx = index + self.offset();
+        let bit = bit_at_unchecked!(bit_idx, self.0);
+
+        let byte_idx = bit_idx / 8;
+        let byte_ptr = self.0[byte_idx..byte_idx].as_mut_ptr();
+        return Some(BitRefMut::<bool>::new(bit, byte_ptr, bit_idx));
     }
 
     /// Returns true if any bit in the slice is set to `1` and false
@@ -605,6 +577,534 @@ impl BitSlice {
 
         let index = index + self.offset();
         set_unchecked!(index, value, &mut self.0);
+    }
+
+    /// Counts the number of bits from the start of the bitslice to
+    /// the first bit set to `0`.
+    ///
+    /// Returns `0` if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1101, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.leading_ones(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.leading_ones(), 4);
+    ///
+    /// let s = &bv[8..];
+    /// assert_eq!(s.leading_ones(), 0);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.leading_ones(), 4);
+    /// ```
+    pub fn leading_ones(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::leading_ones(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the start of the bitslice to
+    /// the first bit set to `1`.
+    ///
+    /// Returns `0` if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0010, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.leading_zeros(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.leading_zeros(), 4);
+    ///
+    /// let s = &bv[8..];
+    /// assert_eq!(s.leading_zeros(), 0);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.leading_zeros(), 4);
+    /// ```
+    pub fn leading_zeros(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::leading_zeros(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the end of the bitslice to the
+    /// last bit that is set to `0`.
+    ///
+    /// Returns 0 if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0111, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.trailing_ones(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.trailing_ones(), 0);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.trailing_ones(), 5);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.trailing_ones(), 3);
+    /// ```
+    pub fn trailing_ones(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::trailing_ones(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Counts the number of bits from the end of the bitslice to the
+    /// last bit that is set to `1`.
+    ///
+    /// Returns 0 if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1000, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.trailing_zeros(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.trailing_zeros(), 0);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.trailing_zeros(), 5);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.trailing_zeros(), 3);
+    /// ```
+    pub fn trailing_zeros(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::trailing_zeros(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Counts the bits in the slice that are set to `1`.
+    /// Returns 0 if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1000, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.count_ones(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.count_ones(), 4);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.count_ones(), 1);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.count_ones(), 3);
+    /// ```
+    pub fn count_ones(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::count_ones(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Counts the bits in the slice that are set to `0`.
+    /// Returns 0 if the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0111, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.count_zeros(), 0);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.count_zeros(), 4);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.count_zeros(), 1);
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.count_zeros(), 3);
+    /// ```
+    pub fn count_zeros(&self) -> usize {
+        let len = self.len();
+        match len {
+            0 => 0,
+            _ => {
+                let offset = self.offset();
+                bytes::count_zeros(&self.0, offset, len + offset)
+            }
+        }
+    }
+
+    /// Returns the index of the first bit in the `BitSlice` that is
+    /// set to `1`. Returns None if there are no bits set to `1` or if
+    /// the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0111, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.first_one(), None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.first_one(), None);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.first_one(), Some(1));
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.first_one(), Some(3));
+    /// ```
+    pub fn first_one(&self) -> Option<usize> {
+        let len = self.len();
+        match len {
+            0 => None,
+            _ => {
+                let offset = self.offset();
+                match bytes::first_one(&self.0, offset, len + offset) {
+                    None => None,
+                    Some(idx) => Some(idx - offset),
+                }
+            }
+        }
+    }
+
+    /// Returns the index of the first bit in the `BitSlice` that is
+    /// set to `0`. Returns None if there are no bits set to `0` or if
+    /// the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1000, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.first_zero(), None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.first_zero(), None);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.first_zero(), Some(1));
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.first_zero(), Some(3));
+    /// ```
+    pub fn first_zero(&self) -> Option<usize> {
+        let len = self.len();
+        match len {
+            0 => None,
+            _ => {
+                let offset = self.offset();
+                match bytes::first_zero(&self.0, offset, len + offset) {
+                    None => None,
+                    Some(idx) => Some(idx - offset),
+                }
+            }
+        }
+    }
+
+    /// Returns the index of the last bit in the `BitSlice` that is
+    /// set to `1`. Returns None if there are no bits set to `1` or if
+    /// the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0000_0111, Some(8));
+    /// bv.push_u8(0b1100_0110, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.last_one(), None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.last_one(), None);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.last_one(), Some(5));
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.last_one(), Some(4));
+    /// ```
+    pub fn last_one(&self) -> Option<usize> {
+        let len = self.len();
+        match len {
+            0 => None,
+            _ => {
+                let offset = self.offset();
+                match bytes::last_one(&self.0, offset, len + offset) {
+                    None => None,
+                    Some(idx) => Some(idx - offset),
+                }
+            }
+        }
+    }
+
+    /// Returns the index of the last bit in the `BitSlice` that is
+    /// set to `0`. Returns None if there are no bits set to `0` or if
+    /// the slice is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1111_1000, Some(8));
+    /// bv.push_u8(0b0011_1001, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.last_zero(), None);
+    ///
+    /// let s = &bv[0..4];
+    /// assert_eq!(s.last_zero(), None);
+    ///
+    /// let s = &bv[4..10];
+    /// assert_eq!(s.last_zero(), Some(5));
+    ///
+    /// let s = &bv[10..];
+    /// assert_eq!(s.last_zero(), Some(4));
+    /// ```
+    pub fn last_zero(&self) -> Option<usize> {
+        let len = self.len();
+        match len {
+            0 => None,
+            _ => {
+                let offset = self.offset();
+                match bytes::last_zero(&self.0, offset, len + offset) {
+                    None => None,
+                    Some(idx) => Some(idx - offset),
+                }
+            }
+        }
+    }
+
+    /// Returns an immutable reference to the first bit in the
+    /// `BitSlice` or None if the `BitSlice` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.first(), None);
+    ///
+    /// let s = &bv[2..5];
+    /// assert_eq!(s.first().as_deref(), Some(&true));
+    /// ```
+    pub fn first(&self) -> Option<BitRef<bool>> {
+        match self.len() {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(self.offset(), self.0);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    /// Returns a mutable reference to the first bit in the
+    /// `BitSlice` or None if the `BitSlice` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// let s = &mut bv[2..2];
+    /// assert_eq!(s.first_mut(), None);
+    ///
+    /// let s = &mut bv[2..5];
+    /// assert_eq!(s.first_mut().as_deref(), Some(&true));
+    /// *s.first_mut().unwrap() = false;
+    /// assert_eq!(s.first_mut().as_deref(), Some(&false));
+    /// ```
+    pub fn first_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.len() {
+            0 => None,
+            _ => {
+                let bit_idx = self.offset();
+                let bit = bit_at_unchecked!(bit_idx, self.0);
+
+                let byte_idx = bit_idx / 8;
+                let byte_ptr = self.0[byte_idx..byte_idx].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, bit_idx));
+            }
+        }
+    }
+
+    /// Returns an immutable reference to the last bit in the
+    /// `BitSlice` or None if the `BitSlice` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// assert_eq!(s.last(), None);
+    ///
+    /// let s = &bv[2..5];
+    /// assert_eq!(s.last().as_deref(), Some(&false));
+    /// ```
+    pub fn last(&self) -> Option<BitRef<bool>> {
+        match self.len() {
+            0 => None,
+            _ => {
+                let bit = bit_at_unchecked!(self.len() - 1 + self.offset(), self.0);
+                Some(BitRef::<bool>::new(bit))
+            }
+        }
+    }
+
+    /// Returns a mutable reference to the first bit in the
+    /// `BitSlice` or None if the `BitSlice` is empty.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0100, Some(8));
+    ///
+    /// let s = &mut bv[2..2];
+    /// assert_eq!(s.last_mut(), None);
+    ///
+    /// let s = &mut bv[2..6];
+    /// assert_eq!(s.last_mut().as_deref(), Some(&true));
+    /// *s.last_mut().unwrap() = false;
+    /// assert_eq!(s.last_mut().as_deref(), Some(&false));
+    /// ```
+    pub fn last_mut(&mut self) -> Option<BitRefMut<bool>> {
+        match self.len() {
+            0 => None,
+            _ => {
+                let bit_idx = self.len() - 1 + self.offset();
+                let bit = bit_at_unchecked!(bit_idx, self.0);
+
+                let byte_idx = bit_idx / 8;
+                let byte_ptr = self.0[byte_idx..byte_idx].as_mut_ptr();
+                return Some(BitRefMut::<bool>::new(bit, byte_ptr, bit_idx));
+            }
+        }
+    }
+
+    /// Iterates over all the bits in the `BitSlice` that are set to
+    /// `1`.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// let mut iter = s.iter_ones();
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let s = &bv[2..6];
+    /// let mut iter = s.iter_ones();
+    /// assert_eq!(iter.next(), Some(0));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter_ones(&self) -> IterOnes {
+        IterOnes::new(&self.0, self.offset(), self.len())
+    }
+
+    /// Iterates over all the bits in the `BitSlice` that are set to
+    /// `0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1101_1010, Some(8));
+    ///
+    /// let s = &bv[2..2];
+    /// let mut iter = s.iter_zeros();
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// let s = &bv[2..6];
+    /// let mut iter = s.iter_zeros();
+    /// assert_eq!(iter.next(), Some(0));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn iter_zeros(&self) -> IterZeros {
+        IterZeros::new(&self.0, self.offset(), self.len())
     }
 
     /// Returns an iterator over the bits of this
@@ -1401,65 +1901,9 @@ impl BitSlice {
 // Helpers and private methods
 impl BitSlice {
     /// Returns the 3 most significant bits of the length
+    #[inline(always)]
     pub(super) fn offset(&self) -> usize {
         slice_unpack_offset!(self.0.len())
-    }
-
-    pub fn read_bits(
-        bits: &[u8],
-        start: usize,
-        len: usize,
-        max_bits: BitCount,
-        order: BitOrder,
-    ) -> (u128, BitCount) {
-        debug_assert!(
-            max_bits <= 128,
-            "max_bits cannot exceed 128 bits. max_bits = {}",
-            max_bits
-        );
-
-        let start_byte_index = start / 8;
-        let partial_bits = 8 - (start % 8);
-        let mut bits_remaining = max_bits;
-        let limit = len - start;
-        if bits_remaining > limit {
-            bits_remaining = limit;
-        }
-
-        let mut retval: u128 = 0;
-        let mut bits_read: usize = 0;
-        let mut byte_cursor = start_byte_index;
-        while bits_remaining > 0 {
-            let byte = bits[byte_cursor];
-
-            if byte_cursor == start_byte_index {
-                retval |= (byte as u128) << ((128 - partial_bits) as u128);
-                if bits_remaining >= partial_bits {
-                    bits_remaining -= partial_bits;
-                    bits_read += partial_bits;
-                } else {
-                    bits_read += bits_remaining;
-                    bits_remaining = 0;
-                }
-            } else {
-                retval |= (byte as u128) << ((128 - bits_read - 8) as u128);
-                if bits_remaining < 8 {
-                    bits_read += bits_remaining;
-                    bits_remaining = 0;
-                } else {
-                    bits_remaining -= 8;
-                    bits_read += 8;
-                }
-            }
-            byte_cursor += 1;
-        }
-
-        retval = retval >> (128 - bits_read);
-        if order == BitOrder::Lsb0 {
-            return (retval, bits_read);
-        } else {
-            return (retval << (128 - bits_read), bits_read);
-        }
     }
 }
 
@@ -1779,8 +2223,6 @@ mod tests {
         assert_eq!(bv.read_u16(32), (0b0000_1011_1101_0111, 16));
     }
 
-    //TODO: for each of these bit and / or tests make sure to assert
-    // the contents of the underlying bitvector are correct
     #[test]
     fn test_bit_or_8() {
         let mut bv = BitVector::with_capacity(128);
@@ -1991,7 +2433,7 @@ mod tests {
         bv.push_u16(0b1110_1011_1101_0111, Some(16));
 
         let mut s = &mut bv[10..35];
-        //        assert_eq!(s.len(), 25);
+        assert_eq!(s.len(), 25);
 
         let mut bv2 = BitVector::with_capacity(128);
         bv2.push_u16(0b1110_1011_1101_0111, Some(16));
@@ -2526,11 +2968,16 @@ mod tests {
     #[test]
     fn test_get_mut() {
         let mut bv = BitVector::with_capacity(20);
-        bv.push_u8(0b1011_1100, None);
-        assert_eq!(bv[0], true);
-        let s = &mut bv[0..7];
+        bv.push_u8(0b1010_1101, None);
+
+        let s = &mut bv[2..7];
         *s.get_mut(0).unwrap() = false;
-        assert_eq!(bv[0], false);
+        *s.get_mut(1).unwrap() = true;
+        *s.get_mut(2).unwrap() = false;
+        *s.get_mut(3).unwrap() = false;
+        *s.get_mut(4).unwrap() = true;
+
+        assert_eq!(bv.read_u8(0), (0b1001_0011, 8));
     }
 
     #[test]
@@ -2553,20 +3000,117 @@ mod tests {
     }
 
     #[test]
-    fn test_read_bits_12() {
-        let mut bv = BitVector::new();
-        bv.push_u16(0b1010_1100_0011_0101, None);
-        let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 12, BitOrder::Lsb0);
-        assert_eq!(read, 12);
-        assert_eq!(val, 0b10_1100_0011_01);
+    fn test_first() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        let s = &bv[0..8];
+        assert_eq!(*(s.first().unwrap()), true);
+        assert_eq!(s.first().as_deref(), Some(&true));
+        assert_eq!(bv[0], true);
     }
 
     #[test]
-    fn test_read_bits_3() {
-        let mut bv = BitVector::new();
-        bv.push_u16(0b1010_1100_0011_0101, None);
-        let (val, read) = BitSlice::read_bits(&bv.bits, 2, 16, 3, BitOrder::Msb0);
-        assert_eq!(read, 3);
-        assert_eq!(val, 0xa000_0000_0000_0000_0000_0000_0000_0000);
+    fn test_first_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[0], true);
+        let s = &mut bv[0..8];
+        assert_eq!(*(s.first_mut().unwrap()), true);
+        *s.first_mut().unwrap() = false;
+        assert_eq!(*(s.first_mut().unwrap()), false);
+        assert_eq!(s.first().as_deref(), Some(&false));
+        assert_eq!(bv[0], false);
+    }
+
+    #[test]
+    fn test_last() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1011_1100, None);
+        assert_eq!(bv[7], false);
+        let s = &bv[0..8];
+        assert_eq!(*(s.last().unwrap()), false);
+        assert_eq!(s.last().as_deref(), Some(&false));
+        assert_eq!(bv[7], false);
+    }
+
+    #[test]
+    fn test_last_mut() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b0000_0000, Some(8));
+        assert_eq!(bv[7], false);
+        let s = &mut bv[0..8];
+        assert_eq!(*(s.last_mut().unwrap()), false);
+        *s.last_mut().unwrap() = true;
+        assert_eq!(*(s.last().unwrap()), true);
+        assert_eq!(s.last().as_deref(), Some(&true));
+        assert_eq!(bv[7], true);
+    }
+
+    #[test]
+    fn test_iter_ones() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b1100_1010_0011_0101, None);
+        bv.push_u16(0b1000_1100_0011_1111, None);
+        let s = &bv[2..2];
+        let mut iter = s.iter_ones();
+        assert_eq!(iter.next(), None);
+
+        let s = &bv[2..4];
+        let mut iter = s.iter_ones();
+        assert_eq!(iter.next(), None);
+
+        let s = &bv[2..19];
+        let mut iter = s.iter_ones();
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(8));
+        assert_eq!(iter.next(), Some(9));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_iter_zeros() {
+        let mut bv = BitVector::with_capacity(128);
+        bv.push_u16(0b0011_0101_1100_1010, Some(16));
+        bv.push_u16(0b0111_0011_1100_0000, Some(16));
+
+        let s = &bv[2..2];
+
+        let mut iter = s.iter_zeros(); //IterZeros::new(&s.0, s.offset(), s.len());
+        assert_eq!(iter.next(), None);
+
+        let s = &bv[2..4];
+        let mut iter = s.iter_zeros(); //IterZeros::new(&s.0, s.offset(), s.len());
+        assert_eq!(iter.next(), None);
+
+        let s = &bv[2..19];
+        let mut iter = s.iter_zeros(); //IterZeros::new(&s.0, s.offset(), s.len());
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(8));
+        assert_eq!(iter.next(), Some(9));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.next(), Some(14));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_count_ones() {
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1111_1000, Some(8));
+        bv.push_u8(0b0011_1000, Some(8));
+
+        let s = &bv[4..10];
+        assert_eq!(s.count_ones(), 1);
+
+        let mut bv = BitVector::with_capacity(20);
+        bv.push_u8(0b1110_1111, Some(8));
+        let s = &bv[2..6];
+        assert_eq!(s.count_ones(), 3);
     }
 }

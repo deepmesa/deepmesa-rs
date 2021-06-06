@@ -3,8 +3,10 @@ mod bitops;
 #[macro_use]
 mod macros;
 
+pub mod bitref;
 pub mod bitslice;
 pub mod bitvec;
+pub(super) mod bytes;
 pub mod iter;
 pub mod traits;
 

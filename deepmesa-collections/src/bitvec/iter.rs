@@ -20,7 +20,8 @@
 */
 
 use crate::bitvec::{
-    bitops, bitslice::BitRef, bitslice::BitSlice, bitvec::BitVector, BitCount, BitOrder,
+    bitops, bitref::BitRefMut, bitslice::BitSlice, bitvec::BitVector, bytes,
+    traits::BitwiseClearAssign, BitCount, BitOrder,
 };
 
 macro_rules! iter_unsigned {
@@ -64,7 +65,7 @@ macro_rules! iter_unsigned {
                 let st_index = self.cursor + offset;
 
                 let (val, bit_count) =
-                    BitSlice::read_bits(&self.bits, st_index, len, $max_bits, BitOrder::Lsb0);
+                    bytes::read_bits(&self.bits, st_index, len, $max_bits, BitOrder::Lsb0);
                 self.cursor += bit_count;
                 Some((val as $i, bit_count))
             }
@@ -280,6 +281,139 @@ impl<'a> IterMut<'a> {
     }
 }
 
+macro_rules! iter_bits {
+    (
+        $(#[$outer:meta])*
+        $iter_name: ident
+    ) => {
+        $(#[$outer])*
+        #[derive(Debug)]
+        pub struct $iter_name<'a> {
+            bits: &'a [u8],
+            cur_byte: u8,
+            byte_idx: usize,
+            slice_offset: usize,
+            bit_len: usize,
+            eb_idx: usize,
+            sb_idx: usize,
+            l_bit: usize,
+        }
+
+        impl<'a> $iter_name<'a> {
+            pub(super) fn new(
+                bits: &'a [u8],
+                slice_offset: usize,
+                bit_len: usize,
+            ) -> $iter_name<'a> {
+                let byte_idx = slice_offset / 8;
+                let eb_idx;
+                #[allow(unused_mut)]
+                let mut cur_byte: u8;
+                let l_bit = slice_offset + bit_len;
+                if bit_len == 0 {
+                    eb_idx = 0;
+                    cur_byte = 0;
+                } else {
+                    eb_idx = (l_bit - 1) / 8;
+                    cur_byte = bits[byte_idx];
+                    flip_bits!(cur_byte, $iter_name);
+                };
+                let sb_idx = byte_idx;
+
+                $iter_name {
+                    bits,
+                    slice_offset,
+                    bit_len,
+                    byte_idx,
+                    cur_byte,
+                    eb_idx,
+                    sb_idx,
+                    l_bit,
+                }
+            }
+        }
+        impl<'a> Iterator for $iter_name<'a> {
+            type Item = usize;
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.byte_idx == self.sb_idx {
+                    self.cur_byte
+                        .clear_msb_assign((self.slice_offset % 8) as u8);
+                }
+
+                if self.cur_byte == 0 {
+                    self.byte_idx += 1;
+                    if self.byte_idx > self.eb_idx {
+                        return None;
+                    }
+                    self.cur_byte = self.bits[self.byte_idx];
+                    flip_bits!(self.cur_byte, $iter_name);
+                }
+
+                let bit_idx = self.cur_byte.leading_zeros() as usize;
+                let idx = bit_idx + (self.byte_idx * 8);
+                if idx >= self.l_bit {
+                    return None;
+                }
+                self.cur_byte.clear_msb_assign((bit_idx + 1) as u8);
+
+                return Some(idx - self.slice_offset);
+            }
+        }
+    };
+}
+
+iter_bits!(
+    /// An iterator that iterates over the `1` bits of the
+    /// [`BitVector`](../struct.BitVector.html).
+    ///
+    /// This struct is created by the
+    /// [`.iter_ones()`](BitVector#method.iter_ones)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterOnes;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// let mut iter:IterOnes = bv.iter_ones();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterOnes
+);
+
+iter_bits!(
+    /// An iterator that iterates over the `0` bits of the
+    /// [`BitVector`](../struct.BitVector.html).
+    ///
+    /// This struct is created by the
+    /// [`.iter_zeros()`](BitVector#method.iter_zeros)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterZeros;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1101_1010, Some(8));
+    ///
+    /// let mut iter:IterZeros = bv.iter_zeros();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterZeros
+);
+
 impl<'a> Iterator for Iter<'a> {
     type Item = bool;
     fn next(&mut self) -> Option<Self::Item> {
@@ -289,12 +423,12 @@ impl<'a> Iterator for Iter<'a> {
 
         let index = self.cursor + self.slice_offset;
         self.cursor += 1;
-        get_unchecked!(index, self.bits);
+        return Some(bit_at_unchecked!(index, self.bits));
     }
 }
 
 impl<'a> Iterator for IterMut<'a> {
-    type Item = BitRef<'a, bool>;
+    type Item = BitRefMut<'a, bool>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor >= self.bit_len {
             return None;
@@ -309,7 +443,7 @@ impl<'a> Iterator for IterMut<'a> {
             let bit = bitops::is_msb_nset(byte, (index % 8) as u8);
 
             self.cursor += 1;
-            return Some(BitRef::<bool>::new(bit, byte_ptr, index));
+            return Some(BitRefMut::<bool>::new(bit, byte_ptr, index));
         }
     }
 }
@@ -332,6 +466,7 @@ impl<'a> IntoIterator for &'a BitVector {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::bitvec::bitvec::BitVector;
 
     #[test]
@@ -388,5 +523,64 @@ mod tests {
         assert_eq!(iter.next(), Some((0b1000_1100_0011_1111, 16)));
         assert_eq!(iter.next(), Some((0b0000_0000_0000_0011, 2)));
         assert_eq!(&iter.next(), &None);
+    }
+
+    #[test]
+    fn test_iter_ones() {
+        let mut bv = BitVector::with_capacity(128);
+        let mut iter = IterOnes::new(&bv.bits, 0, bv.len());
+        assert_eq!(iter.next(), None);
+
+        bv.push_u16(0b1100_1010_0011_0101, None);
+        bv.push_u16(0b1000_1100_0011_1111, None);
+
+        let mut iter = IterOnes::new(&bv.bits, 0, bv.len());
+        assert_eq!(iter.next(), Some(0));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), Some(10));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.next(), Some(29));
+        assert_eq!(iter.next(), Some(30));
+        assert_eq!(iter.next(), Some(31));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_iter_zeros() {
+        let mut bv = BitVector::with_capacity(128);
+        let mut iter = IterZeros::new(&bv.bits, 0, bv.len());
+        assert_eq!(iter.next(), None);
+
+        bv.push_u16(0b0011_0101_1100_1010, Some(16));
+        bv.push_u16(0b0111_0011_1100_0000, Some(16));
+        let mut iter = IterZeros::new(&bv.bits, 0, bv.len());
+        assert_eq!(iter.next(), Some(0));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), Some(10));
+        assert_eq!(iter.next(), Some(11));
+        assert_eq!(iter.next(), Some(13));
+        assert_eq!(iter.next(), Some(15));
+        assert_eq!(iter.next(), Some(16));
+        assert_eq!(iter.next(), Some(20));
+        assert_eq!(iter.next(), Some(21));
+        assert_eq!(iter.next(), Some(26));
+        assert_eq!(iter.next(), Some(27));
+        assert_eq!(iter.next(), Some(28));
+        assert_eq!(iter.next(), Some(29));
+        assert_eq!(iter.next(), Some(30));
+        assert_eq!(iter.next(), Some(31));
+        assert_eq!(iter.next(), None);
     }
 }

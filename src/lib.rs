@@ -20,11 +20,13 @@ pub mod collections {
         pub use deepmesa_collections::bitvec::bitslice::BitSlice;
         pub use deepmesa_collections::bitvec::iter::Iter;
         pub use deepmesa_collections::bitvec::iter::IterMut;
+        pub use deepmesa_collections::bitvec::iter::IterOnes;
         pub use deepmesa_collections::bitvec::iter::IterU128;
         pub use deepmesa_collections::bitvec::iter::IterU16;
         pub use deepmesa_collections::bitvec::iter::IterU32;
         pub use deepmesa_collections::bitvec::iter::IterU64;
         pub use deepmesa_collections::bitvec::iter::IterU8;
+        pub use deepmesa_collections::bitvec::iter::IterZeros;
         pub use deepmesa_collections::bitvec::traits::AsLsb0;
         pub use deepmesa_collections::bitvec::traits::AsMsb0;
         pub use deepmesa_collections::bitvec::traits::BitwiseClear;
