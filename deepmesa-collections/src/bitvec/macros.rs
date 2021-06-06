@@ -258,10 +258,14 @@ macro_rules! flip_bits {
     ($b:expr, IterOnes) => {};
     ($b:ident, last_one) => {};
     ($b:ident, first_one) => {};
+    ($b:ident, count_ones) => {};
     ($b:ident, first_zero) => {
         $b = !$b
     };
     ($b:ident, last_zero) => {
+        $b = !$b
+    };
+    ($b:ident, count_zeros) => {
         $b = !$b
     };
     ($b:expr, IterZeros) => {

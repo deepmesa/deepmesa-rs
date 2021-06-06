@@ -388,10 +388,13 @@ impl BitVector {
     /// assert_eq!(bv.leading_ones(10), 4);
     /// ```
     pub fn leading_ones(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::leading_ones(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::leading_ones(&self.bits, start, self.bit_len)
     }
 
     /// Counts the number of bits from the specified `start` index to
@@ -415,10 +418,13 @@ impl BitVector {
     /// assert_eq!(bv.leading_zeros(10), 4);
     /// ```
     pub fn leading_zeros(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::leading_zeros(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::leading_zeros(&self.bits, start, self.bit_len)
     }
 
     /// Counts the number of bits from end of the BitVector to the
@@ -443,10 +449,13 @@ impl BitVector {
     /// assert_eq!(bv.leading_ones(12), 4);
     /// ```
     pub fn trailing_ones(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::trailing_ones(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::trailing_ones(&self.bits, start, self.bit_len)
     }
 
     /// Counts the number of bits from end of the BitVector to the
@@ -471,10 +480,13 @@ impl BitVector {
     /// //assert_eq!(bv.trailing_zeros(12), 4);
     /// ```
     pub fn trailing_zeros(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::trailing_zeros(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::trailing_zeros(&self.bits, start, self.bit_len)
     }
 
     /// Counts the number of bits from the specified `start` that are
@@ -498,10 +510,13 @@ impl BitVector {
     /// assert_eq!(bv.count_ones(12), 0);
     /// ```
     pub fn count_ones(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::count_ones(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::count_ones(&self.bits, start, self.bit_len)
     }
 
     /// Counts the number of bits from the specified `start` that are
@@ -525,10 +540,13 @@ impl BitVector {
     /// assert_eq!(bv.count_zeros(12), 0);
     /// ```
     pub fn count_zeros(&self, start: usize) -> usize {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => 0,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::count_zeros(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::count_zeros(&self.bits, start, self.bit_len)
     }
 
     /// Returns the index of the first bit after the specified `start`
@@ -551,10 +569,13 @@ impl BitVector {
     /// assert_eq!(bv.first_zero(14), None);
     /// ```
     pub fn first_zero(&self, start: usize) -> Option<usize> {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::first_zero(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::first_zero(&self.bits, start, self.bit_len)
     }
 
     /// Returns the index of the first bit after the specified `start`
@@ -577,10 +598,13 @@ impl BitVector {
     /// assert_eq!(bv.first_one(14), None);
     /// ```
     pub fn first_one(&self, start: usize) -> Option<usize> {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::first_one(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::first_one(&self.bits, start, self.bit_len)
     }
 
     /// Returns the index of the last bit set to `0` after the
@@ -600,10 +624,13 @@ impl BitVector {
     /// assert_eq!(bv.last_zero(6), None);
     /// ```
     pub fn last_zero(&self, start: usize) -> Option<usize> {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::last_zero(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::last_zero(&self.bits, start, self.bit_len)
     }
 
     /// Returns the index of the last bit set to `1` after the
@@ -623,10 +650,13 @@ impl BitVector {
     /// assert_eq!(bv.last_one(6), None);
     /// ```
     pub fn last_one(&self, start: usize) -> Option<usize> {
-        if start > 0 {
-            start_bounds_check!(start, self.bit_len);
+        match self.bit_len {
+            0 => None,
+            _ => {
+                start_bounds_check!(start, self.bit_len);
+                bytes::last_one(&self.bits, start, self.bit_len)
+            }
         }
-        bytes::last_one(&self.bits, start, self.bit_len)
     }
 
     /// Returns an immutable reference to the first bit in the
@@ -3246,5 +3276,17 @@ mod tests {
         assert_eq!(*(bv.last().unwrap()), true);
         assert_eq!(bv.last().as_deref(), Some(&true));
         assert_eq!(bv[7], true);
+    }
+
+    #[test]
+    fn test_count_ones() {
+        let bv = BitVector::new();
+        assert_eq!(bv.count_ones(0), 0);
+    }
+
+    #[test]
+    fn test_count_zeros() {
+        let bv = BitVector::new();
+        assert_eq!(bv.count_zeros(0), 0);
     }
 }

@@ -38,10 +38,7 @@ macro_rules! leading_count {
 macro_rules! leading_bits {
     ($fn_name: ident) => {
         pub(super) fn $fn_name(bits: &[u8], start: usize, end: usize) -> usize {
-            if end == 0 {
-                return 0;
-            }
-
+            debug_assert!(end > 0, "end cannot be 0");
             debug_assert!(
                 start < end,
                 "start {} cannot equal or exceed end {}",
@@ -85,22 +82,9 @@ macro_rules! leading_bits {
 leading_bits!(leading_ones);
 leading_bits!(leading_zeros);
 
-macro_rules! bit_count {
-    ($i: ident, $offset: expr, count_ones) => {
-        $i.count_ones();
-    };
-    ($i: ident, $offset: expr, count_zeros) => {
-        $i.count_zeros() - $offset;
-    };
-}
-
 macro_rules! count_bits {
     ($fn_name: ident) => {
         pub(super) fn $fn_name(bits: &[u8], start: usize, end: usize) -> usize {
-            if end == 0 {
-                return 0;
-            }
-
             debug_assert!(
                 start < end,
                 "start {} cannot equal or exceed end {}",
@@ -112,20 +96,21 @@ macro_rules! count_bits {
             let eb_idx = (end - 1) / 8;
             let mut b_count = 0;
             for byte_c in sb_idx..=eb_idx {
-                let byte: u8 = bits[byte_c];
+                let mut byte: u8 = bits[byte_c];
+                flip_bits!(byte, $fn_name);
                 if byte_c == sb_idx {
-                    let offset = (start % 8) as u32;
-                    let b: u8 = byte << offset;
-                    let ct = bit_count!(b, offset, $fn_name);
-                    b_count += ct as usize;
-                } else {
-                    let ct = bit_count!(byte, 0, $fn_name);
-                    b_count += ct as usize;
+                    let offset = (start % 8) as u8;
+                    byte.clear_msb_assign(offset);
                 }
-            }
-            let limit = end - start;
-            if b_count > limit {
-                b_count = limit;
+                if byte_c == eb_idx {
+                    let offset = (end % 8) as u8;
+                    if offset > 0 {
+                        byte.clear_lsb_assign(8 - offset);
+                    }
+                }
+
+                let ct = byte.count_ones();
+                b_count += ct;
             }
 
             return b_count as usize;
@@ -152,10 +137,7 @@ macro_rules! trailing_count {
 macro_rules! trailing_bits {
     ($fn_name: ident) => {
         pub(super) fn $fn_name(bits: &[u8], start: usize, end: usize) -> usize {
-            if end == 0 {
-                return 0;
-            }
-
+            debug_assert!(end > 0, "end cannot be 0");
             debug_assert!(
                 start < end,
                 "start {} cannot equal or exceed end {}",
@@ -198,10 +180,7 @@ trailing_bits!(trailing_zeros);
 macro_rules! first_bit {
     ($fn_name: ident) => {
         pub(super) fn $fn_name(bits: &[u8], start: usize, end: usize) -> Option<usize> {
-            if end == 0 {
-                return None;
-            }
-
+            debug_assert!(end > 0, "end cannot be 0");
             debug_assert!(
                 start < end,
                 "start {} cannot equal or exceed end {}",
@@ -244,10 +223,7 @@ first_bit!(first_zero);
 macro_rules! last_bit {
     ($fn_name:ident) => {
         pub(super) fn $fn_name(bits: &[u8], start: usize, end: usize) -> Option<usize> {
-            if end == 0 {
-                return None;
-            }
-
+            debug_assert!(end > 0, "end cannot be 0");
             debug_assert!(
                 start < end,
                 "start {} cannot equal or exceed end {}",
@@ -380,9 +356,6 @@ mod tests {
 
     #[test]
     fn test_leading_ones() {
-        let bv = BitVector::new();
-        assert_eq!(leading_ones(&bv.bits, 0, bv.len()), 0);
-
         let mut bv = BitVector::new();
         bv.push_u8(0b1110_0011, None);
         assert_eq!(leading_ones(&bv.bits, 0, bv.len()), 3);
@@ -403,9 +376,6 @@ mod tests {
 
     #[test]
     fn test_leading_zeros() {
-        let bv = BitVector::new();
-        assert_eq!(leading_zeros(&bv.bits, 0, bv.len()), 0);
-
         let mut bv = BitVector::new();
         bv.push_u8(0b0001_1100, Some(8));
         assert_eq!(leading_zeros(&bv.bits, 0, bv.len()), 3);
@@ -431,9 +401,6 @@ mod tests {
 
     #[test]
     fn test_count_ones() {
-        let bv = BitVector::new();
-        assert_eq!(count_ones(&bv.bits, 0, bv.len()), 0);
-
         let mut bv = BitVector::new();
         bv.push_u8(0b1110_0011, None);
         assert_eq!(count_ones(&bv.bits, 0, bv.len()), 5);
@@ -453,9 +420,6 @@ mod tests {
 
     #[test]
     fn test_count_zeros() {
-        let bv = BitVector::new();
-        assert_eq!(count_zeros(&bv.bits, 0, bv.len()), 0);
-
         let mut bv = BitVector::new();
         bv.push_u8(0b0001_1100, Some(8));
         assert_eq!(count_zeros(&bv.bits, 0, bv.len()), 5);
@@ -549,9 +513,7 @@ mod tests {
 
     #[test]
     fn test_first_zero() {
-        let mut bv = BitVector::new();
-        assert_eq!(bv.first_zero(0), None);
-
+        let mut bv = BitVector::with_capacity(20);
         bv.push_u8(0b1111_1101, Some(8));
         assert_eq!(first_zero(&bv.bits, 0, bv.len()), Some(6));
 

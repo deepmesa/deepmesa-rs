@@ -362,8 +362,57 @@ macro_rules! iter_bits {
     };
 }
 
-iter_bits!(IterOnes);
-iter_bits!(IterZeros);
+iter_bits!(
+    /// An iterator that iterates over the `1` bits of the
+    /// [`BitVector`](../struct.BitVector.html).
+    ///
+    /// This struct is created by the
+    /// [`.iter_ones()`](BitVector#method.iter_ones)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterOnes;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b0010_0101, Some(8));
+    ///
+    /// let mut iter:IterOnes = bv.iter_ones();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterOnes
+);
+
+iter_bits!(
+    /// An iterator that iterates over the `0` bits of the
+    /// [`BitVector`](../struct.BitVector.html).
+    ///
+    /// This struct is created by the
+    /// [`.iter_zeros()`](BitVector#method.iter_zeros)
+    /// method of [`BitVector`](../struct.BitVector.html) and
+    /// [`BitSlice`](BitSlice)
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::BitVector;
+    /// use deepmesa::collections::bitvec::IterZeros;
+    ///
+    /// let mut bv = BitVector::with_capacity(20);
+    /// bv.push_u8(0b1101_1010, Some(8));
+    ///
+    /// let mut iter:IterZeros = bv.iter_zeros();
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(5));
+    /// assert_eq!(iter.next(), Some(7));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    IterZeros
+);
 
 impl<'a> Iterator for Iter<'a> {
     type Item = bool;
