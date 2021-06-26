@@ -49,3 +49,21 @@ pub mod collections {
     pub use deepmesa_collections::bitvec::bitvec::BitVector;
     pub use deepmesa_collections::bitvector;
 }
+
+/// A collection of encoding and decoding algorithms
+pub mod encoding {
+    pub use deepmesa_encoding::prefix::unary::UnaryDecoder;
+    pub use deepmesa_encoding::prefix::unary::UnaryEncoder;
+
+    pub use deepmesa_encoding::prefix::gamma::GammaDecoder;
+    pub use deepmesa_encoding::prefix::gamma::GammaEncoder;
+
+    pub use deepmesa_encoding::prefix::delta::DeltaDecoder;
+    pub use deepmesa_encoding::prefix::delta::DeltaEncoder;
+
+    pub use deepmesa_encoding::prefix::golomb::GolombDecoder;
+    pub use deepmesa_encoding::prefix::golomb::GolombEncoder;
+
+    pub use deepmesa_encoding::prefix::varbyte::VarByteDecoder;
+    pub use deepmesa_encoding::prefix::varbyte::VarByteEncoder;
+}

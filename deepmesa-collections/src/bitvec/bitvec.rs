@@ -211,10 +211,15 @@ macro_rules! read_bits_unsigned {
                     max_bits
                 );
             }
-            let (val, bit_count) =
-                bytes::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
 
-            (val as $i, bit_count)
+            match max_bits {
+                0=> (0,0),
+                _ => {
+                    let (val, bit_count) =
+                        bytes::read_bits(&self.bits, start, self.bit_len, max_bits, BitOrder::Lsb0);
+                    (val as $i, bit_count)
+                }
+            }
         }
     };
 }
@@ -1758,7 +1763,7 @@ impl BitVector {
         self.index_mut(0..self.bit_len)
     }
 
-    /// Returns an immutable slice of the underlying [Vec](Vec)
+    /// Returns an immutable slice of the underlying [`Vec<u8>`](Vec)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading the bytes directly from this raw slice is
     /// not recommended since the BitVector manages the bytes in the
@@ -1781,7 +1786,7 @@ impl BitVector {
         }
     }
 
-    /// Returns a mutable slice of the underlying [Vec](Vec)
+    /// Returns a mutable slice of the underlying [`Vec<u8>`](Vec)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or modifying the bytes directly in
     /// this raw slice is not recommended since the BitVector manages
@@ -1804,7 +1809,7 @@ impl BitVector {
         }
     }
 
-    /// Returns a raw pointer to the underlying [Vec](Vec) containing
+    /// Returns a raw pointer to the underlying [`Vec<u8>`](Vec) containing
     /// the u8 values that encode the bits of the BitVector. Reading
     /// from the bytes directly from this raw pointer is not
     /// recommended since the BitVector manages the bytes in the
@@ -1822,7 +1827,7 @@ impl BitVector {
         self.bits.as_ptr()
     }
 
-    /// Returns a mutable raw pointer to the underlying [Vec](Vec)
+    /// Returns a mutable raw pointer to the underlying [`Vec<u8>`](Vec)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or writing to the bytes directly in
     /// this raw pointer is not recommended since the BitVector
