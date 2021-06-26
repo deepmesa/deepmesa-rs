@@ -42,7 +42,7 @@ pub enum BitOrder {
     Msb0,
 }
 
-/// A macro to construct a new [BitVector](BitVector) from a bit pattern.
+/// A macro to construct a new [`BitVector`](struct.BitVector.html) from a bit pattern.
 ///
 /// This macro accepts a sequence of 1s and 0s separated by commas,
 /// (an array of bits effectively) and creates a new BitVector from

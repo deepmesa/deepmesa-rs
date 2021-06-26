@@ -159,11 +159,15 @@ macro_rules! read_bits_unsigned {
                     max_bits
                 );
             }
-            let offset = self.offset();
-            let (val, bit_count) =
-                bytes::read_bits(&self.0, start + offset, len + offset, max_bits, BitOrder::Lsb0);
-
-            (val as $i, bit_count)
+            match max_bits {
+                0=> (0,0),
+                _ => {
+                    let offset = self.offset();
+                    let (val, bit_count) =
+                        bytes::read_bits(&self.0, start + offset, len + offset, max_bits, BitOrder::Lsb0);
+                    (val as $i, bit_count)
+                }
+            }
         }
     };
 }

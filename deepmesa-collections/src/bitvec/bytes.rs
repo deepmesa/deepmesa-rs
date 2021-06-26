@@ -287,6 +287,12 @@ pub(super) fn read_bits(
         max_bits
     );
 
+    debug_assert!(
+        max_bits > 0,
+        "max_bits cannot be 0. max_bits = {}",
+        max_bits
+    );
+
     let sb_idx = start / 8;
     let p_bits = 8 - (start % 8);
     let mut b_rem = max_bits;
