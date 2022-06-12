@@ -86,6 +86,32 @@ use core::ops::RangeToInclusive;
 /// let bv = bitvector![0,1,1,0];
 /// assert_eq!(bv.len(), 4);
 /// ```
+///
+/// # Memory Management
+///
+/// Memory is managed by an underlying [`Vec<u8>`](Vec) and all
+/// methods operate on bytes whenever possible for
+/// efficiency. Internally the BitVector maintains a count of the
+/// number of bits currently held by the BitVector and the actual
+/// number of bytes stored maybe greater than eight times the number
+/// of bits. All bits stored past the number of active bits are zeroed
+/// out but this is not guaranteed to be true in future versions of
+/// the BitVector and should be relied up for correctness.
+///
+/// The BitVector can also return mutable and immutable pointers and
+/// slices to the underlying [`Vec<u8>`](Vec). Modifying
+/// the underlying Vector can cause undefined behavior in the
+/// BitVector.
+///
+/// # Slices
+///
+/// Slices are implemented by the [`BitSlice`](BitSlice) which is a
+/// view into a range within the [`BitVector`](BitVector). A BitSlice
+/// is a wrapper around a slice of bytes with the 3 most significant
+/// bits of the slice length used to store the bit offset into the
+/// first byte of the slice. The rest of the bits of the length are
+/// used to store the length of the slice in bits.
+///
 pub struct BitVector {
     pub(super) bits: Vec<u8>,
     pub(super) capacity_bits: usize,

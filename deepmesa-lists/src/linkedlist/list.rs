@@ -38,19 +38,6 @@ macro_rules! nid_inc {
 /// this list also allows pushing and popping elements from the middle
 /// of the list in constant time.
 ///
-/// This list [manages
-/// memory](https://www.deepmesa.com/data-structures/linkedlist/#mem_mgmt)
-/// via an internal freelist of nodes and [capacity is
-/// allocated](https://www.deepmesa.com/data-structures/linkedlist/#cap_realloc)
-/// when the list is full. Capacity is deallocated when the list is
-/// dropped. This list also [vends
-/// handles](https://www.deepmesa.com/data-structures/linkedlist/#handles)
-/// to its nodes that can be used to mutate the list at any node in
-/// constant time. The list provides
-/// [iterators](https://www.deepmesa.com/data-structures/linkedlist/#iterators)
-/// that can use used to traverse the list in either direction by
-/// reversing the iterator at any time.
-///
 /// # Getting Started
 
 /// To get started add the deepmesa dependency to Cargo.toml and the
@@ -73,6 +60,171 @@ macro_rules! nid_inc {
 ///     println!("{}", e);
 /// }
 /// ```
+///
+/// # Memory Management
+///
+/// This list manages memory via an internal freelist of nodes. When a
+/// new element is added to the list, a preallocated node is acquired
+/// from the freelist. When an element is removed from the list, the
+/// node is returned to the freelist. This ensures that memory is not
+/// allocated and deallocated on every push and pop which makes the
+/// list fast.
+///
+/// All memory for the list is allocated on the heap using the default
+/// allocator. Additional memory is allocated by the freelist when a
+/// new element is added to the list and the capacity is filled.
+///
+/// When the list is dropped, all memory is deallocated and any
+/// elements stored in the list are dropped. If the [`Drop`](Drop)
+/// trait on an element panics the list will deallocate all allocated
+/// memory because elements are removed from the list and dropped only
+/// after all memory is deallocated.
+///
+/// # Capacity & Reallocation
+///
+/// The capacity of the list is the number of elements it can hold
+/// before allocating new memory. The length of the list is the number
+/// of elements it holds. When the length equals the capacity, and a
+/// new element is added to the list, the list will allocate
+/// additional memory.
+///
+/// The amount of memory allocated when the capacity is exhausted
+/// depends on how the list is constructed. If the list is constructed
+/// using [`new()`](#method.new) or [`with_capacity()`](#method.with_capacity) with a
+/// non-zero capacity then the capacity is doubled on every
+/// allocation.
+///
+/// If the list is constructed using [`with_capacity()`](#method.with_capacity)
+/// with a capacity of zero, then the list will not preallocate any
+/// memory on construction. In this case, when a new element is added
+/// to the list, additional memory will be allocated for the new
+/// elememt unless the freelist has available memory from previous
+/// remove operations.
+///
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// // create a list with capacity 0
+/// let mut list = LinkedList::<u8>::with_capacity(0);
+/// assert_eq!(list.len(), 0);
+/// assert_eq!(list.capacity(), 0);
+/// // Pushing elements will cause an allocation every time
+/// for i in 0..10 {
+///     assert_eq!(list.len(), i);
+///     assert_eq!(list.capacity(), i);
+///     list.push_head(1);
+/// }
+///
+/// // Removing an element will not cause a deallocation
+/// list.pop_head();
+/// assert_eq!(list.len(), 9);
+/// assert_eq!(list.capacity(), 10);
+///
+/// // Now that capacity exceeds the length of the list no memory will
+/// // be allocated unless existing capacity is exhausted
+/// list.push_head(1);
+/// assert_eq!(list.len(), 10);
+/// assert_eq!(list.capacity(), 10);
+///
+/// // any further additions to the list will again allocate new
+/// // memory for each element added.
+/// list.push_head(1);
+/// assert_eq!(list.len(), 11);
+/// assert_eq!(list.capacity(), 11);
+/// ```
+///
+/// It is recommended to use [`with_capacity()`](`#method.with_capacity`)
+/// whenever possible and specify how big the list is expected to get.
+///
+/// # Handles
+///
+/// The [`push_head()`](#method.push_head), [`push_tail()`](#method.push_tail)
+/// [`push_next()`](#method.push_next) and [`push_prev()`](#method.push_prev) methods
+/// return handles to the nodes pushed to the linked list. The handles
+/// are implemented as structs of type (`Node<T>`)(Node) that wrap a
+/// raw pointer to node. However since [`Node<T>`](Node) does not
+/// implement the [`Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) trait, these raw pointers cannot be
+/// dereferenced directly. Handles can only be used by passing them as
+/// arguments to the [`next()`](#method.next), [`next_mut()`](#method.next_mut),
+/// [`prev()`](#method.prev), [`prev_mut()`](#method.prev_mut),
+/// [`prev_node()`](#method.prev_node), [`next_node()`](#method.next_node),
+/// [`node()`](#method.node), [`node_mut()`](#method.node_mut),
+/// [`has_next()`](#method.has_next), [`has_prev()`](#method.has_prev),
+/// [`pop_next()`](#method.pop_next), [`pop_prev()`](#method.pop_prev),
+/// [`pop_node`](#method.pop_node), [`push_next`](#method.push_next),
+/// [`push_prev()`](#method.push_prev), allows adding, removing and mutating
+/// elements in the middle of the list in O(1) time.
+///
+/// Handles can be copied, cloned and passed around by value or
+/// reference without regard to the lifetime of the list. When an
+/// element is removed from the list, the handle associated with that
+/// node becomes invalid forever. Passing an invalid handle to the
+/// list is safe since all methods that accept a reference to a handle
+/// return None if the handle is invalid.
+///
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// let mut list = LinkedList::<u8>::with_capacity(10);
+/// list.push_head(1);
+/// let middle = list.push_head(100);
+/// list.push_head(2);
+/// // get the value of the node in the middle of the list in O(1)
+/// // time.
+/// assert_eq!(list.node(&middle), Some(&100));
+/// // remove the middle node in O(1) time
+/// list.pop_node(&middle);
+/// // once the middle node is removed, the handle is invalid
+/// assert_eq!(list.node(&middle), None);
+/// assert_eq!(list.len(), 2);
+/// ```
+///
+/// [`Node<T>`](Node) implements the [`Default`](Default) trait so you
+/// can store default (invalid) handles in a struct and assign them
+/// later.
+///
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// use deepmesa::lists::linkedlist::Node;
+/// struct MyStruct<T> {
+///     handle: Node<T>
+/// };
+/// let mut s = MyStruct::<u8> {
+///     handle: Node::<u8>::default()
+/// };
+/// let mut list = LinkedList::<u8>::with_capacity(10);
+/// // The default handle is invalid
+/// assert_eq!(list.node(&s.handle), None);
+/// // push a new element and store the handle
+/// s.handle = list.push_head(1);
+/// assert_eq!(list.node(&s.handle), Some(&1));
+/// ```
+/// # Iterators
+///
+/// The list supports iterators that can traverse the list in either
+/// direction by reversing the iterator at any time.
+///
+/// ```
+/// use deepmesa::lists::LinkedList;
+/// let mut list = LinkedList::&lt;u8&lt;::with_capacity(10);
+/// for i in 0..10 {
+///     list.push_head(i);
+/// }
+/// let mut iter = list.iter();
+/// assert_eq!(iter.next(), Some(&9));
+/// assert_eq!(iter.next(), Some(&8));
+/// assert_eq!(iter.next(), Some(&7));
+/// //now reverse the iterator
+/// iter = iter.reverse();
+/// assert_eq!(iter.next(), Some(&8));
+/// assert_eq!(iter.next(), Some(&9));
+/// assert_eq!(iter.next(), None);
+/// ```
+///
+/// # Performance
+///
+/// Benchmarks against [`std::collections::LinkedList`] show a
+/// performance gain of almost 2x in push operations when memory is
+/// allocated upfront. Similar results are observed in pop operations
+/// as well.
 #[derive(Debug)]
 pub struct LinkedList<T> {
     cid: usize,
