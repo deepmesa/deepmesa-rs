@@ -16,7 +16,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-deepmesa = "0.1.0"
+deepmesa = "0.9.1"
 ```
 
 # Contributing
