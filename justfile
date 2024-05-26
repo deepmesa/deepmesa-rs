@@ -25,6 +25,9 @@ doc:
 clean:
     cargo clean
 
+# Needs the cargo-release package (https://github.com/crate-ci/cargo-release)
+# cargo install cargo-release
+
 release-minor:
     cargo release minor --workspace
 
