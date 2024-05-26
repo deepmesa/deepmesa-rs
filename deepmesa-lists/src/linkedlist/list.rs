@@ -204,7 +204,7 @@ macro_rules! nid_inc {
 ///
 /// ```
 /// use deepmesa::lists::LinkedList;
-/// let mut list = LinkedList::&lt;u8&lt;::with_capacity(10);
+/// let mut list = LinkedList::<u8>::with_capacity(10);
 /// for i in 0..10 {
 ///     list.push_head(i);
 /// }

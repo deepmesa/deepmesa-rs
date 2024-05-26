@@ -23,7 +23,7 @@ use crate::bitvec::{traits::BitwiseClearAssign, BitCount, BitOrder};
 
 macro_rules! leading_count {
     ($i: ident, $offset: expr, leading_ones) => {
-        $i.leading_ones() as usize;
+        $i.leading_ones() as usize
     };
 
     ($i: ident, $offset: expr, leading_zeros) => {{
@@ -123,7 +123,7 @@ count_bits!(count_zeros);
 
 macro_rules! trailing_count {
     ($i:ident, $offset: expr, trailing_ones) => {
-        $i.trailing_ones() as usize;
+        $i.trailing_ones() as usize
     };
     ($i:ident, $offset: expr, trailing_zeros) => {{
         let mut tz = $i.trailing_zeros() as usize;

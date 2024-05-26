@@ -186,9 +186,31 @@ macro_rules! slice_bounds_check {
     };
 }
 
+/// The `BitSlice` is a view into a [`BitVector`](BitVector) and can
+/// be subsliced. However to make the slices work correctly we need
+/// the offset into a byte that the slice starts with, in addition to
+/// its length. So we use the MSB 4 bits of the length to store the
+/// offset. This macro returns the number of bits that are used to
+/// store the offset.
+///
+/// Here is an illustrative example for BitVector with 16 bits:
+///
+/// ```text```
+///            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+/// bitvec:  [ 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1 ]
+/// slice start = 10 len = 6                 ^              ^
+/// byte = 10/8 = 1 , offset = 10 % 8 = 2
+/// offset bits = 0010
+/// Slice pointer: 0011_0000 [ 48 bits ] 0000_0110
+///
+/// The MSB of the offset is unused and must be always set to zero
+/// because there is a constraint that the length must be no greater
+/// than isize::MAX and hence len cannot use more than 63 bits.
+///
+/// ```
 macro_rules! slice_offset_bits {
     () => {
-        3
+        4
     };
 }
 
@@ -240,7 +262,7 @@ macro_rules! b_expr {
 
 macro_rules! bit_at_unchecked {
     ($index:expr, $bits: expr) => {
-        bitops::is_msb_nset($bits[$index / 8], ($index % 8) as u8);
+        bitops::is_msb_nset($bits[$index / 8], ($index % 8) as u8)
     };
 }
 

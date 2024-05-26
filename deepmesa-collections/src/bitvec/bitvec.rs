@@ -107,10 +107,27 @@ use core::ops::RangeToInclusive;
 ///
 /// Slices are implemented by the [`BitSlice`](BitSlice) which is a
 /// view into a range within the [`BitVector`](BitVector). A BitSlice
-/// is a wrapper around a slice of bytes with the 3 most significant
+/// is a wrapper around a slice of bytes with the 4 most significant
 /// bits of the slice length used to store the bit offset into the
 /// first byte of the slice. The rest of the bits of the length are
 /// used to store the length of the slice in bits.
+///
+/// Here is an illustrative example for BitVector with 16 bits:
+///
+/// ```text
+///            0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+/// bitvec:  [ 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1 ]
+/// slice start = 10 len = 6                 ^              ^
+/// byte = 10/8 = 1 , offset = 10 % 8 = 2
+/// offset bits = 0010
+/// Slice pointer: 0011_0000 [ 48 bits ] 0000_0110
+/// ```
+///
+/// The MSB of the offset is unused and must be always set to zero
+/// because there is a
+/// [constraint](https://doc.rust-lang.org/std/slice/fn.from_raw_parts.html#safety)
+/// that the length must be no greater than [`isize::MAX`] and hence
+/// cannot use more than 63 bits.
 ///
 pub struct BitVector {
     pub(super) bits: Vec<u8>,
@@ -121,7 +138,7 @@ pub struct BitVector {
 //Set the bits after bit_len in the last byte to 0
 macro_rules! clr_lsb_last_byte {
     ($self: ident) => {
-        ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8);
+        ($self.bits[($self.bit_len - 1) / 8]).clear_lsb_assign((7 - ($self.bit_len - 1) % 8) as u8)
     };
 }
 

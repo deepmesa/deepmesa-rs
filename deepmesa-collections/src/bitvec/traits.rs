@@ -26,7 +26,7 @@ fn msb_ones(n: u8) -> u8 {
     debug_assert_bounds_check!(n, 8);
     match n {
         0 => 0u8,
-        _ => (255u8 << (8 - n)),
+        _ => 255u8 << (8 - n),
     }
 }
 
