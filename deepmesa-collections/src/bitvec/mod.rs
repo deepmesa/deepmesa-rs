@@ -85,7 +85,7 @@ pub enum BitOrder {
 #[macro_export]
 macro_rules! bitvector {
     () => {
-        BitVector::new();
+        BitVector::new()
     };
     ($($arg:tt)*) => {{
         let slice = [$($arg)*];
@@ -98,7 +98,7 @@ macro_rules! bitvector {
             }
         }
         bv
-    };};
+    }};
     ($item: expr, $len: expr) => {
         {
             match $item {

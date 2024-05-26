@@ -15,7 +15,7 @@ pub mod lists {
 /// Data structures that implement various collections that are
 /// designed for performance
 pub mod collections {
-    /// This module contains traits and structs specific to the [`BitVector`](BitVector)
+    /// This module contains traits and structs specific to the [`BitVector`]
     pub mod bitvec {
         pub use deepmesa_collections::bitvec::bitslice::BitSlice;
         pub use deepmesa_collections::bitvec::iter::Iter;

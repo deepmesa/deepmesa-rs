@@ -293,7 +293,6 @@ macro_rules! iter_bits {
             cur_byte: u8,
             byte_idx: usize,
             slice_offset: usize,
-            bit_len: usize,
             eb_idx: usize,
             sb_idx: usize,
             l_bit: usize,
@@ -319,11 +318,9 @@ macro_rules! iter_bits {
                     flip_bits!(cur_byte, $iter_name);
                 };
                 let sb_idx = byte_idx;
-
                 $iter_name {
                     bits,
                     slice_offset,
-                    bit_len,
                     byte_idx,
                     cur_byte,
                     eb_idx,
