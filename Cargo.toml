@@ -15,14 +15,12 @@ documentation = "https://docs.rs/deepmesa"
 description = "This crate provides fast Data Structures and Algorithms in Rust. Every data structure is hand crafted for performance, well tested and has an extensive API."
 
 [dependencies]
-deepmesa-lists = {path = "./deepmesa-lists", version = "^0.9.1" }
 deepmesa-collections = {path = "./deepmesa-collections", version = "^0.9.1" }
 deepmesa-encoding = {path = "./deepmesa-encoding", version = "^0.9.1" }
 
 [workspace]
 members = [
     ".",
-    "deepmesa-lists",
     "deepmesa-encoding",
     "deepmesa-collections",
 ]
