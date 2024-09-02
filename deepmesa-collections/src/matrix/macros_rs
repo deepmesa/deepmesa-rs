@@ -1,0 +1,114 @@
+// macro_rules! ptr_index_deref_borrow {
+//     ($ptr:expr, $idx:expr) => {
+//         &*($ptr.add($idx))
+//     };
+// }
+
+// macro_rules! ptr_assign {
+//     ($ptr:expr, $val:expr) => {
+//         *$ptr = $val;
+//     };
+// }
+
+// macro_rules! ptr_index_assign {
+//     ($ptr:expr, $idx:expr, $val:expr) => {
+//         *($ptr.add($idx)) = $val;
+//     };
+// }
+
+// macro_rules! ptr_mul_assign {
+//     ($ptr:expr, $val:expr) => {
+//         *$ptr *= $val;
+//     };
+// }
+
+// macro_rules! ptr_index_mul_assign {
+//     ($ptr:expr, $idx:expr, $val:expr) => {
+//         *($ptr.add($idx)) *= $val;
+//     };
+// }
+
+// macro_rules! index_rm {
+//     ($row:ident, $self:ident, $col:ident) => {
+//         ($row * $self.cols_p) + $col
+//     };
+// }
+
+// macro_rules! index_cm {
+//     ($row:ident, $self:ident, $col:ident) => {
+//         ($col * $self.rows_p) + $row
+//     };
+// }
+
+// macro_rules! elem_mul_assign_unchecked {
+//     ($row:ident, $self:ident, $col:ident, $val:expr, $err:expr) => {
+//         let ptr = $self.data_rm.add(index_rm!($row, $self, $col));
+//         if *ptr != T::zero() {
+//             match (*ptr).checked_mul($val) {
+//                 None => {
+//                     return $err;
+//                 }
+//                 Some(v) => {
+//                     ptr_assign!(ptr, v);
+//                     ptr_assign!($self.data_cm.add(index_cm!($row, $self, $col)), v);
+//                     return Ok(());
+//                 }
+//             }
+//         }
+//     };
+// }
+
+// macro_rules! elem_mul_assign_unchecked_transpose {
+//     ($row:ident, $self:ident, $col:ident, $val:expr, $err:expr) => {
+//         let ptr = $self.data_cm.add(index_rm!($row, $self, $col));
+//         if *ptr != T::zero() {
+//             match (*ptr).checked_mul($val) {
+//                 None => {
+//                     return $err;
+//                 }
+//                 Some(v) => {
+//                     ptr_assign!(ptr, v);
+//                     ptr_assign!($self.data_rm.add(index_cm!($row, $self, $col)), v);
+//                     return Ok(());
+//                 }
+//             }
+//         }
+//     };
+// }
+
+// macro_rules! elem_mul_assign {
+//     ($row:ident, $self:ident, $col:ident, $val:expr) => {
+//         let ptr = $self.data_rm.add(index_rm!($row, $self, $col));
+//         if *ptr != T::zero() {
+//             ptr_mul_assign!(ptr, $val);
+//             ptr_mul_assign!($self.data_cm.add(index_cm!($row, $self, $col)), $val);
+//         }
+//     };
+// }
+
+// macro_rules! elem_mul_assign_transpose {
+//     ($row:ident, $self:ident, $col:ident, $val:expr) => {
+//         let ptr = $self.data_cm.add(index_rm!($row, $self, $col));
+//         if *ptr != T::zero() {
+//             ptr_mul_assign!(ptr, $val);
+//             ptr_index_mul_assign!($self.data_rm, index_cm!($row, $self, $col), $val);
+//         }
+//     };
+// }
+
+// // elem_assign_row_major
+// // elem_assign_col_major
+
+// macro_rules! elem_assign {
+//     ($row:ident, $self:ident, $col:ident, $val:expr) => {
+//         ptr_index_assign!($self.data_rm, index_rm!($row, $self, $col), $val);
+//         ptr_index_assign!($self.data_cm, index_cm!($row, $self, $col), $val);
+//     };
+// }
+
+// macro_rules! elem_assign_transpose {
+//     ($row:ident, $self:ident, $col:ident, $val:expr) => {
+//         ptr_index_assign!($self.data_cm, index_rm!($row, $self, $col), $val);
+//         ptr_index_assign!($self.data_rm, index_cm!($row, $self, $col), $val);
+//     };
+// }

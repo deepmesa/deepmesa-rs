@@ -16,9 +16,9 @@ build:
 #    cargo test --package deepmesa-collections bitvec::bitops::tests::test_not_msb_inplace -- --nocapture --exact
 #    RUST_BACKTRACE=1 cargo test --package deepmesa-collections bitvec::byteslice::tests::tfest_count_ones -- --nocapture
 #     cargo test --all
-
+#     cargo test --package deepmesa-collections matrix::matrix::tests::test_overflow_f64 -- --nocapture
 test $RUST_BACKTRACE="1":
-     cargo test --package deepmesa-collections matrix::matrix::tests -- --nocapture
+     cargo test --package deepmesa-collections matrix::matrix::tests:: -- --nocapture
 
 doc:
     cargo doc --no-deps --all
