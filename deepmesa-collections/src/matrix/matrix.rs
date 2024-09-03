@@ -342,8 +342,9 @@ where
             for col in 0..self.cols() {
                 unsafe {
                     let idx = rmd_index_t!(self.rmd, row, col);
-                    if rmd_iget_t!(self.rmd, idx) != T::zero() {
-                        match rmd_ichecked_mul_t!(self.rmd, idx, val) {
+                    let v = rmd_iget_t!(self.rmd, idx);
+                    if v != T::zero() {
+                        match v.checked_mul(val) {
                             None => {
                                 //TODO: Return a Matrix Error rather than this static junk
                                 return Err("error");
@@ -361,8 +362,9 @@ where
             for col in 0..self.cols() {
                 unsafe {
                     let idx = rmd_index!(self.rmd, row, col);
-                    if rmd_iget!(self.rmd, idx) != T::zero() {
-                        match rmd_ichecked_mul!(self.rmd, idx, val) {
+                    let v = rmd_iget!(self.rmd, idx);
+                    if v != T::zero() {
+                        match v.checked_mul(val) {
                             None => {
                                 //TODO: Return a Matrix Error rather than this static junk
                                 return Err("error");
@@ -375,7 +377,6 @@ where
                         }
                     }
                 }
-
             }
         }
         return Ok(());

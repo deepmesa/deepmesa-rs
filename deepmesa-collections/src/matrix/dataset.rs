@@ -167,62 +167,6 @@ macro_rules! cmd_iassign_t {
 }
 
 #[allow(unused_macros)]
-macro_rules! rmd_checked_mul {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        (*$self.rm_data.add(rmd_index!($self, $row, $col))).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_ichecked_mul {
-    ($self:expr, $index:expr, $val:expr) => {
-        (*$self.rm_data.add($index)).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_checked_mul_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        (*$self.rm_data.add(rmd_index_t!($self, $row, $col))).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_ichecked_mul_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        (*$self.rm_data.add($index)).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_checked_mul {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        (*$self.cm_data.add(rmd_index!($self, $row, $col))).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_ichecked_mul {
-    ($self:expr, $index:expr, $val:expr) => {
-        (*$self.cm_data.add($index)).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_checked_mul_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        (*$self.cm_data.add(rmd_index_t!($self, $row, $col))).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_ichecked_mul_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        (*$self.cm_data.add($index)).checked_mul($val)
-    };
-}
-
-#[allow(unused_macros)]
 macro_rules! rmd_mul_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
         *$self.rm_data.add(rmd_index!($self, $row, $col)) *= $val
