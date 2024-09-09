@@ -1,3 +1,5 @@
+[![0 dependencies!](https://0dependencies.dev/0dependencies.svg)](https://0dependencies.dev)
+
 # High Performance Algorithms & Data Structures for Rust
 
 ![License](https://img.shields.io/badge/License-Apache--2.0-blue)
