@@ -75,6 +75,29 @@ macro_rules! bounds_check_len {
     };
 }
 
+pub(in crate::matrix) enum SyncDirection {
+    CmdToRmd,
+    RmdToCmd,
+}
+
+/*
+RowMajorDataset: Row Major Contiguous
+ColMajorDataset: ColMajor Contiguous
+
+When transposed:
+The RowMajorDataset is Col Contiguous (because it becomes the ColMajorDataSet)
+The ColMajorDataset is Row Contiguous (becomes it becomes the RowMajorDataset)
+
+For SIMD Purposes:
+Row Operations use the RowMajorDataset because its Row Contiguous
+Col Operations use the ColMajorDataset because its Col Contiguous
+
+When Transposed:
+RowOperations use the ColMajorDataset because its RowContiguous
+ColOperations use the RowMajorDataset because its ColContiguous
+
+ */
+
 pub struct Matrix<T>
 where
     T: MatrixElement<Output = T>,
@@ -94,6 +117,10 @@ where
     T: MatrixElement<Output = T>,
 {
     pub fn new(rows: usize, cols: usize) -> Matrix<T> {
+        let mut simd_enabled = true;
+        if !T::simd_supported() {
+            simd_enabled = false;
+        }
         Matrix {
             rows,
             cols,
@@ -102,11 +129,15 @@ where
             cmd: ColMajorDataset::new(rows, cols),
             is_transpose: false,
             is_square: rows == cols,
-            simd_enabled: false,
+            simd_enabled,
         }
     }
 
     pub fn simd_optimized(rows: usize, cols: usize) -> Matrix<T> {
+        if !T::simd_supported() {
+            return Self::new(rows, cols);
+        }
+
         Matrix {
             rows,
             cols,
@@ -115,8 +146,20 @@ where
             cmd: ColMajorDataset::simd_optimized(rows, cols),
             is_transpose: false,
             is_square: rows == cols,
-            simd_enabled: false,
+            simd_enabled: true,
         }
+    }
+
+    pub fn set_simd_enabled(&mut self, simd_enabled: bool) {
+        if !T::simd_supported() {
+            self.simd_enabled = false;
+            return;
+        }
+        self.simd_enabled = simd_enabled;
+    }
+
+    pub fn is_simd_enabled(&self) -> bool {
+        return self.simd_enabled;
     }
 
     pub fn identity(size: usize) -> Matrix<T> {
@@ -289,15 +332,38 @@ where
         self.is_transpose = !self.is_transpose;
     }
 
-    #[inline(always)]
-    pub(crate) unsafe fn chunk_ptr(&self, _idx: usize, _len: usize) -> (*const T, usize) {
-        // let rem = self.data_len - idx;
-        // if rem > len {
-        //     return (ptr_index!(self.data, idx), len);
-        // }
-        // return (ptr_index!(self.data, idx), rem);
-        //TODO: Return the right result
-        return (self.rmd.rm_data, 0);
+    pub(in crate::matrix) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
+        if self.is_transpose {
+            match dir {
+                SyncDirection::CmdToRmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = cmd_get_t!(self.cmd, row, col);
+                        rmd_assign_t!(self.rmd, row, col, val);
+                    })
+                }
+                SyncDirection::RmdToCmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = rmd_get_t!(self.rmd, row, col);
+                        cmd_assign_t!(self.cmd, row, col, val);
+                    })
+                }
+            }
+        } else {
+            match dir {
+                SyncDirection::CmdToRmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = cmd_get!(self.cmd, row, col);
+                        rmd_assign!(self.rmd, row, col, val);
+                    })
+                }
+                SyncDirection::RmdToCmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = rmd_get!(self.rmd, row, col);
+                        cmd_assign!(self.cmd, row, col, val);
+                    })
+                }
+            }
+        }
     }
 }
 
@@ -305,9 +371,28 @@ impl<T> Matrix<T>
 where
     T: MatrixElement<Output = T> + std::ops::MulAssign,
 {
-    //TODO Bounds check
+    fn use_simd(&self) -> bool {
+        if !self.simd_enabled {
+            return false;
+        }
+
+        #[cfg(target_arch = "aarch64")]
+        {
+            use std::arch::is_aarch64_feature_detected;
+            if is_aarch64_feature_detected!("neon") {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     pub fn scale_row(&mut self, row: usize, val: T) {
         bounds_check_row!(row, self);
+        if self.use_simd() {
+            self.scale_row_simd(row, val);
+            return;
+        }
 
         if self.is_transpose {
             for col in 0..self.cols() {
@@ -352,7 +437,6 @@ where
                             Some(v) => {
                                 rmd_iassign_t!(self.rmd, idx, v);
                                 cmd_assign_t!(self.cmd, row, col, v);
-                                return Ok(());
                             }
                         }
                     }
@@ -372,7 +456,6 @@ where
                             Some(v) => {
                                 rmd_iassign!(self.rmd, idx, v);
                                 cmd_assign!(self.cmd, row, col, v);
-                                return Ok(());
                             }
                         }
                     }
@@ -576,6 +659,7 @@ mod tests {
             #[test]
             fn $fn_name() {
                 let mut m: Matrix<$t> = Matrix::from_row_major($rows, $cols, $arr);
+                //                m.set_simd_enabled(false);
                 assert_matrix!(m, $rows, $cols, $data_len, false, true);
                 m.scale_row($scale_row, $scale_factor);
                 let precision = $precision;
@@ -655,4 +739,180 @@ mod tests {
     //     let v3 = v1 * v2;
     //     println!("v3={}", v3);
     // }
+
+    macro_rules! test_scale_row_checked {
+        ($fn_name:ident,
+         $t:ty,
+         $rows:literal,
+         $cols:literal,
+         $arr:expr,
+         $data_len:literal,
+         $precision:literal,
+         $scale_row:literal,
+         $scale_factor:literal,
+         $t_str:literal,
+         $tt_str:literal) => {
+            #[test]
+            fn $fn_name() {
+                let precision = $precision;
+                let mut m: Matrix<u8> = Matrix::from_row_major($rows, $cols, $arr);
+                assert_matrix!(m, $rows, $cols, $data_len, false, true);
+                match m.scale_row_checked($scale_row, $scale_factor) {
+                    Err(str) => {
+                        panic!("{}", str);
+                    }
+                    Ok(()) => {
+                        assert_eq!(format!("{:.*?}", precision, m), $t_str);
+                    }
+                }
+                m.transpose();
+                match m.scale_row_checked($scale_row, $scale_factor) {
+                    Err(str) => {
+                        panic!("{}", str);
+                    }
+                    Ok(()) => {
+                        assert_eq!(format!("{:.*?}", precision, m), $tt_str);
+                    }
+                }
+            }
+        };
+    }
+
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u8_0, u8, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u8_1, u8, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip] // scale_row_checked_u8_2 has to use smaller values so that ut doesn't cause an overflow
+    test_scale_row_checked!(test_scale_row_checked_u8_2, u8, 3, 3, &vec![2, 3, 4, 5, 6, 7, 8, 9, 10], 9, 0, 2, 3, "[3x3]:2,3,4;5,6,7;24,27,30;", "[3x3]:2,5,24;3,6,27;12,21,90;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u16_0, u16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u16_1, u16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u16_2, u16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u32_0, u32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u32_1, u32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u32_2, u32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u64_0, u64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u64_1, u64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u64_2, u64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u128_0, u128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u128_1, u128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_u128_2, u128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i8_0, i8, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i8_1, i8, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip] // scale_row_checked_i8_2 has to use smaller values so that it doesn't cause an overflow
+    test_scale_row_checked!(test_scale_row_checked_i8_2, i8, 3, 3, &vec![2, 3, 4, 5, 6, 7, 8, 9, 10], 9, 0, 2, 3, "[3x3]:2,3,4;5,6,7;24,27,30;", "[3x3]:2,5,24;3,6,27;12,21,90;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i16_0, i16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i16_1, i16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i16_2, i16, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i32_0, i32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i32_1, i32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i32_2, i32, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i64_0, i64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i64_1, i64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i64_2, i64, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i128_0, i128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 0, 3, "[3x3]:6,12,18;8,10,12;14,16,18;", "[3x3]:18,24,42;12,10,16;18,12,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i128_1, i128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 1, 3, "[3x3]:2,4,6;24,30,36;14,16,18;", "[3x3]:2,24,14;12,90,48;6,36,18;");
+    #[rustfmt::skip]
+    test_scale_row_checked!(test_scale_row_checked_i128_2, i128, 3, 3, &vec![2, 4, 6, 8, 10, 12, 14, 16, 18], 9, 0, 2, 3, "[3x3]:2,4,6;8,10,12;42,48,54;", "[3x3]:2,8,42;4,10,48;18,36,162;");
+
+    macro_rules! test_scale_row_checked_panic {
+        ($fn_name:ident,
+         $t:ty,
+         $rows:literal,
+         $cols:literal,
+         $data_len:literal,
+         $precision:literal,
+         $scale_row:literal,
+         $scale_factor:literal) => {
+            #[test]
+            #[should_panic]
+            fn $fn_name() {
+                let precision = $precision;
+                let mut m: Matrix<$t> = Matrix::new($rows, $cols);
+                m.fill_row($scale_row, <$t>::MAX);
+                assert_matrix!(m, $rows, $cols, $data_len, false, true);
+                match m.scale_row_checked($scale_row, $scale_factor) {
+                    Err(str) => {
+                        panic!("{}", str);
+                    }
+                    Ok(()) => {}
+                }
+            }
+        };
+    }
+
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_u8, u8, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_u16, u16, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_u32, u32, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_u64, u64, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_u128, u128, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_i8, i8, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_i16, i16, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_i32, i32, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_i64, i64, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_i128, i128, 3, 3, 9, 0, 0, 3);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_f32, f32, 3, 3, 9, 0, 0, 3.0);
+    #[rustfmt::skip]
+    test_scale_row_checked_panic!(test_scale_row_checked_panic_f64, f64, 3, 3, 9, 0, 0, 3.0);
+
+    #[test]
+    fn test_foo() {
+        let rows = 12;
+        let cols = 12;
+        let mut m: Matrix<u8> = Matrix::simd_optimized(rows, cols);
+        m.fill(3);
+        assert_eq!(m.rmd.row_pad, 52);
+        assert_eq!(m.cmd.col_pad, 52);
+        let step = 64;
+        println!(
+            "RMLEN: {}, rm_len / step = {}, rm_len % step = {}",
+            m.rmd.rm_len,
+            m.rmd.rm_len / step,
+            m.rmd.rm_len % step
+        );
+
+        for idx in (0..m.rmd.rm_len).step_by(step) {
+            println!(
+                "IDX: {} - {}, Rem: {}",
+                idx,
+                idx + step - 1,
+                m.rmd.rm_len - (idx + step)
+            );
+        }
+    }
 }

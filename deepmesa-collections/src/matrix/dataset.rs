@@ -1,11 +1,13 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-use crate::matrix::simd::simd::*;
+use std::alloc::dealloc;
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 extern crate alloc;
+use crate::matrix::simd::simd_align;
+use crate::matrix::simd::simd_detect;
 use crate::matrix::traits::MatrixElement;
 use alloc::alloc::alloc_zeroed;
 use alloc::alloc::Layout;
@@ -15,11 +17,10 @@ where
     T: MatrixElement,
 {
     pub(super) rm_data: *mut T,
-    pub(super) rows: usize,
     pub(super) row_stride: usize,
+    pub(super) rows: usize,
     pub(super) rm_len: usize,
     pub(super) row_pad: usize,
-    pub(super) simd_enabled: bool,
 }
 
 pub(super) struct ColMajorDataset<T>
@@ -31,7 +32,6 @@ where
     pub(super) cols: usize,
     pub(super) cm_len: usize,
     pub(super) col_pad: usize,
-    pub(super) simd_enabled: bool,
 }
 
 unsafe fn alloc_mem<T: MatrixElement>(len: usize) -> *mut T {
@@ -295,7 +295,6 @@ where
             row_stride: cols,
             rm_len: len,
             row_pad: 0,
-            simd_enabled: false,
         };
 
         debug_assert!(ds.row_stride > 0);
@@ -329,7 +328,6 @@ where
                 row_stride,
                 rm_len,
                 row_pad,
-                simd_enabled: true,
             };
             debug_assert!(ds.row_stride > 0);
             debug_assert!(!ds.rm_data.is_null());
@@ -359,7 +357,6 @@ where
             cols,
             cm_len: len,
             col_pad: 0,
-            simd_enabled: false,
         };
 
         debug_assert!(ds.col_stride > 0);
@@ -392,7 +389,6 @@ where
                 col_stride,
                 cm_len,
                 col_pad,
-                simd_enabled: true,
             };
             debug_assert!(ds.col_stride > 0);
             debug_assert!(!ds.cm_data.is_null());
@@ -403,6 +399,26 @@ where
 
             return ds;
         }
+    }
+}
+
+impl<T> Drop for RowMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    fn drop(&mut self) {
+        let layout = Layout::array::<T>(self.rm_len).unwrap();
+        unsafe { dealloc(self.rm_data as *mut u8, layout) }
+    }
+}
+
+impl<T> Drop for ColMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    fn drop(&mut self) {
+        let layout = Layout::array::<T>(self.cm_len).unwrap();
+        unsafe { dealloc(self.cm_data as *mut u8, layout) }
     }
 }
 
@@ -448,63 +464,8 @@ where
     }
 }
 
-//TODO: Remove or reimplement this hacky trait
-trait TransposeDebug {
-    fn to_debug_transpose(&self, precision: usize) -> String;
-}
-
-impl<T> TransposeDebug for RowMajorDataset<T>
-where
-    T: MatrixElement,
-{
-    fn to_debug_transpose(&self, precision: usize) -> String {
-        let mut str = String::new();
-        str.push_str(&format!("[RMDT:{}x{}]:", self.rows, self.row_stride));
-        //        let precision = f.precision().unwrap_or(1);
-        for col in 0..self.row_stride {
-            for row in 0..self.rows {
-                str.push_str(&format!("{:.*?}", precision, unsafe {
-                    rmd_get!(self, row, col)
-                }));
-                if row < self.rows - 1 {
-                    str.push_str(&format!(","));
-                }
-            }
-            str.push_str(&format!(";"));
-        }
-
-        return str;
-    }
-}
-
-impl<T> TransposeDebug for ColMajorDataset<T>
-where
-    T: MatrixElement,
-{
-    fn to_debug_transpose(&self, precision: usize) -> String {
-        let mut str = String::new();
-        str.push_str(&format!("[CMDT:{}x{}]:", self.cols, self.col_stride));
-        //        let precision = f.precision().unwrap_or(1);
-        for row in 0..self.col_stride {
-            for col in 0..self.cols {
-                str.push_str(&format!("{:.*?}", precision, unsafe {
-                    cmd_get!(self, row, col)
-                }));
-                if col < self.cols - 1 {
-                    str.push_str(&format!(","));
-                }
-            }
-            str.push_str(&format!(";"));
-        }
-
-        return str;
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::matrix::dataset::TransposeDebug;
-
     use super::RowMajorDataset;
 
     #[test]
@@ -521,9 +482,5 @@ mod tests {
         }
 
         assert_eq!(format!("{:?}", rm_ds), "[RMD:2x3]:0,1,2;3,4,5;");
-        assert_eq!(
-            format!("{}", rm_ds.to_debug_transpose(1)),
-            "[RMDT:2x3]:0,3;1,4;2,5;"
-        );
     }
 }

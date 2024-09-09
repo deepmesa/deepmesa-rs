@@ -1,6 +1,6 @@
 #[macro_use]
-pub mod dataset;
+pub(in crate::matrix) mod dataset;
 pub mod iter;
 pub mod matrix;
-pub mod simd;
+pub(in crate::matrix) mod simd;
 pub mod traits;

@@ -95,13 +95,11 @@ mod tests {
         assert_eq!(m.rmd.row_stride, 8);
         assert_eq!(m.rmd.rm_len, 16);
         assert_eq!(m.rmd.row_pad, 5);
-        assert_eq!(m.rmd.simd_enabled, true);
 
         assert_eq!(m.cmd.cols, 3);
         assert_eq!(m.cmd.col_stride, 8);
         assert_eq!(m.cmd.cm_len, 24);
         assert_eq!(m.cmd.col_pad, 6);
-        assert_eq!(m.cmd.simd_enabled, true);
 
         let mut s = String::new();
         for elem in m.row_iter() {
@@ -141,13 +139,11 @@ mod tests {
         assert_eq!(m.rmd.row_stride, 8);
         assert_eq!(m.rmd.rm_len, 16);
         assert_eq!(m.rmd.row_pad, 5);
-        assert_eq!(m.rmd.simd_enabled, true);
 
         assert_eq!(m.cmd.cols, 3);
         assert_eq!(m.cmd.col_stride, 8);
         assert_eq!(m.cmd.cm_len, 24);
         assert_eq!(m.cmd.col_pad, 6);
-        assert_eq!(m.cmd.simd_enabled, true);
 
         let mut s = String::new();
         for elem in m.row_iter() {
