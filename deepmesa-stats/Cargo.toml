@@ -1,0 +1,17 @@
+[package]
+name = "deepmesa-stats"
+version = "0.10.0"
+authors = ["Rahul Singh <rsingh@arrsingh.com>"]
+edition = "2021"
+description = "A collection of data structures and algorithms designed for performance"
+readme = "README.md"
+license = "Apache-2.0"
+documentation = "https://docs.rs/deepmesa-stats"
+homepage = "https://www.deepmesa.com"
+repository = "https://github.com/deepmesa/deepmesa-rs/deepmesa-stats"
+
+[lib]
+doc = false
+
+[dependencies]
+deepmesa-common = {path = "../deepmesa-common", version = "^0.10.0" }
