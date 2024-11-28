@@ -15,3 +15,4 @@ doc = false
 
 [dependencies]
 deepmesa-common = {path = "../deepmesa-common", version = "^0.10.0" }
+deepmesa-collections = {path = "../deepmesa-collections", version = "^0.10.0" }

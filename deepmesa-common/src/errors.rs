@@ -34,6 +34,6 @@ mod tests {
             msg: "This is a Test error Message".to_string(),
         };
 
-        println!("Error: {}", e);
+        println!("Common Error: {}", e);
     }
 }

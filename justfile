@@ -17,8 +17,14 @@ build:
 #    RUST_BACKTRACE=1 cargo test --package deepmesa-collections bitvec::byteslice::tests::tfest_count_ones -- --nocapture
 #     cargo test --all
 #     cargo test --package deepmesa-collections matrix::matrix::tests::test_overflow_f64 -- --nocapture
+#     cargo test --package deepmesa-common -- --nocapture
+#     cargo test --package deepmesa-stats -- --nocapture
+#     cargo test --package deepmesa-collections matrix::tests::cmm_new_tests -- --nocapture
+#     cargo test --package deepmesa-collections matrix::tests::rmm_new_tests -- --nocapture
+#     cargo test --package deepmesa-collections matrix::tests::di_new_tests -- --nocapture
+#     cargo test --package deepmesa-collections matrix::vector::tests::test_dot_product -- --nocapture
 test $RUST_BACKTRACE="1":
-     cargo test --package deepmesa-collections matrix::matrix::tests:: -- --nocapture
+     cargo test --package deepmesa-stats regression::linear::tests::test_simple_ols -- --nocapture
 
 doc:
     cargo doc --no-deps --all

@@ -201,11 +201,12 @@ impl SimdMetaData {
 mod tests {
 
     use crate::matrix::matrix::Matrix;
+    use crate::matrix::matrix::MatrixType;
     #[test]
     fn test_scale_row_simd() {
         let rows = 2;
         let cols = 6;
-        let mut m: Matrix<u8> = Matrix::new(rows, cols);
+        let mut m: Matrix<u8> = Matrix::new(rows, cols, MatrixType::DualIndex, true);
         m.fill(3);
         m.set_simd_enabled(true);
         assert_eq!(m.simd_enabled, true);

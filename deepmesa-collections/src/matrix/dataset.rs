@@ -17,10 +17,13 @@ where
     T: MatrixElement,
 {
     pub(super) rm_data: *mut T,
+    // Number of cols in the matrix
     pub(super) row_stride: usize,
+    // Number of rows in the Matrix
     pub(super) rows: usize,
     pub(super) rm_len: usize,
     pub(super) row_pad: usize,
+    pub(super) simd_optimized: bool,
 }
 
 pub(super) struct ColMajorDataset<T>
@@ -28,11 +31,29 @@ where
     T: MatrixElement,
 {
     pub(super) cm_data: *mut T,
+    // Number of rows in the Matrix
     pub(super) col_stride: usize,
+    // Number of cols in the matrix
     pub(super) cols: usize,
     pub(super) cm_len: usize,
     pub(super) col_pad: usize,
+    pub(super) simd_optimized: bool,
 }
+
+// pub(super) struct MatrixDataset<T>
+// where
+//     T: MatrixElement,
+// {
+//     pub(super) cmd: *mut ColMajorDataset<T>,
+//     pub(super) rmd: *mut RowMajorDataset<T>,
+// }
+
+// impl<T> MatrixDataset<T>
+// where
+//     T: MatrixElement,
+// {
+//     fn fill_diagonal(&mut self, transpose: bool) {}
+// }
 
 unsafe fn alloc_mem<T: MatrixElement>(len: usize) -> *mut T {
     let layout = Layout::array::<T>(len).unwrap();
@@ -40,249 +61,30 @@ unsafe fn alloc_mem<T: MatrixElement>(len: usize) -> *mut T {
     return data;
 }
 
-#[allow(unused_macros)]
-macro_rules! rmd_ptr {
-    ($self:expr, $row:expr, $col:expr) => {
-        $self.rm_data.add(rmd_index!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_ptr {
-    ($self:expr, $row:expr, $col:expr) => {
-        $self.cm_data.add(cmd_index!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_ptr_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        $self.rm_data.add(rmd_index_t!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_ptr_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        $self.cm_data.add(cmd_index_t!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_iptr {
-    ($self:expr, $index:expr) => {
-        $self.rm_data.add($index)
-    };
-}
-#[allow(unused_macros)]
-macro_rules! cmd_iptr {
-    ($self:expr, $index:expr) => {
-        $self.cm_data.add($index)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_index {
-    ($self:expr, $row:expr, $col:expr) => {
-        $row * $self.row_stride + $col
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_index {
-    ($self:expr, $row:expr, $col:expr) => {
-        $col * $self.col_stride + $row
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_index_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        $col * $self.row_stride + $row
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_index_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        //Col Major Dataset with Row Major Indexing
-        $row * $self.col_stride + $col
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_assign {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_assign {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index!($self, $row, $col)) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_iassign {
-    ($self:expr, $index:expr, $val:expr) => {
-        *$self.rm_data.add($index) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_iassign {
-    ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_assign_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *($self.rm_data.add(rmd_index_t!($self, $row, $col))) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_assign_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *($self.cm_data.add(cmd_index_t!($self, $row, $col))) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_iassign_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        *($self.rm_data.add($index)) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_iassign_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        *($self.cm_data.add($index)) = $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_mul_assign {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_mul_iassign {
-    ($self:expr, $index:expr, $val:expr) => {
-        *$self.rm_data.add($index) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_mul_assign_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *($self.rm_data.add(rmd_index_t!($self, $row, $col))) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_mul_iassign_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        *($self.rm_data.add($index)) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_mul_assign {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index!($self, $row, $col)) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_mul_iassign {
-    ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_mul_assign_t {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index_t!($self, $row, $col)) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_mul_iassign_t {
-    ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) *= $val
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_get {
-    ($self:expr, $row:expr, $col:expr) => {
-        *($self.rm_data.add(rmd_index!($self, $row, $col)))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_iget {
-    ($self:expr, $index:expr) => {
-        *($self.rm_data.add($index))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_get_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        *$self.rm_data.add(rmd_index_t!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_iget_t {
-    ($self:expr, $index:expr) => {
-        *$self.rm_data.add($index)
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_get {
-    ($self:expr, $row:expr, $col:expr) => {
-        *($self.cm_data.add(cmd_index!($self, $row, $col)))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_iget {
-    ($self:expr, $index:expr) => {
-        *($self.cm_data.add($index))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_get_t {
-    ($self:expr, $row:expr, $col:expr) => {
-        *$self.cm_data.add(cmd_index_t!($self, $row, $col))
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! cmd_iget_t {
-    ($self:expr, $index:expr) => {
-        *$self.cm_data.add($index)
-    };
-}
-
 impl<T> RowMajorDataset<T>
 where
     T: MatrixElement,
 {
-    pub(super) fn new(rows: usize, cols: usize) -> RowMajorDataset<T> {
+    pub(super) fn null() -> RowMajorDataset<T> {
+        return RowMajorDataset {
+            rm_data: core::ptr::null_mut(),
+            rows: 0,
+            row_stride: 0,
+            rm_len: 0,
+            row_pad: 0,
+            simd_optimized: false,
+        };
+    }
+
+    pub(super) fn new(rows: usize, cols: usize, simd_optimized: bool) -> RowMajorDataset<T> {
+        if simd_optimized {
+            return RowMajorDataset::simd_optimized(rows, cols);
+        } else {
+            return RowMajorDataset::standard(rows, cols);
+        }
+    }
+
+    pub(super) fn standard(rows: usize, cols: usize) -> RowMajorDataset<T> {
         let len = rows * cols;
         let data: *mut T;
         unsafe {
@@ -295,6 +97,7 @@ where
             row_stride: cols,
             rm_len: len,
             row_pad: 0,
+            simd_optimized: false,
         };
 
         debug_assert!(ds.row_stride > 0);
@@ -312,7 +115,7 @@ where
         unsafe {
             let (simd_vec_size, simd_batch_size) = simd_detect();
             if simd_vec_size == 0 {
-                return Self::new(rows, cols);
+                return Self::standard(rows, cols);
             }
 
             let data: *mut T;
@@ -328,6 +131,7 @@ where
                 row_stride,
                 rm_len,
                 row_pad,
+                simd_optimized: true,
             };
             debug_assert!(ds.row_stride > 0);
             debug_assert!(!ds.rm_data.is_null());
@@ -338,13 +142,36 @@ where
             return ds;
         }
     }
+
+    pub(super) fn is_simd_optimized(&self) -> bool {
+        return self.simd_optimized;
+    }
 }
 
 impl<T> ColMajorDataset<T>
 where
     T: MatrixElement,
 {
-    pub(super) fn new(rows: usize, cols: usize) -> ColMajorDataset<T> {
+    pub(super) fn null() -> ColMajorDataset<T> {
+        return ColMajorDataset {
+            cm_data: core::ptr::null_mut(),
+            col_stride: 0,
+            cols: 0,
+            cm_len: 0,
+            col_pad: 0,
+            simd_optimized: false,
+        };
+    }
+
+    pub(super) fn new(rows: usize, cols: usize, simd_optimized: bool) -> ColMajorDataset<T> {
+        if simd_optimized {
+            return ColMajorDataset::simd_optimized(rows, cols);
+        } else {
+            return ColMajorDataset::standard(rows, cols);
+        }
+    }
+
+    pub(super) fn standard(rows: usize, cols: usize) -> ColMajorDataset<T> {
         let len = rows * cols;
         let data: *mut T;
         unsafe {
@@ -357,6 +184,7 @@ where
             cols,
             cm_len: len,
             col_pad: 0,
+            simd_optimized: false,
         };
 
         debug_assert!(ds.col_stride > 0);
@@ -374,7 +202,7 @@ where
         unsafe {
             let (simd_vec_size, simd_batch_size) = simd_detect();
             if simd_vec_size == 0 {
-                return Self::new(rows, cols);
+                return Self::standard(rows, cols);
             }
             let data: *mut T;
 
@@ -389,6 +217,7 @@ where
                 col_stride,
                 cm_len,
                 col_pad,
+                simd_optimized: true,
             };
             debug_assert!(ds.col_stride > 0);
             debug_assert!(!ds.cm_data.is_null());
@@ -399,6 +228,10 @@ where
 
             return ds;
         }
+    }
+
+    pub(super) fn is_simd_optimized(&self) -> bool {
+        return self.simd_optimized;
     }
 }
 
@@ -472,7 +305,7 @@ mod tests {
     fn test_rm_index() {
         let rows = 2;
         let cols = 3;
-        let rm_ds: RowMajorDataset<u64> = RowMajorDataset::new(rows, cols);
+        let rm_ds: RowMajorDataset<u64> = RowMajorDataset::new(rows, cols, false);
         let mut val = 0;
         for row in 0..rows {
             for col in 0..cols {

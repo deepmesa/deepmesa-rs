@@ -17,10 +17,14 @@ description = "This crate provides fast Data Structures and Algorithms in Rust. 
 [dependencies]
 deepmesa-collections = {path = "./deepmesa-collections", version = "^0.10.0" }
 deepmesa-encoding = {path = "./deepmesa-encoding", version = "^0.10.0" }
+deepmesa-common = {path = "./deepmesa-common", version = "^0.10.0" }
+deepmesa-stats = {path = "./deepmesa-stats", version = "^0.10.0" }
 
 [workspace]
 members = [
     ".",
     "deepmesa-encoding",
     "deepmesa-collections",
+    "deepmesa-common",
+    "deepmesa-stats",
 ]
