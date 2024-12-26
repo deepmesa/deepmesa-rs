@@ -235,6 +235,9 @@ pub struct LinkedList<T> {
     fl: fl::FreeList<T>,
 }
 
+unsafe impl<T> Send for LinkedList<T> {}
+unsafe impl<T> Sync for LinkedList<T> {}
+
 impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         let mut cur: *mut InternalNode<T> = self.head;
@@ -341,6 +344,8 @@ impl<T> LinkedList<T> {
             fl: fl::FreeList::new(capacity),
         }
     }
+
+    //TODO: Need a node_iter() and node_iter_mut() iterators
 
     /// Returns a bidirectional iterator over the list
     ///
@@ -604,6 +609,22 @@ impl<T> LinkedList<T> {
         unsafe { Some(&mut (*self.head).val) }
     }
 
+    pub unsafe fn head_ptr(&self) -> *const T {
+        if self.head.is_null() {
+            return ptr::null();
+        }
+
+        return &(*self.head).val;
+    }
+
+    pub unsafe fn head_mut_ptr(&mut self) -> *mut T {
+        if self.head.is_null() {
+            return ptr::null_mut();
+        }
+
+        return &mut (*self.head).val;
+    }
+
     /// Returns a reference to the value of the node immediately after
     /// the node associated with the specified handle. If the
     /// specified handle is invalid or there is no next node, this
@@ -858,6 +879,36 @@ impl<T> LinkedList<T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe { Some(&mut (*n_ptr).val) },
+        }
+    }
+
+    //TODO: Do we really need this? Write docs
+    pub unsafe fn as_ptr(&self, node: &Node<T>) -> *const T {
+        match self.node_ptr(node) {
+            None => ptr::null(),
+            Some(n_ptr) => &(*n_ptr).val,
+        }
+    }
+
+    //TODO: Do we really need this? Write docs
+    pub unsafe fn as_mut_ptr(&mut self, node: &Node<T>) -> *mut T {
+        match self.node_ptr(node) {
+            None => ptr::null_mut(),
+            Some(n_ptr) => &mut (*n_ptr).val,
+        }
+    }
+
+    //TODO: Write docs
+    pub fn replace(&mut self, node: &Node<T>, val: T) -> Option<T> {
+        match self.node_ptr(node) {
+            None => {
+                return None;
+            }
+
+            Some(n_ptr) => unsafe {
+                let old_v = std::mem::replace(&mut (*n_ptr).val, val);
+                return Some(old_v);
+            },
         }
     }
 
@@ -1936,7 +1987,7 @@ impl<T> LinkedList<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     const FIRST: u8 = 0;
@@ -2675,5 +2726,86 @@ mod test {
         assert_order!(ll, hnd3, 3, hnd2, 2);
         assert_order!(ll, hnd2, 2, hnd1, 1);
         assert_order!(ll, hnd1, 1, hnd0, 0);
+    }
+
+    #[test]
+    fn test_update() {
+        let mut ll = LinkedList::<u8>::with_capacity(4);
+        let hnd0 = ll.push_tail(0);
+        let hnd1 = ll.push_tail(1);
+        let hnd2 = ll.push_tail(2);
+        let hnd3 = ll.push_tail(3);
+
+        let old0 = ll.replace(&hnd0, 20);
+        assert_eq!(old0, Some(0));
+        assert_node!(ll, hnd0, FIRST, 20, 4);
+
+        let old1 = ll.replace(&hnd1, 21);
+        assert_eq!(old1, Some(1));
+        assert_node!(ll, hnd1, MIDDLE, 21, 4);
+
+        let old2 = ll.replace(&hnd2, 22);
+        assert_eq!(old2, Some(2));
+        assert_node!(ll, hnd2, MIDDLE, 22, 4);
+
+        let old3 = ll.replace(&hnd3, 23);
+        assert_eq!(old3, Some(3));
+        assert_node!(ll, hnd3, LAST, 23, 4);
+    }
+
+    #[test]
+    fn test_as_ptr() {
+        let mut ll = LinkedList::<String>::with_capacity(4);
+
+        let hnd0 = ll.push_tail("Elem0".to_string());
+        let hnd1 = ll.push_tail("Elem1".to_string());
+        let hnd2 = ll.push_tail("Elem2".to_string());
+        let hnd3 = ll.push_tail("Elem3".to_string());
+
+        unsafe {
+            let ptr0 = ll.as_ptr(&hnd0);
+            assert_eq!("Elem0".to_string(), *ptr0);
+
+            let ptr1 = ll.as_ptr(&hnd1);
+            assert_eq!("Elem1".to_string(), *ptr1);
+
+            let ptr2 = ll.as_ptr(&hnd2);
+            assert_eq!("Elem2".to_string(), *ptr2);
+
+            let ptr3 = ll.as_ptr(&hnd3);
+            assert_eq!("Elem3".to_string(), *ptr3);
+        }
+    }
+
+    #[test]
+    fn test_as_mut_ptr() {
+        let mut ll = LinkedList::<String>::with_capacity(4);
+
+        let hnd0 = ll.push_tail("Elem0".to_string());
+        let hnd1 = ll.push_tail("Elem1".to_string());
+        let hnd2 = ll.push_tail("Elem2".to_string());
+        let hnd3 = ll.push_tail("Elem3".to_string());
+
+        unsafe {
+            let ptr0 = ll.as_mut_ptr(&hnd0);
+            assert_eq!("Elem0".to_string(), *ptr0);
+            (*ptr0).push_str("Updated0");
+            assert_eq!("Elem0Updated0".to_string(), *ptr0);
+
+            let ptr1 = ll.as_mut_ptr(&hnd1);
+            assert_eq!("Elem1".to_string(), *ptr1);
+            (*ptr1).push_str("Updated1");
+            assert_eq!("Elem1Updated1".to_string(), *ptr1);
+
+            let ptr2 = ll.as_mut_ptr(&hnd2);
+            assert_eq!("Elem2".to_string(), *ptr2);
+            (*ptr2).push_str("Updated2");
+            assert_eq!("Elem2Updated2".to_string(), *ptr2);
+
+            let ptr3 = ll.as_mut_ptr(&hnd3);
+            assert_eq!("Elem3".to_string(), *ptr3);
+            (*ptr3).push_str("Updated3");
+            assert_eq!("Elem3Updated3".to_string(), *ptr3);
+        }
     }
 }

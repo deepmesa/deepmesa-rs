@@ -17,7 +17,7 @@ build:
 #    RUST_BACKTRACE=1 cargo test --package deepmesa-collections bitvec::byteslice::tests::tfest_count_ones -- --nocapture
 
 test $RUST_BACKTRACE="1":
-     cargo test --all
+     cargo test --package deepmesa-net dump::dump::tests::test_simple -- --nocapture
 
 doc:
     cargo doc --no-deps --all

@@ -126,6 +126,9 @@ pub struct Node<T> {
     pub(super) ptr: *mut InternalNode<T>,
 }
 
+unsafe impl<T> Send for Node<T> {}
+unsafe impl<T> Sync for Node<T> {}
+
 impl<T> Clone for Node<T> {
     fn clone(&self) -> Self {
         Self { ..*self }
@@ -515,6 +518,11 @@ impl<T> Node<T> {
         list.node_mut(self)
     }
 
+    //TODO: Write docs
+    pub fn replace<'a>(&self, list: &'a mut LinkedList<T>, val: T) -> Option<T> {
+        list.replace(self, val)
+    }
+
     /// Removes and returns the value of the node immediately after
     /// the node associated with this handle. If this handle is
     /// invalid in the specified list or there is no next node, then
@@ -652,7 +660,7 @@ impl<T> Node<T> {
     /// the list (or if it was already at the head) and false if this
     /// handle is invalid in the specified list. This method simply
     /// calls
-    /// [`LinkedList::make_head_()`](../struct.LinkedList.html#method.make_head)
+    /// [`LinkedList::make_head()`](../struct.LinkedList.html#method.make_head)
     ///
     /// This operation should complete in *O*(*1*) time.
     ///
@@ -726,11 +734,4 @@ impl<T> Node<T> {
     pub fn swap_node(&self, other: &Node<T>, list: &mut LinkedList<T>) -> bool {
         list.swap_node(self, other)
     }
-}
-
-#[cfg(test)]
-mod test {
-
-    //Test clone
-    //Test Default Node<T>
 }
