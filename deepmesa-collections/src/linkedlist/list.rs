@@ -30,23 +30,18 @@ macro_rules! nid_inc {
     }};
 }
 
-/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/linkedlist/) that owns the nodes and can pre-allocate
-/// memory for performance. This linked list allows pushing and
-/// popping elements at either end or in the middle in constant time.
+/// A [fast doubly linked
+/// list](https://www.deepmesa.com/data-structures/linkedlist/) that
+/// owns the nodes and pre-allocates memory for performance.
 ///
 /// The API is the same as [`std::collections::LinkedList`] however
 /// this list also allows pushing and popping elements from the middle
 /// of the list in constant time.
 ///
-/// # Getting Started
-
-/// To get started add the deepmesa dependency to Cargo.toml and the
-/// use declaration in your source.
+/// This list also provides handles to individual nodes that remain
+/// valid even if the list is mutated.
 ///
-/// ```text
-/// [dependencies]
-/// deepmesa = "0.1.0"
-/// ```
+/// # Getting Started
 ///
 /// ```
 /// use deepmesa::collections::LinkedList;
@@ -140,7 +135,7 @@ macro_rules! nid_inc {
 /// The [`push_head()`](#method.push_head), [`push_tail()`](#method.push_tail)
 /// [`push_next()`](#method.push_next) and [`push_prev()`](#method.push_prev) methods
 /// return handles to the nodes pushed to the linked list. The handles
-/// are implemented as structs of type (`Node<T>`)(Node) that wrap a
+/// are implemented as structs of type [`Node<T>`](Node) that wrap a
 /// raw pointer to node. However since [`Node<T>`](Node) does not
 /// implement the [`Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) trait, these raw pointers cannot be
 /// dereferenced directly. Handles can only be used by passing them as
@@ -199,6 +194,7 @@ macro_rules! nid_inc {
 /// ```
 /// # Iterators
 ///
+
 /// The list supports iterators that can traverse the list in either
 /// direction by reversing the iterator at any time.
 ///
@@ -233,37 +229,6 @@ pub struct LinkedList<T> {
     pub(super) tail: *mut InternalNode<T>,
     len: usize,
     fl: fl::FreeList<T>,
-}
-
-unsafe impl<T> Send for LinkedList<T> {}
-unsafe impl<T> Sync for LinkedList<T> {}
-
-impl<T> Drop for LinkedList<T> {
-    fn drop(&mut self) {
-        let mut cur: *mut InternalNode<T> = self.head;
-        let mut node_vec = Vec::with_capacity(self.len());
-        while !cur.is_null() {
-            let node = self.pop_ptr(cur);
-            node_vec.push(node);
-            cur = self.head;
-        }
-    }
-}
-
-impl<'a, T> IntoIterator for &'a LinkedList<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
-    type Item = &'a mut T;
-    type IntoIter = IterMut<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter_mut()
-    }
 }
 
 fn inc_cid() -> usize {
@@ -344,8 +309,6 @@ impl<T> LinkedList<T> {
             fl: fl::FreeList::new(capacity),
         }
     }
-
-    //TODO: Need a node_iter() and node_iter_mut() iterators
 
     /// Returns a bidirectional iterator over the list
     ///
@@ -882,23 +845,23 @@ impl<T> LinkedList<T> {
         }
     }
 
-    //TODO: Do we really need this? Write docs
-    pub unsafe fn as_ptr(&self, node: &Node<T>) -> *const T {
-        match self.node_ptr(node) {
-            None => ptr::null(),
-            Some(n_ptr) => &(*n_ptr).val,
-        }
-    }
-
-    //TODO: Do we really need this? Write docs
-    pub unsafe fn as_mut_ptr(&mut self, node: &Node<T>) -> *mut T {
-        match self.node_ptr(node) {
-            None => ptr::null_mut(),
-            Some(n_ptr) => &mut (*n_ptr).val,
-        }
-    }
-
-    //TODO: Write docs
+    /// Replaces the value of the node associated withe the specified
+    /// handle and returns the old value. If the node doesn't exist or
+    /// the handle is invalid then this method returns None (no value
+    /// is replaced).
+    ///
+    /// Tthis method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
+    /// let node = list.push_head(1);
+    ///
+    /// let old_val = list.replace(&node, 2);
+    /// assert_eq!(old_val, Some(1));
+    /// assert_eq!(list.node(&node), Some(&2));
+    /// ```
     pub fn replace(&mut self, node: &Node<T>, val: T) -> Option<T> {
         match self.node_ptr(node) {
             None => {
@@ -1892,7 +1855,7 @@ impl<T> LinkedList<T> {
     /// Removes and returns the value pointed to by the specified raw
     /// pointer. This method will panic if the specified pointer is
     /// null. The memory is returned to the free list.
-    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
+    pub(crate) fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
         if ptr.is_null() {
             panic!("cannot pop null pointer");
         }
@@ -2040,7 +2003,7 @@ mod tests {
     }
 
     macro_rules! assert_node {
-        ($ll:ident, $node: ident, $pos: ident, $val: literal, $len: literal) => {
+        ($ll:ident, $node: ident, $pos: ident, $val: expr, $len: literal) => {
             assert_eq!($node.cid, $ll.cid);
 
             if $pos == FIRST || $pos == ONLY {
@@ -2729,83 +2692,45 @@ mod tests {
     }
 
     #[test]
-    fn test_update() {
-        let mut ll = LinkedList::<u8>::with_capacity(4);
-        let hnd0 = ll.push_tail(0);
-        let hnd1 = ll.push_tail(1);
-        let hnd2 = ll.push_tail(2);
-        let hnd3 = ll.push_tail(3);
-
-        let old0 = ll.replace(&hnd0, 20);
-        assert_eq!(old0, Some(0));
-        assert_node!(ll, hnd0, FIRST, 20, 4);
-
-        let old1 = ll.replace(&hnd1, 21);
-        assert_eq!(old1, Some(1));
-        assert_node!(ll, hnd1, MIDDLE, 21, 4);
-
-        let old2 = ll.replace(&hnd2, 22);
-        assert_eq!(old2, Some(2));
-        assert_node!(ll, hnd2, MIDDLE, 22, 4);
-
-        let old3 = ll.replace(&hnd3, 23);
-        assert_eq!(old3, Some(3));
-        assert_node!(ll, hnd3, LAST, 23, 4);
-    }
-
-    #[test]
-    fn test_as_ptr() {
-        let mut ll = LinkedList::<String>::with_capacity(4);
-
-        let hnd0 = ll.push_tail("Elem0".to_string());
-        let hnd1 = ll.push_tail("Elem1".to_string());
-        let hnd2 = ll.push_tail("Elem2".to_string());
-        let hnd3 = ll.push_tail("Elem3".to_string());
-
-        unsafe {
-            let ptr0 = ll.as_ptr(&hnd0);
-            assert_eq!("Elem0".to_string(), *ptr0);
-
-            let ptr1 = ll.as_ptr(&hnd1);
-            assert_eq!("Elem1".to_string(), *ptr1);
-
-            let ptr2 = ll.as_ptr(&hnd2);
-            assert_eq!("Elem2".to_string(), *ptr2);
-
-            let ptr3 = ll.as_ptr(&hnd3);
-            assert_eq!("Elem3".to_string(), *ptr3);
+    fn test_replace() {
+        #[derive(Debug)]
+        pub struct TestObj {
+            int_v: u16,
         }
-    }
 
-    #[test]
-    fn test_as_mut_ptr() {
-        let mut ll = LinkedList::<String>::with_capacity(4);
-
-        let hnd0 = ll.push_tail("Elem0".to_string());
-        let hnd1 = ll.push_tail("Elem1".to_string());
-        let hnd2 = ll.push_tail("Elem2".to_string());
-        let hnd3 = ll.push_tail("Elem3".to_string());
-
-        unsafe {
-            let ptr0 = ll.as_mut_ptr(&hnd0);
-            assert_eq!("Elem0".to_string(), *ptr0);
-            (*ptr0).push_str("Updated0");
-            assert_eq!("Elem0Updated0".to_string(), *ptr0);
-
-            let ptr1 = ll.as_mut_ptr(&hnd1);
-            assert_eq!("Elem1".to_string(), *ptr1);
-            (*ptr1).push_str("Updated1");
-            assert_eq!("Elem1Updated1".to_string(), *ptr1);
-
-            let ptr2 = ll.as_mut_ptr(&hnd2);
-            assert_eq!("Elem2".to_string(), *ptr2);
-            (*ptr2).push_str("Updated2");
-            assert_eq!("Elem2Updated2".to_string(), *ptr2);
-
-            let ptr3 = ll.as_mut_ptr(&hnd3);
-            assert_eq!("Elem3".to_string(), *ptr3);
-            (*ptr3).push_str("Updated3");
-            assert_eq!("Elem3Updated3".to_string(), *ptr3);
+        impl TestObj {
+            fn new(int_v: u16) -> TestObj {
+                return TestObj { int_v };
+            }
         }
+
+        impl PartialEq for TestObj {
+            fn eq(&self, other: &TestObj) -> bool {
+                return self.int_v == other.int_v;
+            }
+        }
+        impl Eq for TestObj {}
+
+        let mut ll = LinkedList::<TestObj>::with_capacity(4);
+        let hnd0 = ll.push_tail(TestObj::new(0));
+        let hnd1 = ll.push_tail(TestObj::new(1));
+        let hnd2 = ll.push_tail(TestObj::new(2));
+        let hnd3 = ll.push_tail(TestObj::new(3));
+
+        let old0 = ll.replace(&hnd0, TestObj::new(20));
+        assert_eq!(old0.unwrap().int_v, 0);
+        assert_node!(ll, hnd0, FIRST, TestObj::new(20), 4);
+
+        let old1 = ll.replace(&hnd1, TestObj::new(21));
+        assert_eq!(old1.unwrap().int_v, 1);
+        assert_node!(ll, hnd1, MIDDLE, TestObj::new(21), 4);
+
+        let old2 = ll.replace(&hnd2, TestObj::new(22));
+        assert_eq!(old2.unwrap().int_v, 2);
+        assert_node!(ll, hnd2, MIDDLE, TestObj::new(22), 4);
+
+        let old3 = ll.replace(&hnd3, TestObj::new(23));
+        assert_eq!(old3.unwrap().int_v, 3);
+        assert_node!(ll, hnd3, LAST, TestObj::new(23), 4);
     }
 }

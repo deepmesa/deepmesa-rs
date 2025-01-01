@@ -49,7 +49,7 @@ impl<T> Drop for FreeList<T> {
 impl<T> FreeList<T> {
     pub(super) fn new(capacity: usize) -> FreeList<T> {
         let mut fl = FreeList {
-            capacity: capacity,
+            capacity,
             len: 0,
             head: ptr::null_mut(),
             tail: ptr::null_mut(),

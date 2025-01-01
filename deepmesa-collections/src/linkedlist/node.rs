@@ -23,7 +23,7 @@ use crate::linkedlist::list::LinkedList;
 use core::ptr;
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct InternalNode<T> {
+pub(crate) struct InternalNode<T> {
     pub(super) val: T,
     pub(super) fl_node: bool,
     pub(super) nid: usize,

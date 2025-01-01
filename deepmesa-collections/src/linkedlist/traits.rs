@@ -19,17 +19,23 @@
    limitations under the License.
 */
 
-//! A doubly linked list that owns the nodes and can pre-allocate
-//! memory for performance. This linked list allows pushing and
-//! popping elements at either end in constant time with the same API
-//! as `std::collections::LinkedList`.
-//!
-//! In contrast to `std::collections::LinkedList`, however this list
-//! also allows pushing and popping elements from the middle of the
-//! list in constant time.
-//!
-pub mod fl;
-pub mod iter;
-pub mod list;
-pub mod node;
-pub mod traits;
+use crate::linkedlist::list::LinkedList;
+use crate::linkedlist::node::InternalNode;
+
+unsafe impl<T> Send for LinkedList<T> {}
+unsafe impl<T> Sync for LinkedList<T> {}
+
+impl<T> Drop for LinkedList<T> {
+    fn drop(&mut self) {
+        let mut cur: *mut InternalNode<T> = self.head;
+        //Create a Vec to store the items so that we don't leak memory
+        // if the Drop implementation of any of the elements of the
+        // LinkedList panics.
+        let mut node_vec = Vec::with_capacity(self.len());
+        while !cur.is_null() {
+            let node = self.pop_ptr(cur);
+            node_vec.push(node);
+            cur = self.head;
+        }
+    }
+}

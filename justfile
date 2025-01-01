@@ -15,9 +15,11 @@ build:
 #    cargo test --package deepmesa-collections bitvec::bitslice::tests::test_bit_not -- --nocapture
 #    cargo test --package deepmesa-collections bitvec::bitops::tests::test_not_msb_inplace -- --nocapture --exact
 #    RUST_BACKTRACE=1 cargo test --package deepmesa-collections bitvec::byteslice::tests::tfest_count_ones -- --nocapture
-
+# To run doc tests
+#    cargo test --doc --package deepmesa-collections map::lhmap::LinkedHashMap
+#
 test $RUST_BACKTRACE="1":
-     cargo test --package deepmesa-net dump::dump::tests::test_simple -- --nocapture
+     cargo test --doc --package deepmesa-collections map::lhmap::LinkedHashMap -- --nocapture
 
 doc:
     cargo doc --no-deps --all
