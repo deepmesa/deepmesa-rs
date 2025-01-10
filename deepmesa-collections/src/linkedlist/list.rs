@@ -19,7 +19,7 @@
    limitations under the License.
 */
 
-use crate::linkedlist::{fl, iter::Iter, iter::IterMut, node::InternalNode, node::Node};
+use crate::linkedlist::{fl, iter::Iter, iter::IterMut, node::InternalNode, node::NodeHandle};
 use core::ptr;
 
 macro_rules! nid_inc {
@@ -30,23 +30,18 @@ macro_rules! nid_inc {
     }};
 }
 
-/// A [fast doubly linked list](https://www.deepmesa.com/data-structures/linkedlist/) that owns the nodes and can pre-allocate
-/// memory for performance. This linked list allows pushing and
-/// popping elements at either end or in the middle in constant time.
+/// A [fast doubly linked
+/// list](https://www.deepmesa.com/linkedlist/) that
+/// owns the nodes and pre-allocates memory for performance.
 ///
 /// The API is the same as [`std::collections::LinkedList`] however
 /// this list also allows pushing and popping elements from the middle
 /// of the list in constant time.
 ///
-/// # Getting Started
-
-/// To get started add the deepmesa dependency to Cargo.toml and the
-/// use declaration in your source.
+/// This list also provides handles to individual nodes that remain
+/// valid even if the list is mutated.
 ///
-/// ```text
-/// [dependencies]
-/// deepmesa = "0.1.0"
-/// ```
+/// # Getting Started
 ///
 /// ```
 /// use deepmesa::collections::LinkedList;
@@ -140,8 +135,8 @@ macro_rules! nid_inc {
 /// The [`push_head()`](#method.push_head), [`push_tail()`](#method.push_tail)
 /// [`push_next()`](#method.push_next) and [`push_prev()`](#method.push_prev) methods
 /// return handles to the nodes pushed to the linked list. The handles
-/// are implemented as structs of type (`Node<T>`)(Node) that wrap a
-/// raw pointer to node. However since [`Node<T>`](Node) does not
+/// are implemented as structs of type [`NodeHandle<T>`](NodeHandle) that wrap a
+/// raw pointer to node. However since [`NodeHandle<T>`](NodeHandle) does not
 /// implement the [`Deref`](https://doc.rust-lang.org/std/ops/trait.Deref.html) trait, these raw pointers cannot be
 /// dereferenced directly. Handles can only be used by passing them as
 /// arguments to the [`next()`](#method.next), [`next_mut()`](#method.next_mut),
@@ -177,18 +172,18 @@ macro_rules! nid_inc {
 /// assert_eq!(list.len(), 2);
 /// ```
 ///
-/// [`Node<T>`](Node) implements the [`Default`](Default) trait so you
+/// [`NodeHandle<T>`](NodeHandle) implements the [`Default`](Default) trait so you
 /// can store default (invalid) handles in a struct and assign them
 /// later.
 ///
 /// ```
 /// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::Node;
+/// use deepmesa::collections::linkedlist::NodeHandle;
 /// struct MyStruct<T> {
-///     handle: Node<T>
+///     handle: NodeHandle<T>
 /// };
 /// let mut s = MyStruct::<u8> {
-///     handle: Node::<u8>::default()
+///     handle: NodeHandle::<u8>::default()
 /// };
 /// let mut list = LinkedList::<u8>::with_capacity(10);
 /// // The default handle is invalid
@@ -199,6 +194,7 @@ macro_rules! nid_inc {
 /// ```
 /// # Iterators
 ///
+
 /// The list supports iterators that can traverse the list in either
 /// direction by reversing the iterator at any time.
 ///
@@ -233,34 +229,6 @@ pub struct LinkedList<T> {
     pub(super) tail: *mut InternalNode<T>,
     len: usize,
     fl: fl::FreeList<T>,
-}
-
-impl<T> Drop for LinkedList<T> {
-    fn drop(&mut self) {
-        let mut cur: *mut InternalNode<T> = self.head;
-        let mut node_vec = Vec::with_capacity(self.len());
-        while !cur.is_null() {
-            let node = self.pop_ptr(cur);
-            node_vec.push(node);
-            cur = self.head;
-        }
-    }
-}
-
-impl<'a, T> IntoIterator for &'a LinkedList<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
-    }
-}
-
-impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
-    type Item = &'a mut T;
-    type IntoIter = IterMut<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter_mut()
-    }
 }
 
 fn inc_cid() -> usize {
@@ -604,6 +572,22 @@ impl<T> LinkedList<T> {
         unsafe { Some(&mut (*self.head).val) }
     }
 
+    pub unsafe fn head_ptr(&self) -> *const T {
+        if self.head.is_null() {
+            return ptr::null();
+        }
+
+        return &(*self.head).val;
+    }
+
+    pub unsafe fn head_mut_ptr(&mut self) -> *mut T {
+        if self.head.is_null() {
+            return ptr::null_mut();
+        }
+
+        return &mut (*self.head).val;
+    }
+
     /// Returns a reference to the value of the node immediately after
     /// the node associated with the specified handle. If the
     /// specified handle is invalid or there is no next node, this
@@ -624,7 +608,7 @@ impl<T> LinkedList<T> {
     /// // once the tail is popped, there is no next
     /// assert_eq!(list.next(&node), None);
     /// ```
-    pub fn next(&self, node: &Node<T>) -> Option<&T> {
+    pub fn next(&self, node: &NodeHandle<T>) -> Option<&T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -659,7 +643,7 @@ impl<T> LinkedList<T> {
     ///
     /// assert_eq!(list.next(&node), Some(&100));
     /// ```
-    pub fn next_mut(&mut self, node: &Node<T>) -> Option<&mut T> {
+    pub fn next_mut(&mut self, node: &NodeHandle<T>) -> Option<&mut T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -692,7 +676,7 @@ impl<T> LinkedList<T> {
     /// // once the head is popped, there is no prev
     /// assert_eq!(list.prev(&node), None);
     /// ```
-    pub fn prev(&self, node: &Node<T>) -> Option<&T> {
+    pub fn prev(&self, node: &NodeHandle<T>) -> Option<&T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -726,7 +710,7 @@ impl<T> LinkedList<T> {
     ///
     /// assert_eq!(list.prev(&node), Some(&100));
     /// ```
-    pub fn prev_mut(&mut self, node: &Node<T>) -> Option<&mut T> {
+    pub fn prev_mut(&mut self, node: &NodeHandle<T>) -> Option<&mut T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -759,7 +743,7 @@ impl<T> LinkedList<T> {
     /// //once the head is popped there is no prev node
     /// assert_eq!(list.prev(&node), None);
     /// ```
-    pub fn prev_node(&self, node: &Node<T>) -> Option<Node<T>> {
+    pub fn prev_node(&self, node: &NodeHandle<T>) -> Option<NodeHandle<T>> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -767,7 +751,11 @@ impl<T> LinkedList<T> {
                     return None;
                 }
 
-                Some(Node::new(self.cid, (*(*n_ptr).prev).nid, (*n_ptr).prev))
+                Some(NodeHandle::new(
+                    self.cid,
+                    (*(*n_ptr).prev).nid,
+                    (*n_ptr).prev,
+                ))
             },
         }
     }
@@ -795,7 +783,7 @@ impl<T> LinkedList<T> {
     /// // Once the tail node is popped, there is no next node
     /// assert_eq!(list.next_node(&node), None);
     /// ```
-    pub fn next_node(&self, node: &Node<T>) -> Option<Node<T>> {
+    pub fn next_node(&self, node: &NodeHandle<T>) -> Option<NodeHandle<T>> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -803,7 +791,11 @@ impl<T> LinkedList<T> {
                     return None;
                 }
 
-                Some(Node::new(self.cid, (*(*n_ptr).next).nid, (*n_ptr).next))
+                Some(NodeHandle::new(
+                    self.cid,
+                    (*(*n_ptr).next).nid,
+                    (*n_ptr).next,
+                ))
             },
         }
     }
@@ -826,7 +818,7 @@ impl<T> LinkedList<T> {
     /// // once the node is popped the handle becomes invalid
     /// assert_eq!(list.node(&node), None);
     /// ```
-    pub fn node(&self, node: &Node<T>) -> Option<&T> {
+    pub fn node(&self, node: &NodeHandle<T>) -> Option<&T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe { Some(&(*n_ptr).val) },
@@ -854,10 +846,40 @@ impl<T> LinkedList<T> {
     ///
     /// assert_eq!(list.node(&node), Some(&100));
     /// ```
-    pub fn node_mut(&mut self, node: &Node<T>) -> Option<&mut T> {
+    pub fn node_mut(&mut self, node: &NodeHandle<T>) -> Option<&mut T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe { Some(&mut (*n_ptr).val) },
+        }
+    }
+
+    /// Replaces the value of the node associated withe the specified
+    /// handle and returns the old value. If the node doesn't exist or
+    /// the handle is invalid then this method returns None (no value
+    /// is replaced).
+    ///
+    /// Tthis method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa::collections::LinkedList;
+    /// let mut list = LinkedList::<u8>::with_capacity(10);
+    /// let node = list.push_head(1);
+    ///
+    /// let old_val = list.replace(&node, 2);
+    /// assert_eq!(old_val, Some(1));
+    /// assert_eq!(list.node(&node), Some(&2));
+    /// ```
+    pub fn replace(&mut self, node: &NodeHandle<T>, val: T) -> Option<T> {
+        match self.node_ptr(node) {
+            None => {
+                return None;
+            }
+
+            Some(n_ptr) => unsafe {
+                let old_v = std::mem::replace(&mut (*n_ptr).val, val);
+                return Some(old_v);
+            },
         }
     }
 
@@ -880,12 +902,12 @@ impl<T> LinkedList<T> {
     /// list.pop_head();
     /// assert_eq!(list.head_node(), None);
     /// ```
-    pub fn head_node(&self) -> Option<Node<T>> {
+    pub fn head_node(&self) -> Option<NodeHandle<T>> {
         if self.head.is_null() {
             return None;
         }
 
-        unsafe { Some(Node::new(self.cid, (*self.head).nid, self.head)) }
+        unsafe { Some(NodeHandle::new(self.cid, (*self.head).nid, self.head)) }
     }
 
     /// Returns a handle to the tail (back) of the list or None if the
@@ -907,11 +929,11 @@ impl<T> LinkedList<T> {
     /// list.pop_tail();
     /// assert_eq!(list.tail_node(), None);
     /// ```
-    pub fn tail_node(&self) -> Option<Node<T>> {
+    pub fn tail_node(&self) -> Option<NodeHandle<T>> {
         if self.tail.is_null() {
             return None;
         }
-        unsafe { Some(Node::new(self.cid, (*self.tail).nid, self.tail)) }
+        unsafe { Some(NodeHandle::new(self.cid, (*self.tail).nid, self.tail)) }
     }
 
     /// Returns true if the node associated with the specified handle
@@ -935,7 +957,7 @@ impl<T> LinkedList<T> {
     /// // once the head is popped node2 becomes an invalid handle
     /// assert_eq!(list.has_next(&node2), None);
     /// ```
-    pub fn has_next(&self, node: &Node<T>) -> Option<bool> {
+    pub fn has_next(&self, node: &NodeHandle<T>) -> Option<bool> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -969,7 +991,7 @@ impl<T> LinkedList<T> {
     /// // once the head is popped node2 becomes an invalid handle
     /// assert_eq!(list.has_next(&node2), None);
     /// ```
-    pub fn has_prev(&self, node: &Node<T>) -> Option<bool> {
+    pub fn has_prev(&self, node: &NodeHandle<T>) -> Option<bool> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -1216,7 +1238,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.pop_next(&node), Some(1));
     /// assert_eq!(list.pop_next(&node), None);
     /// ```
-    pub fn pop_next(&mut self, node: &Node<T>) -> Option<T> {
+    pub fn pop_next(&mut self, node: &NodeHandle<T>) -> Option<T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -1247,7 +1269,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.pop_prev(&node), Some(3));
     /// assert_eq!(list.pop_prev(&node), None);
     /// ```
-    pub fn pop_prev(&mut self, node: &Node<T>) -> Option<T> {
+    pub fn pop_prev(&mut self, node: &NodeHandle<T>) -> Option<T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => unsafe {
@@ -1275,7 +1297,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.pop_node(&node), Some(1));
     /// assert_eq!(list.pop_node(&node), None);
     /// ```
-    pub fn pop_node(&mut self, node: &Node<T>) -> Option<T> {
+    pub fn pop_node(&mut self, node: &NodeHandle<T>) -> Option<T> {
         match self.node_ptr(node) {
             None => None,
             Some(n_ptr) => Some(self.pop_ptr(n_ptr)),
@@ -1294,7 +1316,7 @@ impl<T> LinkedList<T> {
     /// let node = list.push_head(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
-    pub fn push_head(&mut self, elem: T) -> Node<T> {
+    pub fn push_head(&mut self, elem: T) -> NodeHandle<T> {
         let nid = nid_inc!(self.nid);
         let raw_n = self.fl.acquire(elem, nid);
 
@@ -1313,7 +1335,7 @@ impl<T> LinkedList<T> {
         }
 
         self.len += 1;
-        Node::new(self.cid, nid, raw_n)
+        NodeHandle::new(self.cid, nid, raw_n)
     }
 
     /// Adds an element to the tail (back) of the list and returns a
@@ -1328,7 +1350,7 @@ impl<T> LinkedList<T> {
     /// let node = list.push_tail(1);
     /// assert_eq!(list.node(&node), Some(&1));
     /// ```
-    pub fn push_tail(&mut self, elem: T) -> Node<T> {
+    pub fn push_tail(&mut self, elem: T) -> NodeHandle<T> {
         let nid = nid_inc!(self.nid);
         let raw_n = self.fl.acquire(elem, nid);
 
@@ -1345,7 +1367,7 @@ impl<T> LinkedList<T> {
             self.tail = raw_n;
         }
         self.len += 1;
-        Node::new(self.cid, nid, raw_n)
+        NodeHandle::new(self.cid, nid, raw_n)
     }
 
     /// Returns `true` if the `LinkedList` contains an element equal to the
@@ -1397,7 +1419,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn push_next(&mut self, node: &Node<T>, elem: T) -> Option<Node<T>> {
+    pub fn push_next(&mut self, node: &NodeHandle<T>, elem: T) -> Option<NodeHandle<T>> {
         match self.node_ptr(node) {
             None => None,
             Some(c_ptr) => unsafe {
@@ -1417,7 +1439,7 @@ impl<T> LinkedList<T> {
                 }
 
                 self.len += 1;
-                Some(Node::new(self.cid, nid, raw_n))
+                Some(NodeHandle::new(self.cid, nid, raw_n))
             },
         }
     }
@@ -1446,7 +1468,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn push_prev(&mut self, node: &Node<T>, elem: T) -> Option<Node<T>> {
+    pub fn push_prev(&mut self, node: &NodeHandle<T>, elem: T) -> Option<NodeHandle<T>> {
         match self.node_ptr(node) {
             None => None,
             Some(c_ptr) => unsafe {
@@ -1466,7 +1488,7 @@ impl<T> LinkedList<T> {
                 }
 
                 self.len += 1;
-                Some(Node::new(self.cid, nid, raw_n))
+                Some(NodeHandle::new(self.cid, nid, raw_n))
             },
         }
     }
@@ -1549,7 +1571,7 @@ impl<T> LinkedList<T> {
     /// list.make_head(&hnd2);
     /// assert_eq!(list.head(), Some(&2));
     /// ```
-    pub fn make_head(&mut self, node: &Node<T>) -> bool {
+    pub fn make_head(&mut self, node: &NodeHandle<T>) -> bool {
         match self.node_ptr(node) {
             None => false,
             Some(n_ptr) => unsafe {
@@ -1600,7 +1622,7 @@ impl<T> LinkedList<T> {
     /// list.make_tail(&hnd0);
     /// assert_eq!(list.tail(), Some(&0));
     /// ```
-    pub fn make_tail(&mut self, node: &Node<T>) -> bool {
+    pub fn make_tail(&mut self, node: &NodeHandle<T>) -> bool {
         match self.node_ptr(node) {
             None => false,
             Some(n_ptr) => unsafe {
@@ -1646,7 +1668,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.is_prev(&hnd1, &hnd0), Some(false));
     /// assert_eq!(list.is_prev(&hnd1, &hnd2), None);
     /// ```
-    pub fn is_prev(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+    pub fn is_prev(&self, node: &NodeHandle<T>, other: &NodeHandle<T>) -> Option<bool> {
         if let Some(n_ptr) = self.node_ptr(node) {
             if let Some(o_ptr) = self.node_ptr(other) {
                 unsafe {
@@ -1679,7 +1701,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.is_next(&hnd0, &hnd1), Some(false));
     /// assert_eq!(list.is_next(&hnd2, &hnd1), None);
     /// ```
-    pub fn is_next(&self, node: &Node<T>, other: &Node<T>) -> Option<bool> {
+    pub fn is_next(&self, node: &NodeHandle<T>, other: &NodeHandle<T>) -> Option<bool> {
         if let Some(n_ptr) = self.node_ptr(node) {
             if let Some(o_ptr) = self.node_ptr(other) {
                 unsafe {
@@ -1712,7 +1734,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.is_head(&hnd1), Some(false));
     /// assert_eq!(list.is_head(&hnd2), None);
     /// ```
-    pub fn is_head(&self, node: &Node<T>) -> Option<bool> {
+    pub fn is_head(&self, node: &NodeHandle<T>) -> Option<bool> {
         if let Some(n_ptr) = self.node_ptr(node) {
             if n_ptr == self.head {
                 return Some(true);
@@ -1741,7 +1763,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.is_tail(&hnd1), Some(true));
     /// assert_eq!(list.is_tail(&hnd2), None);
     /// ```
-    pub fn is_tail(&self, node: &Node<T>) -> Option<bool> {
+    pub fn is_tail(&self, node: &NodeHandle<T>) -> Option<bool> {
         if let Some(n_ptr) = self.node_ptr(node) {
             if n_ptr == self.tail {
                 return Some(true);
@@ -1771,7 +1793,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(list.is_head(&hnd1), Some(true));
     /// assert_eq!(list.is_tail(&hnd0), Some(true));
     /// ```
-    pub fn swap_node(&mut self, node: &Node<T>, other: &Node<T>) -> bool {
+    pub fn swap_node(&mut self, node: &NodeHandle<T>, other: &NodeHandle<T>) -> bool {
         if let Some(n_ptr) = self.node_ptr(node) {
             if let Some(o_ptr) = self.node_ptr(other) {
                 if n_ptr == o_ptr {
@@ -1841,7 +1863,7 @@ impl<T> LinkedList<T> {
     /// Removes and returns the value pointed to by the specified raw
     /// pointer. This method will panic if the specified pointer is
     /// null. The memory is returned to the free list.
-    fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
+    pub(crate) fn pop_ptr(&mut self, ptr: *mut InternalNode<T>) -> T {
         if ptr.is_null() {
             panic!("cannot pop null pointer");
         }
@@ -1888,7 +1910,7 @@ impl<T> LinkedList<T> {
     /// that memory location can change as nodes are pushed and popped
     /// off the list. When the contents change the handle becomes
     /// invalid and this method returns None.
-    fn node_ptr(&self, node: &Node<T>) -> Option<*mut InternalNode<T>> {
+    fn node_ptr(&self, node: &NodeHandle<T>) -> Option<*mut InternalNode<T>> {
         if node.cid != self.cid {
             return None;
         }
@@ -1936,7 +1958,7 @@ impl<T> LinkedList<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     const FIRST: u8 = 0;
@@ -1989,7 +2011,7 @@ mod test {
     }
 
     macro_rules! assert_node {
-        ($ll:ident, $node: ident, $pos: ident, $val: literal, $len: literal) => {
+        ($ll:ident, $node: ident, $pos: ident, $val: expr, $len: literal) => {
             assert_eq!($node.cid, $ll.cid);
 
             if $pos == FIRST || $pos == ONLY {
@@ -2493,7 +2515,7 @@ mod test {
         ll.push_tail(2);
         ll.push_tail(3);
 
-        let hnd: Node<u8>;
+        let hnd: NodeHandle<u8>;
         {
             let mut other = LinkedList::<u8>::with_capacity(4);
             other.push_tail(4);
@@ -2675,5 +2697,48 @@ mod test {
         assert_order!(ll, hnd3, 3, hnd2, 2);
         assert_order!(ll, hnd2, 2, hnd1, 1);
         assert_order!(ll, hnd1, 1, hnd0, 0);
+    }
+
+    #[test]
+    fn test_replace() {
+        #[derive(Debug)]
+        pub struct TestObj {
+            int_v: u16,
+        }
+
+        impl TestObj {
+            fn new(int_v: u16) -> TestObj {
+                return TestObj { int_v };
+            }
+        }
+
+        impl PartialEq for TestObj {
+            fn eq(&self, other: &TestObj) -> bool {
+                return self.int_v == other.int_v;
+            }
+        }
+        impl Eq for TestObj {}
+
+        let mut ll = LinkedList::<TestObj>::with_capacity(4);
+        let hnd0 = ll.push_tail(TestObj::new(0));
+        let hnd1 = ll.push_tail(TestObj::new(1));
+        let hnd2 = ll.push_tail(TestObj::new(2));
+        let hnd3 = ll.push_tail(TestObj::new(3));
+
+        let old0 = ll.replace(&hnd0, TestObj::new(20));
+        assert_eq!(old0.unwrap().int_v, 0);
+        assert_node!(ll, hnd0, FIRST, TestObj::new(20), 4);
+
+        let old1 = ll.replace(&hnd1, TestObj::new(21));
+        assert_eq!(old1.unwrap().int_v, 1);
+        assert_node!(ll, hnd1, MIDDLE, TestObj::new(21), 4);
+
+        let old2 = ll.replace(&hnd2, TestObj::new(22));
+        assert_eq!(old2.unwrap().int_v, 2);
+        assert_node!(ll, hnd2, MIDDLE, TestObj::new(22), 4);
+
+        let old3 = ll.replace(&hnd3, TestObj::new(23));
+        assert_eq!(old3.unwrap().int_v, 3);
+        assert_node!(ll, hnd3, LAST, TestObj::new(23), 4);
     }
 }

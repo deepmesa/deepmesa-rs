@@ -18,7 +18,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::{linkedlist::list::LinkedList, linkedlist::node::Node};
+use crate::{linkedlist::list::LinkedList, linkedlist::node::NodeHandle};
 
 #[derive(Debug)]
 enum IterDirection {
@@ -56,7 +56,7 @@ enum IterDirection {
 #[derive(Debug)]
 pub struct Iter<'a, T> {
     list: &'a LinkedList<T>,
-    cursor: Option<Node<T>>,
+    cursor: Option<NodeHandle<T>>,
     dir: IterDirection,
 }
 
@@ -92,7 +92,7 @@ pub struct Iter<'a, T> {
 #[derive(Debug)]
 pub struct IterMut<'a, T> {
     list: &'a mut LinkedList<T>,
-    cursor: Option<Node<T>>,
+    cursor: Option<NodeHandle<T>>,
     dir: IterDirection,
 }
 
@@ -204,5 +204,21 @@ impl<'a, T> Iterator for IterMut<'a, T> {
                 unsafe { Some(&mut (*node_ptr).val) }
             }
         }
+    }
+}
+
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
     }
 }

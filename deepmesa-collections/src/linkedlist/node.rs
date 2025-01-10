@@ -23,7 +23,7 @@ use crate::linkedlist::list::LinkedList;
 use core::ptr;
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) struct InternalNode<T> {
+pub(crate) struct InternalNode<T> {
     pub(super) val: T,
     pub(super) fl_node: bool,
     pub(super) nid: usize,
@@ -97,19 +97,19 @@ pub(super) struct InternalNode<T> {
 /// assert_eq!(list.len(), 2);
 /// ```
 ///
-/// [`Node<T>`] implements the [`Default`] trait so you can store
+/// [`NodeHandle<T>`] implements the [`Default`] trait so you can store
 /// default (invalid) handles in a struct and assign them later.
 /// ### Example
 /// ```
 /// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::Node;
+/// use deepmesa::collections::linkedlist::NodeHandle;
 ///
 /// struct MyStruct<T> {
-///    handle: Node<T>
+///    handle: NodeHandle<T>
 /// };
 ///
 /// let mut s = MyStruct::<u8>{
-///     handle: Node::<u8>::default()
+///     handle: NodeHandle::<u8>::default()
 /// };
 ///
 /// let mut list = LinkedList::<u8>::with_capacity(10);
@@ -120,19 +120,22 @@ pub(super) struct InternalNode<T> {
 /// assert_eq!(list.node(&s.handle), Some(&1));
 /// ```
 #[derive(Debug, PartialEq, Eq, Copy)]
-pub struct Node<T> {
+pub struct NodeHandle<T> {
     pub(super) cid: usize,
     pub(super) nid: usize,
     pub(super) ptr: *mut InternalNode<T>,
 }
 
-impl<T> Clone for Node<T> {
+unsafe impl<T> Send for NodeHandle<T> {}
+unsafe impl<T> Sync for NodeHandle<T> {}
+
+impl<T> Clone for NodeHandle<T> {
     fn clone(&self) -> Self {
         Self { ..*self }
     }
 }
 
-impl<T> Default for Node<T> {
+impl<T> Default for NodeHandle<T> {
     fn default() -> Self {
         Self {
             cid: 0,
@@ -154,9 +157,9 @@ impl<T> InternalNode<T> {
     }
 }
 
-impl<T> Node<T> {
-    pub(super) fn new(cid: usize, nid: usize, ptr: *mut InternalNode<T>) -> Node<T> {
-        Node { cid, nid, ptr }
+impl<T> NodeHandle<T> {
+    pub(super) fn new(cid: usize, nid: usize, ptr: *mut InternalNode<T>) -> NodeHandle<T> {
+        NodeHandle { cid, nid, ptr }
     }
 
     /// Returns `Some(true)` if the specified node is the head of the
@@ -225,7 +228,7 @@ impl<T> Node<T> {
     /// assert_eq!(hnd1.is_prev(&hnd0, &list), Some(false));
     /// assert_eq!(hnd1.is_prev(&hnd2, &list), None);
     /// ```
-    pub fn is_prev(&self, other: &Node<T>, list: &LinkedList<T>) -> Option<bool> {
+    pub fn is_prev(&self, other: &NodeHandle<T>, list: &LinkedList<T>) -> Option<bool> {
         list.is_prev(self, other)
     }
 
@@ -248,7 +251,7 @@ impl<T> Node<T> {
     /// assert_eq!(hnd0.is_next(&hnd1, &list), Some(false));
     /// assert_eq!(hnd2.is_next(&hnd1, &list), None);
     /// ```
-    pub fn is_next(&self, other: &Node<T>, list: &LinkedList<T>) -> Option<bool> {
+    pub fn is_next(&self, other: &NodeHandle<T>, list: &LinkedList<T>) -> Option<bool> {
         list.is_next(self, other)
     }
 
@@ -436,7 +439,7 @@ impl<T> Node<T> {
     /// // Once the tail node is popped, there is no next node
     /// assert_eq!(node.next_node(&list), None);
     /// ```
-    pub fn next_node(&self, list: &LinkedList<T>) -> Option<Node<T>> {
+    pub fn next_node(&self, list: &LinkedList<T>) -> Option<NodeHandle<T>> {
         list.next_node(self)
     }
 
@@ -461,7 +464,7 @@ impl<T> Node<T> {
     /// //once the head is popped there is no prev node
     /// assert_eq!(node.prev(&list), None);
     /// ```
-    pub fn prev_node(&self, list: &LinkedList<T>) -> Option<Node<T>> {
+    pub fn prev_node(&self, list: &LinkedList<T>) -> Option<NodeHandle<T>> {
         list.prev_node(self)
     }
 
@@ -513,6 +516,11 @@ impl<T> Node<T> {
     /// ```
     pub fn val_mut<'a>(&self, list: &'a mut LinkedList<T>) -> Option<&'a mut T> {
         list.node_mut(self)
+    }
+
+    //TODO: Write docs
+    pub fn replace<'a>(&self, list: &'a mut LinkedList<T>, val: T) -> Option<T> {
+        list.replace(self, val)
     }
 
     /// Removes and returns the value of the node immediately after
@@ -610,7 +618,7 @@ impl<T> Node<T> {
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn push_next(&self, elem: T, list: &mut LinkedList<T>) -> Option<Node<T>> {
+    pub fn push_next(&self, elem: T, list: &mut LinkedList<T>) -> Option<NodeHandle<T>> {
         list.push_next(self, elem)
     }
 
@@ -640,7 +648,7 @@ impl<T> Node<T> {
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn push_prev(&self, elem: T, list: &mut LinkedList<T>) -> Option<Node<T>> {
+    pub fn push_prev(&self, elem: T, list: &mut LinkedList<T>) -> Option<NodeHandle<T>> {
         list.push_prev(self, elem)
     }
 
@@ -652,7 +660,7 @@ impl<T> Node<T> {
     /// the list (or if it was already at the head) and false if this
     /// handle is invalid in the specified list. This method simply
     /// calls
-    /// [`LinkedList::make_head_()`](../struct.LinkedList.html#method.make_head)
+    /// [`LinkedList::make_head()`](../struct.LinkedList.html#method.make_head)
     ///
     /// This operation should complete in *O*(*1*) time.
     ///
@@ -723,14 +731,7 @@ impl<T> Node<T> {
     /// assert_eq!(hnd1.is_head(&list), Some(true));
     /// assert_eq!(hnd0.is_tail(&list), Some(true));
     /// ```
-    pub fn swap_node(&self, other: &Node<T>, list: &mut LinkedList<T>) -> bool {
+    pub fn swap_node(&self, other: &NodeHandle<T>, list: &mut LinkedList<T>) -> bool {
         list.swap_node(self, other)
     }
-}
-
-#[cfg(test)]
-mod test {
-
-    //Test clone
-    //Test Default Node<T>
 }
