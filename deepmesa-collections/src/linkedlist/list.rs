@@ -31,7 +31,7 @@ macro_rules! nid_inc {
 }
 
 /// A [fast doubly linked
-/// list](https://www.deepmesa.com/data-structures/linkedlist/) that
+/// list](https://www.deepmesa.com/linkedlist/) that
 /// owns the nodes and pre-allocates memory for performance.
 ///
 /// The API is the same as [`std::collections::LinkedList`] however
