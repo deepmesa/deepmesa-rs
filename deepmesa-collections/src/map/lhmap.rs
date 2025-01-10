@@ -18,7 +18,7 @@
 */
 
 use crate::linkedlist::list::LinkedList;
-use crate::linkedlist::node::Node;
+use crate::linkedlist::node::NodeHandle;
 use crate::map::entry::Entry;
 use crate::map::entry::Order;
 use crate::map::entry::PtrKey;
@@ -30,8 +30,8 @@ use crate::map::iter::ValuesMut;
 use core::hash::Hash;
 use std::collections::HashMap;
 
-/// A fast and flexible LinkedHashMap that combines a HashMap and a
-/// LinkedList for *O*(*1*) inserts, lookups and deletes along with a
+/// A fast and flexible LinkedHashMap that combines a [`std::collections::HashMap`] and a
+/// [`LinkedList`](LinkedList) for *O*(*1*) inserts, lookups and deletes along with a
 /// predictable iteration order.
 ///
 /// All the basic functions - [`get()`](#method.get),
@@ -174,7 +174,7 @@ where
     pub(crate) order: Order,
     pub(crate) cap: usize,
     pub(crate) ll: LinkedList<Entry<K, V>>,
-    pub(crate) map: HashMap<PtrKey<K>, Node<Entry<K, V>>>,
+    pub(crate) map: HashMap<PtrKey<K>, NodeHandle<Entry<K, V>>>,
 }
 
 unsafe impl<K, V> Send for LinkedHashMap<K, V> where K: Hash + Eq {}
@@ -1019,7 +1019,7 @@ mod tests {
     #[test]
     fn test_foo() {
         use deepmesa::collections::map::Entry;
-        pub fn evict<K, V>(len: usize, capacity: usize, e: &Entry<K, V>) -> bool {
+        pub fn evict<K, V>(len: usize, capacity: usize, _e: &Entry<K, V>) -> bool {
             if len > capacity {
                 return true;
             }

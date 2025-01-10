@@ -8,10 +8,12 @@ pub mod collections {
     pub mod linkedlist {
         pub use deepmesa_collections::linkedlist::iter::Iter;
         pub use deepmesa_collections::linkedlist::iter::IterMut;
-        pub use deepmesa_collections::linkedlist::node::Node;
+        pub use deepmesa_collections::linkedlist::node::NodeHandle;
     }
 
     pub use deepmesa_collections::map::lhmap::LinkedHashMap;
+
+    /// This module contains structs specific to the [`LinkedHashMap`]
     pub mod map {
         pub use deepmesa_collections::map::entry::Entry;
         pub use deepmesa_collections::map::entry::Order;
