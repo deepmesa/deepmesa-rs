@@ -48,7 +48,7 @@ use core::ops::RangeToInclusive;
 
 /// A fast contiguous growable array of bits allocated on the heap
 /// that allows storing and manipulating an arbitrary number of
-/// bits. This collection is backed by a [`Vector<u8>`](Vec) which
+/// bits. This collection is backed by a [`Vector<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html) which
 /// manages the underlying memory.
 ///
 /// # Getting Started
@@ -89,7 +89,7 @@ use core::ops::RangeToInclusive;
 ///
 /// # Memory Management
 ///
-/// Memory is managed by an underlying [`Vec<u8>`](Vec) and all
+/// Memory is managed by an underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html) and all
 /// methods operate on bytes whenever possible for
 /// efficiency. Internally the BitVector maintains a count of the
 /// number of bits currently held by the BitVector and the actual
@@ -99,7 +99,7 @@ use core::ops::RangeToInclusive;
 /// the BitVector and should be relied up for correctness.
 ///
 /// The BitVector can also return mutable and immutable pointers and
-/// slices to the underlying [`Vec<u8>`](Vec). Modifying
+/// slices to the underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html). Modifying
 /// the underlying Vector can cause undefined behavior in the
 /// BitVector.
 ///
@@ -1806,11 +1806,11 @@ impl BitVector {
         self.index_mut(0..self.bit_len)
     }
 
-    /// Returns an immutable slice of the underlying [`Vec<u8>`](Vec)
+    /// Returns an immutable slice of the underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading the bytes directly from this raw slice is
     /// not recommended since the BitVector manages the bytes in the
-    /// underlying [`Vector`](Vec).
+    /// underlying [`Vector`](https://doc.rust-lang.org/std/vec/struct.Vec.html).
     ///
     /// # Examples
     /// ```
@@ -1829,11 +1829,11 @@ impl BitVector {
         }
     }
 
-    /// Returns a mutable slice of the underlying [`Vec<u8>`](Vec)
+    /// Returns a mutable slice of the underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or modifying the bytes directly in
     /// this raw slice is not recommended since the BitVector manages
-    /// the bytes in the underlying [`Vector`](Vec).
+    /// the bytes in the underlying [`Vector`](https://doc.rust-lang.org/std/vec/struct.Vec.html).
     ///
     /// # Examples
     /// ```
@@ -1852,11 +1852,11 @@ impl BitVector {
         }
     }
 
-    /// Returns a raw pointer to the underlying [`Vec<u8>`](Vec) containing
+    /// Returns a raw pointer to the underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html) containing
     /// the u8 values that encode the bits of the BitVector. Reading
     /// from the bytes directly from this raw pointer is not
     /// recommended since the BitVector manages the bytes in the
-    /// underlying [`Vector`](Vec).
+    /// underlying [`Vector`](https://doc.rust-lang.org/std/vec/struct.Vec.html).
     ///
     /// # Examples
     /// ```
@@ -1870,11 +1870,11 @@ impl BitVector {
         self.bits.as_ptr()
     }
 
-    /// Returns a mutable raw pointer to the underlying [`Vec<u8>`](Vec)
+    /// Returns a mutable raw pointer to the underlying [`Vec<u8>`](https://doc.rust-lang.org/std/vec/struct.Vec.html)
     /// containing the u8 values that encode the bits of the
     /// BitVector. Reading from or writing to the bytes directly in
     /// this raw pointer is not recommended since the BitVector
-    /// manages the bytes in the underlying [`Vector`](Vec).
+    /// manages the bytes in the underlying [`Vector`](https://doc.rust-lang.org/std/vec/struct.Vec.html).
     ///
     /// # Examples
     /// ```
