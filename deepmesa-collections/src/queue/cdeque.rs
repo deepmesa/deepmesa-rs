@@ -4,8 +4,8 @@ use alloc::alloc::alloc_zeroed;
 use alloc::alloc::dealloc;
 use alloc::alloc::Layout;
 use core::ptr;
+use std::fmt::Debug;
 use std::ptr::null_mut;
-
 pub struct ContiguousDeque<T> {
     len: usize,
     capacity: usize,
@@ -50,9 +50,9 @@ Rules:
 */
 
 macro_rules! dec_ptr {
-    ($ptr:expr, $ptr_start: expr, $ptr_end: expr) => {
-        if $ptr == $ptr_start {
-            $ptr = $ptr_end;
+    ($ptr:expr, $p_start: expr, $p_end: expr) => {
+        if $ptr == $p_start {
+            $ptr = $p_end;
         } else {
             unsafe {
                 $ptr = $ptr.sub(1);
@@ -73,51 +73,21 @@ macro_rules! inc_ptr {
     };
 }
 
-macro_rules! grow_if_full {
-    ($len: expr, $cap: expr, $grow: expr) => {
-        if $len == $cap {
-            $grow;
-        }
-    };
-}
-
 impl<T> ContiguousDeque<T> {
-    //    pub fn try_with_capacity(capacity: usize) -> Result<VecDeque<T>, TryReserveError> {}
-    //    pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {}
-    //    pub fn get(&self, index: usize) -> Option<&T> {}
-    //    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {}
-    //    pub fn swap(&mut self, i: usize, j: usize) {}
-    //    pub fn capacity(&self) -> usize {}
-    //    pub fn reserve_exact(&mut self, additional: usize) {}
-    //    pub fn reserve(&mut self, additional: usize) {}
-    //    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {}
-    //    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {}
     //    pub fn shrink_to_fit(&mut self) {}
     //    pub fn shrink_to(&mut self, min_capacity: usize) {}
     //    pub fn truncate(&mut self, len: usize) {}
-    //    pub fn allocator(&self) -> &A {}
     //    pub fn iter(&self) -> Iter<'_, T> {}
     //    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
     //    pub fn as_slices(&self) -> (&[T], &[T]) {}
     //    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {}
-    //    pub fn len(&self) -> usize {}
-    //    pub fn is_empty(&self) -> bool {}
     //    pub fn range<R>(&self, range: R) -> Iter<'_, T>}
     //    pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>}
     //    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>}
     //    pub fn clear(&mut self) {}
     //    pub fn contains(&self, x: &T) -> bool}
-    //    pub fn front(&self) -> Option<&T> {}
-    //    pub fn front_mut(&mut self) -> Option<&mut T> {}
-    //    pub fn back(&self) -> Option<&T> {}
-    //    pub fn back_mut(&mut self) -> Option<&mut T> {}
-    //    pub fn pop_front(&mut self) -> Option<T> {}
-    //    pub fn pop_back(&mut self) -> Option<T> {}
-    //    pub fn push_front(&mut self, value: T) {}
-    //    pub fn push_back(&mut self, value: T) {}
     //    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {}
     //    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {}
-    //    pub fn insert(&mut self, index: usize, value: T) {}
     //    pub fn remove(&mut self, index: usize) -> Option<T> {}
     //    pub fn split_off(&mut self, at: usize) -> Self}
     //    pub fn append(&mut self, other: &mut Self) {}
@@ -175,7 +145,10 @@ impl<T> ContiguousDeque<T> {
     }
 
     pub fn push_back(&mut self, val: T) {
-        grow_if_full!(self.len, self.capacity, self.grow());
+        if self.len == self.capacity {
+            self.grow();
+        }
+
         unsafe {
             ptr::write(self.p_tail, val);
         }
@@ -214,7 +187,10 @@ impl<T> ContiguousDeque<T> {
     }
 
     pub fn push_front(&mut self, val: T) {
-        grow_if_full!(self.len, self.capacity, self.grow());
+        if self.len == self.capacity {
+            self.grow();
+        }
+
         dec_ptr!(self.p_head, self.p_idxz, self.p_idxc);
         unsafe {
             ptr::write(self.p_head, val);
@@ -222,19 +198,288 @@ impl<T> ContiguousDeque<T> {
         self.len += 1;
     }
 
+    pub fn front(&self) -> Option<&T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        unsafe {
+            return Some(&(*(self.p_head)));
+        }
+    }
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        unsafe {
+            return Some(&mut (*(self.p_head)));
+        }
+    }
+
+    pub fn back(&self) -> Option<&T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        unsafe {
+            return Some(&(*(self.p_tail)));
+        }
+    }
+
+    pub fn back_mut(&mut self) -> Option<&mut T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        unsafe {
+            return Some(&mut (*(self.p_tail)));
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        if index >= self.len {
+            return None;
+        }
+
+        let ptr = self.ptr_at(index);
+        unsafe {
+            return Some(&(*ptr));
+        }
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        if index >= self.len {
+            return None;
+        }
+
+        let ptr = self.ptr_at(index);
+        unsafe {
+            return Some(&mut (*ptr));
+        }
+    }
+
+    pub fn swap(&mut self, i: usize, j: usize) {
+        if i >= self.len {
+            panic!("index out of bounds: i={}, len={}", i, self.len);
+        }
+
+        if j >= self.len {
+            panic!("index out of bounds: j={}, len={}", j, self.len);
+        }
+
+        let ptr_i = self.ptr_at(i);
+        let ptr_j = self.ptr_at(j);
+
+        if ptr_i == ptr_j {
+            return;
+        }
+
+        unsafe {
+            let val_i = ptr::read(ptr_i);
+            let val_j = ptr::read(ptr_j);
+
+            ptr::write(ptr_i, val_j);
+            ptr::write(ptr_j, val_i);
+        }
+    }
+
+    pub fn swap_remove_front(&mut self, index: usize) -> Option<T> {
+        if index > self.len {
+            return None;
+        }
+
+        let ptr = self.ptr_at(index);
+        unsafe {
+            let val = ptr::read(ptr);
+            let front = ptr::read(self.p_head);
+            ptr::write(ptr, front);
+            return Some(val);
+        }
+    }
+
+    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
+        if index > self.len {
+            return None;
+        }
+
+        let ptr = self.ptr_at(index);
+        unsafe {
+            let val = ptr::read(ptr);
+            let back = ptr::read(self.p_tail);
+            ptr::write(ptr, back);
+            return Some(val);
+        }
+    }
+
+    pub fn insert(&mut self, index: usize, value: T) {
+        if index > self.len {
+            //            println!("Index {:?} is >= len {:?}", index, self.len);
+            panic!("index out of bounds: index={}, len={}", index, self.len);
+        }
+        let ptr = self.ptr_at(index);
+
+        if self.len == self.capacity {
+            self.grow();
+        }
+
+        let mut cur = self.p_tail;
+        loop {
+            if cur == ptr {
+                break;
+            }
+
+            let mut prev = cur;
+            dec_ptr!(prev, self.p_idxz, self.p_idxc);
+            unsafe {
+                let val = ptr::read(prev);
+                ptr::write(cur, val);
+                cur = prev;
+            }
+        }
+        unsafe {
+            ptr::write(ptr, value);
+        }
+        inc_ptr!(self.p_tail, self.p_idxz, self.p_idxc);
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        if self.len == 0 {
+            return None;
+        }
+
+        if index > self.len {
+            //            println!("Index {:?} is >= len {:?}", index, self.len);
+            panic!("index out of bounds: index={}, len={}", index, self.len);
+        }
+
+        unsafe {
+            let ptr = self.ptr_at(index);
+            let val = ptr::read(ptr);
+            //index, head = 0, tail = len-1
+            //left_len = index
+            //right_len = len - index;
+            if index > self.len - index {
+                //move the elements from the tail one back
+            } else {
+                //move the elements from the head one forward
+            }
+
+            return Some(val);
+        }
+    }
+
+    pub fn reserve_exact(&mut self, additional: usize) {
+        let new_len = self.len + additional;
+        if self.capacity >= new_len {
+            return;
+        }
+
+        let alloc_size = new_len - self.capacity;
+        let new_mem = Self::alloc(alloc_size);
+        self.rebase(new_mem, alloc_size);
+    }
+
+    pub fn reserve(&mut self, additional: usize) {
+        let new_len = self.len + additional;
+        if self.capacity >= new_len {
+            return;
+        }
+
+        self.grow();
+    }
+
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        let new_len = self.len + additional;
+        if self.capacity >= new_len {
+            return Ok(());
+        }
+
+        let alloc_size = new_len - self.capacity;
+        match Self::try_alloc(alloc_size) {
+            Ok(p_mem) => {
+                self.rebase(p_mem, alloc_size);
+                return Ok(());
+            }
+            Err(e) => {
+                return Err(TryReserveError::new(e.code, e.msg));
+            }
+        }
+    }
+
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        let new_len = self.len + additional;
+        if self.capacity >= new_len {
+            return Ok(());
+        }
+
+        if self.capacity == 0 {
+            match Self::try_alloc(1) {
+                Ok(p_mem) => {
+                    self.rebase(p_mem, 1);
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(TryReserveError::new(e.code, e.msg));
+                }
+            }
+        } else {
+            match Self::try_alloc(self.capacity) {
+                Ok(p_mem) => {
+                    self.rebase(p_mem, self.capacity);
+                    return Ok(());
+                }
+                Err(e) => {
+                    return Err(TryReserveError::new(e.code, e.msg));
+                }
+            }
+        }
+    }
+}
+
+pub enum ErrorCode {
+    AllocError,
+    MemLayoutError,
+    CapacityOverflow,
+}
+
+pub struct TryReserveError {
+    pub code: ErrorCode,
+    pub msg: String,
+}
+
+impl TryReserveError {
+    pub(crate) fn new(code: ErrorCode, msg: String) -> TryReserveError {
+        return TryReserveError { code, msg };
+    }
+}
+
+pub struct TryAllocError {
+    code: ErrorCode,
+    msg: String,
+}
+
+impl TryAllocError {
+    pub(crate) fn new(code: ErrorCode, msg: String) -> TryAllocError {
+        return TryAllocError { code, msg };
+    }
+}
+
+//Private methods
+impl<T> ContiguousDeque<T> {
     fn grow(&mut self) {
         if self.capacity == 0 {
             let new_mem = Self::alloc(1);
-            self.expand(new_mem, 1);
+            self.rebase(new_mem, 1);
         } else {
             let new_mem = Self::alloc(self.capacity);
-            self.expand(new_mem, self.capacity);
+            self.rebase(new_mem, self.capacity);
         }
     }
 
     //Copies the data from the old to the new memory allocated and
-    // drops the old memory
-    fn expand(&mut self, p_new: *mut T, alloc_size: usize) {
+    // drops the old memory.
+    fn rebase(&mut self, p_new: *mut T, alloc_size: usize) {
         let mut cur: *mut T = self.p_head;
         let mut idx: usize = 0;
         loop {
@@ -268,6 +513,29 @@ impl<T> ContiguousDeque<T> {
         }
     }
 
+    fn try_alloc(len: usize) -> Result<*mut T, TryAllocError> {
+        unsafe {
+            match Layout::array::<T>(len) {
+                Ok(layout) => {
+                    let arr = alloc_zeroed(layout) as *mut T;
+                    if arr.is_null() {
+                        return Err(TryAllocError::new(
+                            ErrorCode::AllocError,
+                            "Memory Allocation Failed".to_string(),
+                        ));
+                    }
+                    return Ok(arr);
+                }
+                Err(_) => {
+                    return Err(TryAllocError::new(
+                        ErrorCode::CapacityOverflow,
+                        "Memory Allocation Failed: Capacity Overflow".to_string(),
+                    ));
+                }
+            }
+        }
+    }
+
     fn alloc(len: usize) -> *mut T {
         unsafe {
             //TODO: remove this unwrap and handle the error
@@ -280,12 +548,115 @@ impl<T> ContiguousDeque<T> {
         }
     }
 
+    //if index is out of bounds then the behavior is undefined
+    fn ptr_at(&self, index: usize) -> *mut T {
+        // if index >= self.len {
+        //     //            println!("Index {:?} is >= len {:?}", index, self.len);
+        //     return null_mut();
+        // }
+
+        //        println!("Index {:?}, len {:?}", index, self.len);
+        unsafe {
+            let dist = self.p_idxc.offset_from(self.p_head) as usize;
+            // println!(
+            //     "Dist from Head: {:?} to p_cap: {:?} = {:?}",
+            //     self.p_head, self.p_idxc, dist
+            // );
+
+            if dist < index {
+                //                println!("dist: {:?} is < index: {:?}", dist, index);
+                //                let diff = index - dist;
+                //                println!("Diff = {:?}", diff);
+                //                println!("Dist < index. index: {}, dist {}", index, dist);
+                return self.p_idxz.add(index - dist - 1);
+            //                println!("Target = {:?} val: {:?}", target, *target);
+            } else if dist == index {
+                //     println!("dist: {:?} is = index: {:?}", dist, index);
+                return self.p_head.add(index);
+                //     let target = self.p_head.add(index);
+                //     println!("Target = {:?} val: {:?}", target, *target);
+            } else {
+                //dist > index
+                //                println!("dist: {:?} is > index: {:?}", dist, index);
+                return self.p_head.add(index);
+                //                println!("Target = {:?} val: {:?}", target, *target);
+            }
+        }
+
+        // let mut ptr = self.p_head;
+
+        // //TODO: inc_ptr doesn't work. Need to use offset_from()
+        // inc_ptr!(ptr, self.p_idxz, self.p_idxc);
+
+        // unsafe {
+        //     return Some(&*ptr);
+        // }
+    }
+}
+
+impl<T: Debug> ContiguousDeque<T> {
+    // pub fn get(&self, index: usize) -> Option<&T> {
+    //     if index >= self.len {
+    //         println!("Index {:?} is >= len {:?}", index, self.len);
+    //         return None;
+    //     }
+
+    //     println!("Index {:?}, len {:?}", index, self.len);
+    //     unsafe {
+    //         let dist = self.p_idxc.offset_from(self.p_head) as usize;
+    //         println!(
+    //             "Dist from Head: {:?} to p_cap: {:?} = {:?}",
+    //             self.p_head, self.p_idxc, dist
+    //         );
+
+    //         if dist < index {
+    //             println!("dist: {:?} is < index: {:?}", dist, index);
+    //             let diff = index - dist;
+    //             println!("Diff = {:?}", diff);
+    //             let target = self.p_idxz.add(diff - 1);
+    //             println!("Target = {:?} val: {:?}", target, *target);
+    //         } else if dist == index {
+    //             println!("dist: {:?} is = index: {:?}", dist, index);
+    //             let target = self.p_head.add(index);
+    //             println!("Target = {:?} val: {:?}", target, *target);
+    //         } else {
+    //             //dist > index
+    //             println!("dist: {:?} is > index: {:?}", dist, index);
+    //             let target = self.p_head.add(index);
+    //             println!("Target = {:?} val: {:?}", target, *target);
+    //         }
+    //     }
+
+    //     let mut ptr = self.p_head;
+
+    //     //TODO: inc_ptr doesn't work. Need to use offset_from()
+    //     inc_ptr!(ptr, self.p_idxz, self.p_idxc);
+
+    //     unsafe {
+    //         return Some(&*ptr);
+    //     }
+    // }
+
     //TODO: Remove
     fn print_mem(&self) {
         let mut cur = self.p_idxz;
         for i in 0..self.capacity {
-            println!("[{:}]: {:?}", i, cur);
             unsafe {
+                let mut s = String::with_capacity(32);
+                if cur == self.p_head {
+                    s.push_str(&format!(" p_head [{}]", i));
+                }
+                if cur == self.p_tail {
+                    s.push_str(&format!(" p_tail [{}]", i));
+                }
+                if cur == self.p_idxz {
+                    s.push_str(&format!(" p_idxz [{}]", i));
+                }
+                if cur == self.p_idxc {
+                    s.push_str(&format!(" p_idxc [{}]", i));
+                }
+
+                println!("[{:}]: {:?} = {:?} <-- {:}", i, cur, *cur, s);
                 cur = cur.add(1);
             }
         }
@@ -547,5 +918,110 @@ mod tests {
             assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
         }
         assert_ptrs!(cdq);
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut cdq = ContiguousDeque::<u8>::with_capacity(10);
+        assert_eq!(cdq.len(), 0);
+        assert_eq!(cdq.capacity(), 10);
+
+        cdq.push_front(4);
+        cdq.push_front(3);
+        cdq.push_front(2);
+        cdq.push_front(1);
+        cdq.push_back(7);
+        cdq.push_back(8);
+        cdq.push_back(9);
+
+        cdq.print_mem();
+
+        let val2 = cdq.get(2);
+        assert_eq!(val2, Some(&3));
+        let val5 = cdq.get(5);
+        assert_eq!(val5, Some(&8));
+
+        cdq.swap(2, 5);
+        let val2 = cdq.get(2);
+        assert_eq!(val2, Some(&8));
+        let val5 = cdq.get(5);
+        assert_eq!(val5, Some(&3));
+    }
+
+    #[test]
+    fn test_get() {
+        let mut cdq = ContiguousDeque::<u8>::with_capacity(10);
+        assert_eq!(cdq.len(), 0);
+        assert_eq!(cdq.capacity(), 10);
+        cdq.push_front(4);
+        cdq.push_front(3);
+        cdq.push_front(2);
+        cdq.push_front(1);
+        cdq.push_back(7);
+        cdq.push_back(8);
+        cdq.push_back(9);
+
+        cdq.print_mem();
+        match cdq.get(6) {
+            None => {
+                println!("NOT FOUND!");
+            }
+            Some(v) => {
+                println!("Val: {:?}", v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_get2() {
+        let mut cdq = ContiguousDeque::<u8>::with_capacity(10);
+        assert_eq!(cdq.len(), 0);
+        assert_eq!(cdq.capacity(), 10);
+        cdq.push_back(1);
+        cdq.push_back(2);
+        cdq.push_back(3);
+        cdq.push_back(4);
+        cdq.push_back(7);
+        cdq.push_back(8);
+        cdq.push_back(9);
+        cdq.pop_front();
+        cdq.pop_front();
+
+        cdq.print_mem();
+        match cdq.get(0) {
+            None => {
+                println!("NOT FOUND!");
+            }
+            Some(v) => {
+                println!("Val: {:?}", v);
+            }
+        }
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut cdq = ContiguousDeque::<u8>::with_capacity(10);
+        assert_eq!(cdq.len(), 0);
+        assert_eq!(cdq.capacity(), 10);
+        cdq.push_front(4);
+        cdq.push_front(3);
+        cdq.push_front(2);
+        cdq.push_front(1);
+        cdq.push_back(7);
+        cdq.push_back(8);
+        cdq.push_back(9);
+        cdq.print_mem();
+        cdq.insert(7, 12);
+        cdq.print_mem();
+    }
+
+    #[test]
+    fn test_reserve() {
+        assert!(false);
+    }
+
+    #[test]
+    fn test_reserve_exact() {
+        assert!(false);
     }
 }
