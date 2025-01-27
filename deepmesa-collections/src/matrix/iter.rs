@@ -1,5 +1,44 @@
 use crate::matrix::matrix::Matrix;
 use crate::matrix::traits::MatrixElement;
+use crate::matrix::vector::Vector;
+
+pub struct VectorIterator<'a, T>
+where
+    T: MatrixElement<Output = T>,
+{
+    v: &'a Vector<T>,
+    cursor: usize,
+    len: usize,
+}
+
+impl<'a, T> VectorIterator<'a, T>
+where
+    T: MatrixElement<Output = T>,
+{
+    pub fn new(vector: &Vector<T>) -> VectorIterator<T> {
+        return VectorIterator {
+            v: vector,
+            cursor: 0,
+            len: vector.len(),
+        };
+    }
+}
+
+impl<'a, T> Iterator for VectorIterator<'a, T>
+where
+    T: MatrixElement<Output = T>,
+{
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        if self.cursor >= self.len {
+            return None;
+        }
+
+        let val = Some(self.v.get(self.cursor));
+        self.cursor += 1;
+        return val;
+    }
+}
 
 pub enum IterType {
     IterRows,

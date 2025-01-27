@@ -5,6 +5,30 @@ use std::ops::Mul;
 
 use super::simd::SimdOperation;
 
+pub trait FillRow<Rhs> {
+    fn fill_row(&mut self, row: usize, val: Rhs);
+}
+
+pub trait FillColumn<Rhs> {
+    fn fill_column(&mut self, col: usize, val: Rhs);
+}
+
+pub trait FillDiagonal<Rhs> {
+    fn fill_diagonal(&mut self, val: Rhs);
+}
+
+pub trait Set<T> {
+    fn set(&mut self, row: usize, col: usize, val: T);
+}
+
+pub trait Get<T> {
+    fn get(&self, row: usize, col: usize) -> T;
+}
+
+pub trait AddInto<Rhs = Self, Output = Self> {
+    fn add_into(self, rhs: Rhs, result: &mut Output);
+}
+
 pub trait MatrixElement:
     Sized + Default + PartialEq + Copy + Clone + Display + Debug + SimdOperation
 {

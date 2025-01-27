@@ -6,6 +6,8 @@ use std::fmt::Debug;
 //use std::fmt::Display;
 use std::fmt::Formatter;
 
+use super::iter::VectorIterator;
+
 pub struct Vector<T>
 where
     T: MatrixElement<Output = T>,
@@ -84,11 +86,16 @@ where
         self.m.set(0, idx, val);
     }
 
+    //TODO: needs a bounds check
     pub fn get(&self, idx: usize) -> T {
         if self.m.cols() == 1 {
             return self.m.get(idx, 0);
         }
         return self.m.get(0, idx);
+    }
+
+    pub fn iter(&self) -> VectorIterator<T> {
+        return VectorIterator::new(&self);
     }
 }
 

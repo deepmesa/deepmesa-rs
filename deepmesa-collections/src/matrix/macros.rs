@@ -1,3 +1,29 @@
+macro_rules! fn_transpose {
+    ($self:ident) => {
+        $self.is_transpose = !$self.is_transpose;
+        let tmp = $self.rows;
+        $self.rows = $self.cols;
+        $self.cols = tmp;
+    };
+}
+
+macro_rules! shape_check {
+    ($self:ident, $rhs:ident) => {
+        if $self.rows != $rhs.rows {
+            panic!(
+                "Matrix Shape Mismatch: self.rows {} must equal rhs.rows {}",
+                $self.rows, $rhs.rows
+            );
+        }
+        if $self.cols != $rhs.cols {
+            panic!(
+                "Matrix Shape Mismatch: self.cols {} must equal rhs.cols {}",
+                $self.cols, $rhs.cols
+            );
+        }
+    };
+}
+
 macro_rules! iterate {
     ($self:ident, $idx:ident, $max:ident, $e:expr) => {
         for $idx in 0..$max {
@@ -23,7 +49,7 @@ macro_rules! iterate_cols {
 }
 
 macro_rules! iterate_row_major {
-    ($self:ident, $row:ident, $col:ident, $e:expr) => {
+    ($self:expr, $row:ident, $col:ident, $e:expr) => {
         for $row in 0..$self.rows {
             for $col in 0..$self.cols {
                 $e
@@ -32,7 +58,49 @@ macro_rules! iterate_row_major {
     };
 }
 
-macro_rules! iterate_column_major {
+#[allow(unused_macros)]
+macro_rules! rmd_assign {
+    ($self:expr, $row:expr, $col:expr, $val:expr) => {
+        *$self.rm_data.add(rmd_index!($self, $row, $col)) = $val
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! rmd_iassign {
+    ($self:expr, $index:expr, $val:expr) => {
+        *$self.rm_data.add($index) = $val
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! rmd_add_assign {
+    ($self:expr, $row:expr, $col:expr, $val:expr) => {
+        *$self.rm_data.add(rmd_index!($self, $row, $col)) += $val
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! rmd_add_assign_t {
+    ($self:expr, $row:expr, $col:expr, $val:expr) => {
+        *$self.rm_data.add(rmd_index_t!($self, $row, $col)) += $val
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! cmd_add_assign {
+    ($self:expr, $row:expr, $col:expr, $val:expr) => {
+        *$self.cm_data.add(cmd_index!($self, $row, $col)) += $val
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! cmd_add_assign_t {
+    ($self:expr, $row:expr, $col:expr, $val:expr) => {
+        *$self.cm_data.add(cmd_index_t!($self, $row, $col)) += $val
+    };
+}
+
+macro_rules! iterate_col_major {
     ($self:ident, $row:ident, $col:ident, $e:expr) => {
         for $col in 0..$self.cols {
             for $row in 0..$self.rows {
@@ -68,7 +136,6 @@ macro_rules! bounds_check_len {
         }
     };
 }
-
 
 #[allow(unused_macros)]
 macro_rules! rmd_ptr {
@@ -137,13 +204,6 @@ macro_rules! cmd_index_t {
     ($self:expr, $row:expr, $col:expr) => {
         //Col Major Dataset with Row Major Indexing
         $row * $self.col_stride + $col
-    };
-}
-
-#[allow(unused_macros)]
-macro_rules! rmd_assign {
-    ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) = $val
     };
 }
 

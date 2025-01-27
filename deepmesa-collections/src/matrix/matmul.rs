@@ -37,7 +37,18 @@ where
     fn compute(&self, row_m1: usize, col_m2: usize) -> T {
         let mut val: T = T::zero();
         for idx in 0..self.m1.cols() {
-            val += self.m1.get(row_m1, idx) * self.m2.get(idx, col_m2);
+            //Get the ptr for the dataset for self
+            //get the ptr for the dataset for other
+            //Do the subtraction
+            //Operations
+            // Matrix: Add, Sub, Mul, Div,
+            // Matrix: AddAssign, SubAssign, MulAssign, DivAssign,
+
+            // Scalar: Add, Sub, Mul, Div
+            // Scalar: AddAssign, SubAssign, MulAssign, DivAssign
+
+            // Set, Get, Fill
+            val += self.m1.get_unchecked(row_m1, idx) * self.m2.get_unchecked(idx, col_m2);
         }
 
         return val;

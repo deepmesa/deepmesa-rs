@@ -1,7 +1,66 @@
 use crate::regression::traits::OrdinaryLeastSquares;
+use deepmesa_collections::matrix::matmul::MatrixMultiply;
+use deepmesa_collections::matrix::matrix::Matrix;
+use deepmesa_collections::matrix::matrix::MatrixType;
 use deepmesa_collections::matrix::traits::MatrixElement;
 use deepmesa_collections::matrix::vector::Vector;
 use deepmesa_collections::matrix::vector::VectorType;
+
+pub struct LinearRegression<'a, T>
+where
+    T: MatrixElement<Output = T>,
+{
+    y: &'a Vector<T>,
+    f_mat: Matrix<T>,
+    n: usize,
+}
+
+impl<'a, T> LinearRegression<'a, T>
+where
+    T: MatrixElement<Output = T>,
+{
+    pub fn new(y: &'a Vector<T>, x: &'a Matrix<T>) -> LinearRegression<'a, T> {
+        if y.len() != x.rows() {
+            //TODO return a better error message
+            panic!("Invalid linear model. Dimensions of x&y are incorrect");
+        }
+        let n = y.len();
+        //create a feature matrix
+        let mut f_mat = Matrix::new(x.cols() + 1, x.rows(), MatrixType::DualIndex, true);
+        f_mat.fill_col(0, T::one());
+        f_mat.fill_submatrix(0, 1, x);
+        //create a new matrix of the right size
+        //Fill the first col with 1
+        //Fill the second col with the vector
+        //        let f_mat = Matrix::
+        //        return SimpleLinearModel { y, x, n };
+        return LinearRegression { y, f_mat, n };
+    }
+}
+
+impl<'a, T> LinearRegression<'a, T>
+where
+    T: MatrixElement<Output = T> + std::ops::Mul<Output = T> + std::ops::AddAssign,
+{
+    pub fn gradient_descent(&self, iterations: usize, learning_rate: f32) {
+        let theta = Matrix::new(self.f_mat.cols(), 1, MatrixType::DualIndex, false);
+
+        for _ in 0..iterations {
+            let mat_mul = MatrixMultiply::new(&self.f_mat, &theta);
+            let y_hat = mat_mul.mul(MatrixType::DualIndex, false);
+            //            y_hat.sub_into(self.y, result);
+            //            let pred_err = y_hat - self.y;
+            //            let pred_err = y_hat.sub
+
+            //            let d_theta = (1.0/self.n) * (pred_err)
+        }
+        /*        y_hat = mat_mul(X, theta);
+        d_theta = (1/m) * mat_mul(XT, y_hat-y)
+        step_size = learning_rate * d_theta;
+        theta = theta - step_size
+        */
+    }
+}
 
 pub struct SimpleLinearModel<'a, T>
 where

@@ -12,7 +12,7 @@ use core::mem;
 use std::alloc::dealloc;
 
 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-use crate::matrix::simd::neon::SimdNeonKernel;
+use crate::matrix::simd::neon::neon::SimdNeonKernel;
 
 pub(crate) fn simd_align<T>(stride: usize, simd_vec_size: usize, simd_batch_size: usize) -> usize {
     let lanes = (simd_vec_size / mem::size_of::<T>()) * simd_batch_size;

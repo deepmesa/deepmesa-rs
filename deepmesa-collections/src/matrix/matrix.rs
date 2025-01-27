@@ -7,13 +7,15 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::ops::Index;
 extern crate alloc;
-use super::dataset::ColMajorDataset;
-
-use super::dataset::RowMajorDataset;
+use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::iter::{IterType, MatrixIterator};
+use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::{CheckedMul, MatrixElement};
 use crate::matrix::vector::Vector;
 use crate::matrix::vector::VectorType;
+
+use super::traits::Set;
 
 pub(in crate::matrix) enum SyncDirection {
     CmdToRmd,
@@ -88,10 +90,11 @@ pub struct Matrix<T>
 where
     T: MatrixElement<Output = T>,
 {
-    pub(super) rows: usize,
-    pub(super) cols: usize,
-    pub(super) rmd: RowMajorDataset<T>,
-    pub(super) cmd: ColMajorDataset<T>,
+    pub rows: usize,
+    pub cols: usize,
+    pub(in crate::matrix) rmd: RowMajorDataset<T>,
+    pub(in crate::matrix) cmd: ColMajorDataset<T>,
+    pub(in crate::matrix) did: DualIndexDataset<T>,
     pub(super) is_transpose: bool,
     pub is_square: bool,
     pub(super) simd_enabled: bool,
@@ -116,6 +119,7 @@ where
                     len: rows * cols,
                     rmd: RowMajorDataset::new(rows, cols, simd_optimized),
                     cmd: ColMajorDataset::null(),
+                    did: DualIndexDataset::null(),
                     is_transpose: false,
                     is_square: rows == cols,
                     simd_enabled,
@@ -129,6 +133,7 @@ where
                     len: rows * cols,
                     rmd: RowMajorDataset::null(),
                     cmd: ColMajorDataset::new(rows, cols, simd_optimized),
+                    did: DualIndexDataset::null(),
                     is_transpose: false,
                     is_square: rows == cols,
                     simd_enabled,
@@ -140,8 +145,9 @@ where
                     rows,
                     cols,
                     len: rows * cols,
-                    rmd: RowMajorDataset::new(rows, cols, simd_optimized),
-                    cmd: ColMajorDataset::new(rows, cols, simd_optimized),
+                    rmd: RowMajorDataset::null(),
+                    cmd: ColMajorDataset::null(),
+                    did: DualIndexDataset::new(rows, cols, simd_optimized),
                     is_transpose: false,
                     is_square: rows == cols,
                     simd_enabled,
@@ -178,7 +184,7 @@ where
                 return self.rmd.is_simd_optimized();
             }
             MatrixType::DualIndex => {
-                return self.rmd.is_simd_optimized() && self.rmd.is_simd_optimized();
+                return self.did.is_simd_optimized();
             }
         }
     }
@@ -267,47 +273,6 @@ where
         );
     }
 
-    // pub fn fill_diagonal(&mut self, val: T) {
-    //     let max = std::cmp::min(self.rows, self.cols);
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     cmd_assign_t!(self.cmd, idx, idx, val);
-    //                 })
-    //             } else {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     cmd_assign!(self.cmd, idx, idx, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     rmd_assign_t!(self.rmd, idx, idx, val);
-    //                 })
-    //             } else {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     rmd_assign!(self.rmd, idx, idx, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     rmd_assign_t!(self.rmd, idx, idx, val);
-    //                     cmd_assign_t!(self.cmd, idx, idx, val);
-    //                 })
-    //             } else {
-    //                 iterate!(self, idx, max, unsafe {
-    //                     rmd_assign!(self.rmd, idx, idx, val);
-    //                     cmd_assign!(self.cmd, idx, idx, val);
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn fill_row(&mut self, row: usize, val: T) {
         bounds_check_row!(row, self);
         mtype_op!(
@@ -344,46 +309,143 @@ where
         );
     }
 
-    // pub fn fill_row(&mut self, row: usize, val: T) {
-    //     bounds_check_row!(row, self);
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
+    pub fn fill_col_vector(&mut self, col: usize, vec: &Vector<T>) {
+        bounds_check_col!(col, self);
+        let mut row = vec.len();
+        let iter = vec.iter();
+        for val in iter {
+            mtype_op!(
+                self,
+                mtype_expr_col_major!(
+                    self,
+                    cmd_assign_t!(self.cmd, row, col, val),
+                    cmd_assign!(self.cmd, row, col, val)
+                ),
+                mtype_expr_row_major!(
+                    self,
+                    rmd_assign_t!(self.rmd, row, col, val),
+                    rmd_assign!(self.rmd, row, col, val)
+                ),
+                mtype_expr_dual_index!(
+                    self,
+                    {
+                        rmd_assign_t!(self.rmd, row, col, val);
+                        cmd_assign_t!(self.cmd, row, col, val);
+                    },
+                    {
+                        rmd_assign!(self.rmd, row, col, val);
+                        cmd_assign!(self.cmd, row, col, val);
+                    }
+                )
+            );
+            row += 1;
+        }
+    }
+
+    pub fn fill_row_vector(&mut self, row: usize, vec: &Vector<T>) {
+        bounds_check_col!(row, self);
+        let mut col = vec.len();
+        let iter = vec.iter();
+        for val in iter {
+            mtype_op!(
+                self,
+                mtype_expr_col_major!(
+                    self,
+                    cmd_assign_t!(self.cmd, row, col, val),
+                    cmd_assign!(self.cmd, row, col, val)
+                ),
+                mtype_expr_row_major!(
+                    self,
+                    rmd_assign_t!(self.rmd, row, col, val),
+                    rmd_assign!(self.rmd, row, col, val)
+                ),
+                mtype_expr_dual_index!(
+                    self,
+                    {
+                        rmd_assign_t!(self.rmd, row, col, val);
+                        cmd_assign_t!(self.cmd, row, col, val);
+                    },
+                    {
+                        rmd_assign!(self.rmd, row, col, val);
+                        cmd_assign!(self.cmd, row, col, val);
+                    }
+                )
+            );
+            col += 1;
+        }
+    }
+
+    pub fn fill_submatrix(&mut self, row: usize, col: usize, other: &Matrix<T>) {
+        bounds_check_row!(row, self);
+        bounds_check_col!(col, self);
+        let mut r_len = other.rows;
+        let mut c_len = other.cols;
+
+        let r2 = self.rows - row;
+        let c2 = self.cols - col;
+
+        if r_len > r2 {
+            r_len = r2;
+        }
+
+        if c_len > c2 {
+            c_len = c2;
+        }
+
+        macro_rules! iterate_submatrix {
+            ($ridx:ident, $cidx:ident, $val:ident, $e:expr) => {
+                let mut o_col = 0;
+                let mut o_row = 0;
+                for $ridx in row..row + r_len {
+                    for $cidx in col..col + c_len {
+                        let $val = other.get(o_row, o_col);
+                        {
+                            $e
+                        }
+                        o_col += 1;
+                    }
+                    o_row += 1;
+                }
+            };
+        }
+
+        mtype_op!(
+            self,
+            mtype_expr_col_major!(
+                self,
+                {
+                    iterate_submatrix!(ridx, cidx, val, cmd_assign_t!(self.cmd, ridx, cidx, val));
+                },
+                {
+                    iterate_submatrix!(ridx, cidx, val, cmd_assign!(self.cmd, ridx, cidx, val));
+                }
+            ),
+            mtype_expr_row_major!(
+                self,
+                {
+                    iterate_submatrix!(ridx, cidx, val, rmd_assign_t!(self.rmd, ridx, cidx, val));
+                },
+                {
+                    iterate_submatrix!(ridx, cidx, val, rmd_assign!(self.rmd, ridx, cidx, val));
+                }
+            ),
+            mtype_expr_dual_index!(
+                self,
+                {
+                    iterate_submatrix!(ridx, cidx, val, {
+                        rmd_assign_t!(self.rmd, ridx, cidx, val);
+                        cmd_assign_t!(self.cmd, ridx, cidx, val);
+                    });
+                },
+                {
+                    iterate_submatrix!(ridx, cidx, val, {
+                        rmd_assign!(self.rmd, ridx, cidx, val);
+                        cmd_assign!(self.cmd, ridx, cidx, val);
+                    });
+                }
+            )
+        );
+    }
 
     pub fn fill_col(&mut self, col: usize, val: T) {
         bounds_check_col!(col, self);
@@ -420,47 +482,6 @@ where
             )
         );
     }
-
-    // pub fn fill_col(&mut self, col: usize, val: T) {
-    //     bounds_check_col!(col, self);
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 })
-    //             } else {
-    //                 iterate_rows!(self, row, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
 
     pub fn fill_row_major(&mut self, src: &Vec<T>) {
         bounds_check_len!(src.len(), self);
@@ -507,106 +528,6 @@ where
         );
     }
 
-    // pub fn fill_row_major(&mut self, src: &Vec<T>) {
-    //     bounds_check_len!(src.len(), self);
-    //     //TODO: Check to see if the len of the src is equal to rows *
-    //     // cols. Add a test
-    //     let mut idx = 0;
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_row_major!(self, row, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
-
-    // pub fn fill_column_major(&mut self, src: &Vec<T>) {
-    //     bounds_check_len!(src.len(), self);
-    //     //TODO: Check to see if the len of the src is equal to rows *
-    //     // cols. Add a test
-    //     let mut idx = 0;
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_column_major!(self, row, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn fill_column_major(&mut self, src: &Vec<T>) {
         bounds_check_len!(src.len(), self);
         //TODO: Check to see if the len of the src is equal to rows *
@@ -616,34 +537,34 @@ where
             self,
             mtype_expr_col_major!(
                 self,
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     cmd_assign_t!(self.cmd, row, col, src[idx]);
                     idx += 1;
                 }),
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     cmd_assign!(self.cmd, row, col, src[idx]);
                     idx += 1;
                 })
             ),
             mtype_expr_row_major!(
                 self,
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     rmd_assign_t!(self.rmd, row, col, src[idx]);
                     idx += 1;
                 }),
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     rmd_assign!(self.rmd, row, col, src[idx]);
                     idx += 1;
                 })
             ),
             mtype_expr_dual_index!(
                 self,
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     rmd_assign_t!(self.rmd, row, col, src[idx]);
                     cmd_assign_t!(self.cmd, row, col, src[idx]);
                     idx += 1;
                 }),
-                iterate_column_major!(self, row, col, {
+                iterate_col_major!(self, row, col, {
                     rmd_assign!(self.rmd, row, col, src[idx]);
                     cmd_assign!(self.cmd, row, col, src[idx]);
                     idx += 1;
@@ -651,56 +572,6 @@ where
             )
         );
     }
-
-    // pub fn set_row(&mut self, row: usize, src: &Vec<T>) {
-    //     bounds_check_row!(row, self);
-    //     //TODO: Check to see if the len of the src is equal to
-    //     // rows. Add a test
-    //     let mut idx = 0;
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign_t!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             } else {
-    //                 iterate_cols!(self, col, unsafe {
-    //                     rmd_assign!(self.rmd, row, col, src[idx]);
-    //                     cmd_assign!(self.cmd, row, col, src[idx]);
-    //                     idx += 1;
-    //                 })
-    //             }
-    //         }
-    //     }
-    // }
 
     pub fn set_row(&mut self, row: usize, src: &Vec<T>) {
         bounds_check_row!(row, self);
@@ -747,74 +618,84 @@ where
         );
     }
 
-    pub fn set(&mut self, row: usize, col: usize, val: T) {
-        mtype_op!(
-            self,
-            mtype_expr_col_major!(
-                self,
-                cmd_assign_t!(self.cmd, row, col, val),
-                cmd_assign!(self.cmd, row, col, val)
-            ),
-            mtype_expr_row_major!(
-                self,
-                rmd_assign_t!(self.rmd, row, col, val),
-                rmd_assign!(self.rmd, row, col, val)
-            ),
-            mtype_expr_dual_index!(
-                self,
-                {
-                    rmd_assign_t!(self.rmd, row, col, val);
-                    cmd_assign_t!(self.cmd, row, col, val);
-                },
-                {
-                    rmd_assign!(self.rmd, row, col, val);
-                    cmd_assign!(self.cmd, row, col, val);
-                }
-            )
-        );
+    pub fn set_unchecked(&mut self, row: usize, col: usize, val: T) {
+        match self.m_type {
+            MatrixType::RowMajor => {
+                self.rmd.set(row, col, val);
+            }
+            MatrixType::ColMajor => {
+                self.cmd.set(row, col, val);
+            }
+            MatrixType::DualIndex => {
+                self.did.set(row, col, val);
+            }
+        }
     }
 
-    // pub fn set(&mut self, row: usize, col: usize, val: T) {
-    //     match &self.m_type {
+    // pub fn set_unchecked(&mut self, row: usize, col: usize, val: T) {
+    //     mtype_op!(
+    //         self,
+    //         mtype_expr_col_major!(
+    //             self,
+    //             cmd_assign_t!(self.cmd, row, col, val),
+    //             cmd_assign!(self.cmd, row, col, val)
+    //         ),
+    //         mtype_expr_row_major!(
+    //             self,
+    //             rmd_assign_t!(self.rmd, row, col, val),
+    //             rmd_assign!(self.rmd, row, col, val)
+    //         ),
+    //         mtype_expr_dual_index!(
+    //             self,
+    //             {
+    //                 rmd_assign_t!(self.rmd, row, col, val);
+    //                 cmd_assign_t!(self.cmd, row, col, val);
+    //             },
+    //             {
+    //                 rmd_assign!(self.rmd, row, col, val);
+    //                 cmd_assign!(self.cmd, row, col, val);
+    //             }
+    //         )
+    //     );
+    // }
+
+    pub fn set(&mut self, row: usize, col: usize, val: T) {
+        bounds_check_row!(row, self);
+        bounds_check_col!(col, self);
+        self.set_unchecked(row, col, val);
+    }
+
+    // pub fn add(&self, val: T) -> Matrix<T> {
+    //     use crate::matrix::traits::DatasetOperation;
+    //     match self.m_type {
     //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 }
-    //             }
+    //             let cmd = self.cmd.add(&val);
+    //             return Matrix::from_cmd(cmd);
     //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                 }
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     rmd_assign_t!(self.rmd, row, col, val);
-    //                     cmd_assign_t!(self.cmd, row, col, val);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     rmd_assign!(self.rmd, row, col, val);
-    //                     cmd_assign!(self.cmd, row, col, val);
-    //                 }
-    //             }
-    //         }
+    //         MatrixType::RowMajor => {}
+    //         MatrixType::DualIndex => {}
     //     }
     // }
 
-    pub fn get(&self, row: usize, col: usize) -> T {
+    // pub fn get_dataset(&self) -> DatasetOperator {
+    //     match self.m_type {
+    //         MatrixType::ColMajor => {
+    //             return DatasetOperator::new(&self.rmd, self.is_transpose);
+    //         }
+    //         MatrixType::RowMajor => {}
+    //         MatrixType::DualIndex => {}
+    //     }
+    // }
+
+    // pub fn sub(&self, other: &Matrix) {
+    //     let ptr_self = self.get_dataset();
+    //     let ptr_other = other.get_dataset();
+    //     let op_sub = DatasetSub::new(ptr_self, ptr_other);
+    //     let result_data = op.sub.sub();
+    //     return Matrix::from_dataset(result_data);
+    // }
+
+    pub fn get_unchecked(&self, row: usize, col: usize) -> T {
         mtype_op!(
             self,
             mtype_expr_col_major!(
@@ -833,97 +714,49 @@ where
                 return rmd_get!(self.rmd, row, col)
             )
         );
-
-        // match &self.m_type {
-        //     MatrixType::ColMajor => {
-        //         if self.is_transpose {
-        //             unsafe {
-        //                 return cmd_get_t!(self.cmd, row, col);
-        //             }
-        //         } else {
-        //             unsafe {
-        //                 return cmd_get!(self.cmd, row, col);
-        //             }
-        //         }
-        //     }
-        //     MatrixType::RowMajor => {
-        //         if self.is_transpose {
-        //             unsafe {
-        //                 return rmd_get_t!(self.rmd, row, col);
-        //             }
-        //         } else {
-        //             unsafe {
-        //                 return rmd_get!(self.rmd, row, col);
-        //             }
-        //         }
-        //     }
-        //     MatrixType::DualIndex => {
-        //         if self.is_transpose {
-        //             unsafe {
-        //                 return rmd_get_t!(self.rmd, row, col);
-        //             }
-        //         } else {
-        //             unsafe {
-        //                 return rmd_get!(self.rmd, row, col);
-        //             }
-        //         }
-        //     }
-        // }
     }
 
-    // pub fn get(&self, row: usize, col: usize) -> T {
-    //     match &self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     return cmd_get_t!(self.cmd, row, col);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     return cmd_get!(self.cmd, row, col);
-    //                 }
-    //             }
-    //         }
-    //         MatrixType::RowMajor => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     return rmd_get_t!(self.rmd, row, col);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     return rmd_get!(self.rmd, row, col);
-    //                 }
-    //             }
-    //         }
-    //         MatrixType::DualIndex => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     return rmd_get_t!(self.rmd, row, col);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     return rmd_get!(self.rmd, row, col);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    pub fn iterate(&self) {
+        for row in 0..self.rows() {
+            for col in 0..self.cols() {
+                unsafe {
+                    println!("val: {:?}", rmd_get!(self.rmd, row, col));
+                }
+            }
+        }
+    }
+
+    pub fn get(&self, row: usize, col: usize) -> T {
+        match self.m_type {
+            MatrixType::ColMajor => {
+                return T::zero();
+            }
+            MatrixType::RowMajor => {
+                if self.is_transpose {
+                    unsafe {
+                        return rmd_get_t!(self.rmd, row, col);
+                    }
+                } else {
+                    unsafe {
+                        return rmd_get!(self.rmd, row, col);
+                    }
+                }
+            }
+            MatrixType::DualIndex => {
+                return T::zero();
+            }
+        }
+    }
 
     pub fn is_square(&self) -> bool {
         self.is_square
     }
 
     pub fn rows(&self) -> usize {
-        if self.is_transpose {
-            return self.cols;
-        }
         return self.rows;
     }
 
     pub fn cols(&self) -> usize {
-        if self.is_transpose {
-            return self.rows;
-        }
         return self.cols;
     }
 
@@ -942,7 +775,19 @@ where
     }
 
     pub fn transpose(&mut self) {
-        self.is_transpose = !self.is_transpose;
+        fn_transpose!(self);
+
+        match self.m_type {
+            MatrixType::ColMajor => {
+                self.cmd.transpose();
+            }
+            MatrixType::RowMajor => {
+                self.rmd.transpose();
+            }
+            MatrixType::DualIndex => {
+                self.did.transpose();
+            }
+        }
     }
 
     pub(in crate::matrix) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
@@ -1331,26 +1176,21 @@ where
 
     fn scale_row_checked_cmd(&mut self, row: usize, val: T) -> Result<(), &'static str> {
         if self.is_transpose {
-            iterate_cols!(
-                self,
-                col,
-                //            for col in 0..self.cols() {
-                unsafe {
-                    let idx = cmd_index_t!(self.cmd, row, col);
-                    let v = cmd_iget_t!(self.cmd, idx);
-                    if v != T::zero() {
-                        match v.checked_mul(val) {
-                            None => {
-                                //TODO: Return a Matrix Error rather than this static junk
-                                return Err("error");
-                            }
-                            Some(v) => {
-                                cmd_iassign_t!(self.cmd, idx, v);
-                            }
+            iterate_cols!(self, col, unsafe {
+                let idx = cmd_index_t!(self.cmd, row, col);
+                let v = cmd_iget_t!(self.cmd, idx);
+                if v != T::zero() {
+                    match v.checked_mul(val) {
+                        None => {
+                            //TODO: Return a Matrix Error rather than this static junk
+                            return Err("error");
+                        }
+                        Some(v) => {
+                            cmd_iassign_t!(self.cmd, idx, v);
                         }
                     }
                 }
-            )
+            })
         } else {
             iterate_cols!(
                 self,
@@ -1442,16 +1282,29 @@ where
         write!(f, "[{}x{}]:", self.rows(), self.cols())?;
         let mut ct = 0;
         let precision = f.precision().unwrap_or(1);
-        for item in self.row_iter() {
-            write!(f, "{:.*?}", precision, item)?;
-            ct += 1;
-            if ct == self.cols() {
-                write!(f, ";")?;
-                ct = 0;
-            } else {
-                write!(f, ",")?;
+        for row in 0..self.rows {
+            for col in 0..self.cols {
+                let val = self.get(row, col);
+                write!(f, "{:.*?}", precision, val)?;
+                ct += 1;
+                if ct == self.cols() {
+                    write!(f, ";")?;
+                    ct = 0;
+                } else {
+                    write!(f, ",")?;
+                }
             }
         }
+        // for item in self.row_iter() {
+        //     write!(f, "{:.*?}", precision, item)?;
+        //     ct += 1;
+        //     if ct == self.cols() {
+        //         write!(f, ";")?;
+        //         ct = 0;
+        //     } else {
+        //         write!(f, ",")?;
+        //     }
+        // }
 
         Ok(())
     }
@@ -1465,6 +1318,7 @@ where
     fn index(&self, row: usize) -> &Self::Output {
         let start = row * self.cols;
 
+        //TODO: Fix this to handle col_major and dual index matrices
         unsafe { std::slice::from_raw_parts(self.rmd.rm_data.add(start), self.cols) }
     }
 }
@@ -1489,5 +1343,66 @@ where
         let precision = f.precision().unwrap_or(1);
         write!(f, "{:.*?}", precision, 1.2345678)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Matrix;
+    use super::MatrixType;
+    use crate::matrix::traits::MatrixElement;
+
+    fn print_m<T: MatrixElement<Output = T>>(m: &Matrix<T>) {
+        let rows = m.rows();
+        let cols = m.cols();
+        for r in 0..rows {
+            for c in 0..cols {
+                print!("{:?},", m.get(r, c));
+            }
+            println!();
+        }
+    }
+
+    #[test]
+    fn test_subm() {
+        let mut m1 = Matrix::new(20, 4, MatrixType::DualIndex, false);
+        m1.fill_col(0, 1);
+        let mut m2 = Matrix::new(20, 3, MatrixType::DualIndex, false);
+        m2.fill(9);
+        print_m(&m2);
+
+        m1.fill_submatrix(19, 1, &m2);
+        print_m(&m1);
+        //        println!("m1:{:?}", &m1);
+    }
+
+    use std::ops::AddAssign;
+    #[test]
+    fn test_add_assign() {
+        let mut m1 = Matrix::new(2, 3, MatrixType::RowMajor, true);
+        m1.fill(1);
+        m1.add_assign(3);
+    }
+
+    #[test]
+    fn test_indexing() {
+        let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
+        let v = vec![1, 2, 3, 4, 5, 6];
+        m.fill_row_major(&v);
+        println!("m={:?}", m);
+        println!("rmd={:?}", m.rmd);
+
+        m.transpose();
+        println!("m'={:?}", m);
+        println!("rmd={:?}", m.rmd);
+    }
+
+    #[test]
+    fn test_iterate() {
+        let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
+        let v = vec![1, 2, 3, 4, 5, 6];
+        m.fill_row_major(&v);
+
+        m.iterate();
     }
 }
