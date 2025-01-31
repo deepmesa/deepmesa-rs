@@ -1,6 +1,7 @@
 use crate::matrix::alloc_mem;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
+use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
 use std::alloc::dealloc;
 extern crate alloc;
@@ -96,6 +97,11 @@ where
             let row_stride = simd_align::<T>(cols, simd_vec_size, simd_batch_size);
             let rm_len = rows * row_stride;
             let row_pad = row_stride - cols;
+            println!(
+                "Row Stride: {:?}, simd_vec_size: {:?} simd_batch_size: {:?} row_pad: {:?}",
+                row_stride, simd_vec_size, simd_batch_size, row_pad
+            );
+
             data = alloc_mem::<T>(rm_len);
 
             let ds = RowMajorDataset {
@@ -124,6 +130,34 @@ where
 
     pub(in crate::matrix) fn is_simd_optimized(&self) -> bool {
         return self.simd_optimized;
+    }
+}
+
+impl<T> Dataset<T> for RowMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    #[inline(always)]
+    fn rows(&self) -> usize {
+        return self.rows;
+    }
+
+    #[inline(always)]
+    fn cols(&self) -> usize {
+        return self.cols;
+    }
+
+    #[inline(always)]
+    fn get(&self, row: usize, col: usize) -> T {
+        if self.is_transpose {
+            unsafe {
+                return rmd_get_t!(self, row, col);
+            }
+        } else {
+            unsafe {
+                return rmd_get!(self, row, col);
+            }
+        }
     }
 }
 

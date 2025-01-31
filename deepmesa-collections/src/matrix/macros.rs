@@ -61,42 +61,42 @@ macro_rules! iterate_row_major {
 #[allow(unused_macros)]
 macro_rules! rmd_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) = $val
+        *($self.rm_data.add(rmd_index!($self, $row, $col))) = $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_iassign {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.rm_data.add($index) = $val
+        *($self.rm_data.add($index)) = $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_add_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) += $val
+        *($self.rm_data.add(rmd_index!($self, $row, $col))) += $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_add_assign_t {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index_t!($self, $row, $col)) += $val
+        *($self.rm_data.add(rmd_index_t!($self, $row, $col))) += $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_add_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index!($self, $row, $col)) += $val
+        *($self.cm_data.add(cmd_index!($self, $row, $col))) += $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_add_assign_t {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index_t!($self, $row, $col)) += $val
+        *($self.cm_data.add(cmd_index_t!($self, $row, $col))) += $val
     };
 }
 
@@ -210,21 +210,21 @@ macro_rules! cmd_index_t {
 #[allow(unused_macros)]
 macro_rules! cmd_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index!($self, $row, $col)) = $val
+        *($self.cm_data.add(cmd_index!($self, $row, $col))) = $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_iassign {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.rm_data.add($index) = $val
+        *($self.rm_data.add($index)) = $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_iassign {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) = $val
+        *($self.cm_data.add($index)) = $val
     };
 }
 
@@ -259,14 +259,14 @@ macro_rules! cmd_iassign_t {
 #[allow(unused_macros)]
 macro_rules! rmd_mul_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.rm_data.add(rmd_index!($self, $row, $col)) *= $val
+        *($self.rm_data.add(rmd_index!($self, $row, $col))) *= $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_mul_iassign {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.rm_data.add($index) *= $val
+        *($self.rm_data.add($index)) *= $val
     };
 }
 
@@ -287,28 +287,28 @@ macro_rules! rmd_mul_iassign_t {
 #[allow(unused_macros)]
 macro_rules! cmd_mul_assign {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index!($self, $row, $col)) *= $val
+        *($self.cm_data.add(cmd_index!($self, $row, $col))) *= $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_mul_iassign {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) *= $val
+        *($self.cm_data.add($index)) *= $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_mul_assign_t {
     ($self:expr, $row:expr, $col:expr, $val:expr) => {
-        *$self.cm_data.add(cmd_index_t!($self, $row, $col)) *= $val
+        *($self.cm_data.add(cmd_index_t!($self, $row, $col))) *= $val
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_mul_iassign_t {
     ($self:expr, $index:expr, $val:expr) => {
-        *$self.cm_data.add($index) *= $val
+        *($self.cm_data.add($index)) *= $val
     };
 }
 
@@ -329,14 +329,14 @@ macro_rules! rmd_iget {
 #[allow(unused_macros)]
 macro_rules! rmd_get_t {
     ($self:expr, $row:expr, $col:expr) => {
-        *$self.rm_data.add(rmd_index_t!($self, $row, $col))
+        *($self.rm_data.add(rmd_index_t!($self, $row, $col)))
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! rmd_iget_t {
     ($self:expr, $index:expr) => {
-        *$self.rm_data.add($index)
+        *($self.rm_data.add($index))
     };
 }
 
@@ -357,13 +357,13 @@ macro_rules! cmd_iget {
 #[allow(unused_macros)]
 macro_rules! cmd_get_t {
     ($self:expr, $row:expr, $col:expr) => {
-        *$self.cm_data.add(cmd_index_t!($self, $row, $col))
+        *($self.cm_data.add(cmd_index_t!($self, $row, $col)))
     };
 }
 
 #[allow(unused_macros)]
 macro_rules! cmd_iget_t {
     ($self:expr, $index:expr) => {
-        *$self.cm_data.add($index)
+        *($self.cm_data.add($index))
     };
 }

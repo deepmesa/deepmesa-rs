@@ -114,3 +114,15 @@ where
         }
     }
 }
+
+impl<T> AddAssign<&DualIndexDataset<T>> for DualIndexDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign,
+{
+    fn add_assign(&mut self, rhs: &DualIndexDataset<T>) {
+        debug_assert!(self.rows == rhs.rows);
+        debug_assert!(self.cols == rhs.cols);
+
+        self.add_assign(&rhs.rmd);
+    }
+}

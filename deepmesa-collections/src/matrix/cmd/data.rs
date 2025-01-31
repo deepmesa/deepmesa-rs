@@ -1,6 +1,7 @@
 use crate::matrix::alloc_mem;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
+use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
 extern crate alloc;
 use alloc::alloc::Layout;
@@ -123,6 +124,34 @@ where
 
     pub(in crate::matrix) fn is_simd_optimized(&self) -> bool {
         return self.simd_optimized;
+    }
+}
+
+impl<T> Dataset<T> for ColMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    #[inline(always)]
+    fn rows(&self) -> usize {
+        return self.rows;
+    }
+
+    #[inline(always)]
+    fn cols(&self) -> usize {
+        return self.cols;
+    }
+
+    #[inline(always)]
+    fn get(&self, row: usize, col: usize) -> T {
+        if self.is_transpose {
+            unsafe {
+                return cmd_get_t!(self, row, col);
+            }
+        } else {
+            unsafe {
+                return cmd_get!(self, row, col);
+            }
+        }
     }
 }
 

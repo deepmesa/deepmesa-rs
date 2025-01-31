@@ -1,18 +1,23 @@
 use crate::matrix::matrix::Matrix;
+use crate::matrix::matrix::MatrixData;
 use crate::matrix::matrix::MatrixType;
+use crate::matrix::traits::Get;
 use crate::matrix::traits::MatrixElement;
 use std::fmt;
 use std::fmt::Debug;
 //use std::fmt::Display;
 use std::fmt::Formatter;
 
+use super::cmd::data::ColMajorDataset;
 use super::iter::VectorIterator;
+use super::rmd::data::RowMajorDataset;
 
 pub struct Vector<T>
 where
     T: MatrixElement<Output = T>,
 {
-    m: Matrix<T>,
+    pub(in crate::matrix) m: Matrix<T>,
+    pub(in crate::matrix) v_type: VectorType,
 }
 
 #[derive(Debug)]
@@ -29,23 +34,53 @@ where
         match v_type {
             VectorType::RowVector => Vector {
                 m: Matrix::new(1, size, MatrixType::RowMajor, simd_optimized),
+                v_type,
             },
             VectorType::ColVector => Vector {
                 m: Matrix::new(size, 1, MatrixType::ColMajor, simd_optimized),
+                v_type,
             },
         }
     }
 
-    pub fn row_vector(src: &Vec<T>, simd_optimized: bool) -> Vector<T> {
-        return Vector {
-            m: Matrix::from_row_major(1, src.len(), MatrixType::RowMajor, simd_optimized, src),
-        };
+    // pub fn row_vector(src: &Vec<T>, simd_optimized: bool) -> Vector<T> {
+    //     return Vector {
+    //         m: Matrix::from_row_major(1, src.len(), MatrixType::RowMajor, simd_optimized, src),
+    //     };
+    // }
+
+    // pub fn col_vector(src: &Vec<T>, simd_optimized: bool) -> Vector<T> {
+    //     return Vector {
+    //         m: Matrix::from_column_major(src.len(), 1, MatrixType::ColMajor, simd_optimized, src),
+    //     };
+    // }
+
+    pub(in crate::matrix) fn get_cmd(&self) -> &ColMajorDataset<T> {
+        match self.v_type {
+            VectorType::ColVector => match &self.m.data {
+                MatrixData::ColMajor(ds) => return ds,
+                _ => {
+                    panic!("invalid dataset in Col Vector");
+                }
+            },
+            VectorType::RowVector => {
+                panic!("Row Vector doesn't have a ColMajorDataset");
+            }
+        }
     }
 
-    pub fn col_vector(src: &Vec<T>, simd_optimized: bool) -> Vector<T> {
-        return Vector {
-            m: Matrix::from_column_major(src.len(), 1, MatrixType::ColMajor, simd_optimized, src),
-        };
+    pub(in crate::matrix) fn get_rmd(&self) -> &RowMajorDataset<T> {
+        match self.v_type {
+            VectorType::RowVector => match &self.m.data {
+                MatrixData::RowMajor(ds) => return ds,
+                _ => {
+                    panic!("invalid dataset in Col Vector");
+                }
+            },
+            VectorType::ColVector => {
+                panic!("Row Vector doesn't have a ColMajorDataset");
+            }
+        }
     }
 
     pub fn is_col_vector(&self) -> bool {
@@ -60,9 +95,9 @@ where
         self.m.transpose();
     }
 
-    pub fn fill(&mut self, val: T) {
-        self.m.fill(val);
-    }
+    // pub fn fill(&mut self, val: T) {
+    //     self.m.fill(val);
+    // }
 
     pub fn rows(&self) -> usize {
         return self.m.rows();
@@ -150,12 +185,12 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn test_dot_product() {
-        let v1: Vector<u16> = Vector::<u16>::row_vector(&vec![2, 4, 6, 8, 10], false);
-        let v2: Vector<u16> = Vector::<u16>::col_vector(&vec![1, 3, 5, 7, 9], false);
+    // //    #[test]
+    // fn test_dot_product() {
+    //     let v1: Vector<u16> = Vector::<u16>::row_vector(&vec![2, 4, 6, 8, 10], false);
+    //     let v2: Vector<u16> = Vector::<u16>::col_vector(&vec![1, 3, 5, 7, 9], false);
 
-        let scalar = v1.dot(&v2);
-        assert_eq!(scalar, 190);
-    }
+    //     let scalar = v1.dot(&v2);
+    //     assert_eq!(scalar, 190);
+    // }
 }

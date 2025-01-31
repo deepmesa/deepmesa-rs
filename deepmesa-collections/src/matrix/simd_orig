@@ -1,0 +1,9 @@
+//cross platform simd functions for matrix
+
+use crate::matrix::matrix::Matrix;
+use crate::matrix::traits::MatrixElement;
+extern crate alloc;
+use alloc::alloc::alloc_zeroed;
+use alloc::alloc::Layout;
+use core::mem;
+use std::alloc::dealloc;

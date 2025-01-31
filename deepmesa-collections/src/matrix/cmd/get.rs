@@ -1,18 +1,18 @@
-use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::traits::Get;
 use crate::matrix::traits::MatrixElement;
 
-impl<T> Get<T> for RowMajorDataset<T>
+impl<T> Get<T> for ColMajorDataset<T>
 where
     T: MatrixElement,
 {
     fn get(&self, row: usize, col: usize) -> T {
         match self.is_transpose {
             true => unsafe {
-                return rmd_get_t!(self, row, col);
+                return cmd_get_t!(self, row, col);
             },
             false => unsafe {
-                return rmd_get!(self, row, col);
+                return cmd_get!(self, row, col);
             },
         }
     }

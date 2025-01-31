@@ -1,9 +1,8 @@
+use crate::matrix::simd::traits::SimdOperation;
 use core::fmt::Debug;
 use core::fmt::Display;
 use std::num::FpCategory;
 use std::ops::Mul;
-
-use super::simd::SimdOperation;
 
 pub trait FillRow<Rhs> {
     fn fill_row(&mut self, row: usize, val: Rhs);
@@ -25,8 +24,17 @@ pub trait Get<T> {
     fn get(&self, row: usize, col: usize) -> T;
 }
 
-pub trait AddInto<Rhs = Self, Output = Self> {
-    fn add_into(self, rhs: Rhs, result: &mut Output);
+pub trait AddInto<Rhs, Output> {
+    fn add_into(&self, rhs: Rhs, result: &mut Output);
+}
+
+pub(in crate::matrix) trait Dataset<T>
+where
+    T: MatrixElement,
+{
+    fn rows(&self) -> usize;
+    fn cols(&self) -> usize;
+    fn get(&self, row: usize, col: usize) -> T;
 }
 
 pub trait MatrixElement:

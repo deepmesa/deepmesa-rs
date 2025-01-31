@@ -48,7 +48,7 @@ where
             // Scalar: AddAssign, SubAssign, MulAssign, DivAssign
 
             // Set, Get, Fill
-            val += self.m1.get_unchecked(row_m1, idx) * self.m2.get_unchecked(idx, col_m2);
+            //            val += self.m1.get_unchecked(row_m1, idx) * self.m2.get_unchecked(idx, col_m2);
         }
 
         return val;

@@ -1,4 +1,5 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::MatrixElement;
 use std::ops::AddAssign;
@@ -94,5 +95,17 @@ where
                 }
             },
         }
+    }
+}
+
+impl<T> AddAssign<&DualIndexDataset<T>> for ColMajorDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign,
+{
+    fn add_assign(&mut self, rhs: &DualIndexDataset<T>) {
+        debug_assert!(self.rows == rhs.rows);
+        debug_assert!(self.cols == rhs.cols);
+
+        self.add_assign(&rhs.rmd);
     }
 }
