@@ -3,6 +3,10 @@ use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::{AddInto, MatrixElement};
 
+use crate::matrix::simd::kernel::SimdKernel;
+use crate::matrix::simd::traits::SimdPtrAddInto;
+use crate::matrix::traits::SimdAddInto;
+
 impl<T> AddInto<T, RowMajorDataset<T>> for ColMajorDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
@@ -688,5 +692,19 @@ where
         debug_assert!(self.rows == rhs.rows);
         debug_assert!(self.cols == rhs.cols);
         self.add_into(&rhs.cmd, result);
+    }
+}
+
+impl<T> SimdAddInto<T> for ColMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    fn simd_add_into(&self, result: &mut Self, val: T) {
+        let ptr = self.cm_data;
+        let len = self.cm_len;
+        let dst = result.cm_data;
+        unsafe {
+            SimdKernel::ptr_add_into(ptr, dst, len, val);
+        }
     }
 }

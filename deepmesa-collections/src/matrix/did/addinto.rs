@@ -1,7 +1,11 @@
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
-use crate::matrix::traits::{AddInto, MatrixElement};
+use crate::matrix::traits::{AddInto, MatrixElement, SimdAddInto};
+
+use crate::matrix::did::data::SyncDirection;
+use crate::matrix::simd::kernel::SimdKernel;
+use crate::matrix::simd::traits::SimdPtrAddInto;
 
 impl<T> AddInto<T, RowMajorDataset<T>> for DualIndexDataset<T>
 where
@@ -161,5 +165,16 @@ where
         debug_assert!(self.cols == rhs.cols);
 
         self.rmd.add_into(rhs, result);
+    }
+}
+
+impl<T> SimdAddInto<T> for DualIndexDataset<T>
+where
+    T: MatrixElement,
+{
+    fn simd_add_into(&self, result: &mut Self, val: T) {
+        let dst = &mut result.rmd;
+        self.rmd.simd_add_into(dst, val);
+        result.sync(SyncDirection::RmdToCmd);
     }
 }
