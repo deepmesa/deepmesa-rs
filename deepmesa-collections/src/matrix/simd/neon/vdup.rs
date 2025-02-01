@@ -2,7 +2,6 @@
 macro_rules! vdup_vld1q_dup {
     (u8, $v_rhs:ident, $val:ident) => {
         let $v_rhs: uint8x16_t = vld1q_dup_u8(ptr::from_ref::<u8>(&$val));
-        println!("DUP: {:?}", $v_rhs);
     };
     (u16, $v_rhs:ident, $val:ident) => {
         let $v_rhs: uint16x8_t = vld1q_dup_u16(ptr::from_ref::<u16>(&$val));

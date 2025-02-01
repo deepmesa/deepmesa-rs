@@ -1,7 +1,11 @@
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::simd::kernel::SimdKernel;
+use crate::matrix::simd::traits::SimdPtrAddAssign;
+use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
+use crate::matrix::traits::SimdAddAssign;
 use std::ops::AddAssign;
 
 impl<T> AddAssign<T> for RowMajorDataset<T>
@@ -9,6 +13,11 @@ where
     T: MatrixElement + std::ops::AddAssign,
 {
     fn add_assign(&mut self, val: T) {
+        if self.use_simd() {
+            self.simd_add_assign(val);
+            return;
+        }
+
         if self.is_transpose {
             iterate_row_major!(self, row, col, unsafe {
                 rmd_add_assign_t!(self, row, col, val);
@@ -48,6 +57,19 @@ where
                     rmd_add_assign!(self, row, col, rmd_get!(rhs, row, col));
                 });
             }
+        }
+    }
+}
+
+impl<T> SimdAddAssign<T> for RowMajorDataset<T>
+where
+    T: MatrixElement,
+{
+    fn simd_add_assign(&mut self, val: T) {
+        let ptr = self.rm_data;
+        let len = self.rm_len;
+        unsafe {
+            SimdKernel::ptr_add_assign(ptr, len, val);
         }
     }
 }

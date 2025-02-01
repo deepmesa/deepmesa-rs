@@ -1,26 +1,11 @@
 use crate::matrix::matrix::Matrix;
 use crate::matrix::matrix::MatrixData;
-use crate::matrix::traits::{AddInto, MatrixElement};
-
-macro_rules! dispatch {
-    ($self:ident, $ds: ident, $fn:expr) => {
-        match &$self.data {
-            MatrixData::ColMajor($ds) => $fn,
-            MatrixData::RowMajor($ds) => $fn,
-            MatrixData::DualIndex($ds) => $fn,
-        }
-    };
-}
-
-macro_rules! dispatch_mut {
-    ($self:ident, $ds: ident, $fn:expr) => {
-        match &mut $self.data {
-            MatrixData::ColMajor($ds) => $fn,
-            MatrixData::RowMajor($ds) => $fn,
-            MatrixData::DualIndex($ds) => $fn,
-        }
-    };
-}
+use crate::matrix::ops::macros::dispatch;
+use crate::matrix::ops::macros::dispatch_mut;
+use crate::matrix::simd::kernel::SimdKernel;
+use crate::matrix::simd::traits::SimdPtrAddInto;
+use crate::matrix::traits::{AddInto, MatrixElement, SimdAddInto};
+use crate::matrix::Dataset;
 
 impl<T> AddInto<T, Matrix<T>> for Matrix<T>
 where
@@ -131,5 +116,38 @@ where
         //         },
         //     },
         // }
+    }
+}
+
+impl<T> SimdAddInto<T> for Matrix<T>
+where
+    T: MatrixElement<Output = T>,
+{
+    fn simd_add_into(&self, result: &mut Matrix<T>, val: T) {
+        dispatch!(self, ds, {
+            let ptr = ds.data_ptr();
+            let len = ds.len();
+            match &mut result.data {
+                MatrixData::ColMajor(result) => {
+                    let dst = result.data_ptr();
+                    unsafe {
+                        SimdKernel::ptr_add_into(ptr, dst, len, val);
+                    }
+                }
+                MatrixData::RowMajor(result) => {
+                    let dst = result.data_ptr();
+                    unsafe {
+                        SimdKernel::ptr_add_into(ptr, dst, len, val);
+                    }
+                }
+                MatrixData::DualIndex(result) => {
+                    let dst = result.data_ptr();
+                    unsafe {
+                        SimdKernel::ptr_add_into(ptr, dst, len, val);
+                    }
+                    //TODO: Sync
+                }
+            }
+        });
     }
 }

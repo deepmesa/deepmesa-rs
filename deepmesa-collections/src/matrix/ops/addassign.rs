@@ -1,41 +1,15 @@
 use crate::matrix::matrix::Matrix;
 use crate::matrix::matrix::MatrixData;
-use crate::matrix::simd::traits::SimdAddAssign;
+use crate::matrix::ops::macros::dispatch;
+use crate::matrix::ops::macros::dispatch_mut;
+use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
-
-macro_rules! dispatch_mut {
-    ($self:ident, $ds: ident, $fn:expr) => {
-        match &mut $self.data {
-            MatrixData::ColMajor($ds) => $fn,
-            MatrixData::RowMajor($ds) => $fn,
-            MatrixData::DualIndex($ds) => $fn,
-        }
-    };
-}
-
-macro_rules! dispatch {
-    ($self:ident, $ds: ident, $fn:expr) => {
-        match &$self.data {
-            MatrixData::ColMajor($ds) => $fn,
-            MatrixData::RowMajor($ds) => $fn,
-            MatrixData::DualIndex($ds) => $fn,
-        }
-    };
-}
 
 impl<T> std::ops::AddAssign<T> for Matrix<T>
 where
     T: MatrixElement<Output = T> + std::ops::AddAssign,
 {
     fn add_assign(&mut self, rhs: T) {
-        // if self.is_simd_enabled() {
-        //     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-        //     {
-        //         self.simd_add_assign;
-        //         return;
-        //     }
-        // }
-
         dispatch_mut!(self, ds, ds.add_assign(rhs));
 
         // match &mut self.data {
@@ -45,6 +19,77 @@ where
         // }
     }
 }
+
+// impl<T> SimdAddAssign<T> for Matrix<T>
+// where
+//     T: MatrixElement<Output = T>,
+// {
+//     fn simd_add_assign(&mut self, val: T) {
+//         match &mut self.data {
+//             MatrixData::ColMajor(ds) => {
+//                 let ptr = ds.data_ptr();
+//                 let len = ds.len();
+//                 unsafe {
+//                     SimdKernel::ptr_add_assign(ptr, len, val);
+//                 }
+//             }
+//             MatrixData::RowMajor(ds) => {
+//                 let ptr = ds.data_ptr();
+//                 let len = ds.len();
+//                 unsafe {
+//                     SimdKernel::ptr_add_assign(ptr, len, val);
+//                 }
+//             }
+//             MatrixData::DualIndex(ds) => {
+//                 let ptr = ds.data_ptr();
+//                 let len = ds.len();
+//                 unsafe {
+//                     SimdKernel::ptr_add_assign(ptr, len, val);
+//                 }
+//                 //TODO: Sync
+//             }
+//         }
+
+//         // match &self.data {
+//         //     MatrixData::ColMajor(ds) => {
+//         //         let ptr = ds.data_ptr();
+//         //         let len = ds.len();
+//         //         unsafe {
+//         //             SimdKernel::ptr_add_assign(ptr, len, val);
+//         //         }
+//         //         println!("IN SIMD_ADD_ASSIGN: {:?}", self);
+//         //     }
+//         //     MatrixData::RowMajor(ds) => {
+//         //         let ptr = ds.data_ptr();
+//         //         let len = ds.len();
+//         //         unsafe {
+//         //             SimdKernel::ptr_add_assign(ptr, len, val);
+//         //         }
+//         //         println!("IN SIMD_ADD_ASSIGN: {:?}", self);
+//         //     }
+//         //     MatrixData::DualIndex(ds) => {
+//         //         let ptr = ds.data_ptr();
+//         //         let len = ds.len();
+//         //         unsafe {
+//         //             SimdKernel::ptr_add_assign(ptr, len, val);
+//         //         }
+//         //         println!("IN SIMD_ADD_ASSIGN: {:?}", self);
+//         //     }
+//         // }
+//         // match self.m_type {
+//         //     MatrixType::ColMajor(ds) => {
+//         //         //                ds.simd_add_assign(rhs);
+//         //     }
+//         //     MatrixType::RowMajor => {
+//         //         println!("Running simd_add_assign!");
+//         //         self.rmd.simd_add_assign(val);
+//         //     }
+//         //     MatrixType::DualIndex => {
+//         //         //                self.did.simd_add_assign(rhs);
+//         //     }
+//         //        }
+//     }
+// }
 
 impl<T> std::ops::AddAssign<&Matrix<T>> for Matrix<T>
 where

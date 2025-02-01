@@ -7,7 +7,9 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::ops::Index;
 extern crate alloc;
-use super::traits::Set;
+use crate::matrix::ops::macros::dispatch;
+use crate::matrix::ops::macros::dispatch_mut;
+
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::iter::{IterType, MatrixIterator};
@@ -15,6 +17,7 @@ use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::Dataset;
 use crate::matrix::traits::FillRow;
 use crate::matrix::traits::Get;
+use crate::matrix::traits::Set;
 use crate::matrix::traits::{CheckedMul, MatrixElement};
 use crate::matrix::vector::Vector;
 use crate::matrix::vector::VectorType;
@@ -85,13 +88,6 @@ macro_rules! matrix_simd {
     };
 }
 
-pub(in crate::matrix) use matrix;
-
-pub(in crate::matrix) enum SyncDirection {
-    CmdToRmd,
-    RmdToCmd,
-}
-
 #[derive(Debug)]
 pub(in crate::matrix) enum MatrixData<T>
 where
@@ -108,46 +104,6 @@ pub enum MatrixType {
     ColMajor,
     DualIndex,
 }
-
-macro_rules! mtype_expr_col_major {
-    ($self:ident, $te:expr, $e:expr) => {
-        if $self.is_transpose {
-            unsafe { $te }
-        } else {
-            unsafe { $e }
-        }
-    };
-}
-
-macro_rules! mtype_expr_row_major {
-    ($self:ident, $te:expr, $e:expr) => {
-        if $self.is_transpose {
-            unsafe { $te }
-        } else {
-            unsafe { $e }
-        }
-    };
-}
-
-macro_rules! mtype_expr_dual_index {
-    ($self:ident, $te:expr, $e:expr) => {
-        if $self.is_transpose {
-            unsafe { $te }
-        } else {
-            unsafe { $e }
-        }
-    };
-}
-
-// macro_rules! mtype_op {
-//     ($self:ident, $cm_e:expr, $rm_e: expr, $di_e:expr) => {
-//         match &$self.m_type {
-//             MatrixType::ColMajor => $cm_e,
-//             MatrixType::RowMajor => $rm_e,
-//             MatrixType::DualIndex => $di_e,
-//         }
-//     };
-// }
 
 /*
 RowMajorDataset: Row Major Contiguous
@@ -178,7 +134,6 @@ where
     pub(in crate::matrix) data: MatrixData<T>,
     pub(super) is_transpose: bool,
     pub is_square: bool,
-    pub(super) simd_enabled: bool,
     pub(super) len: usize,
     pub(super) m_type: MatrixType,
 }
@@ -199,13 +154,14 @@ where
                     rows,
                     cols,
                     len: rows * cols,
-                    data: MatrixData::RowMajor(RowMajorDataset::new(rows, cols, simd_optimized)),
-                    // rmd: RowMajorDataset::new(rows, cols, simd_optimized),
-                    // cmd: ColMajorDataset::null(),
-                    // did: DualIndexDataset::null(),
+                    data: MatrixData::RowMajor(RowMajorDataset::new(
+                        rows,
+                        cols,
+                        simd_optimized,
+                        simd_enabled,
+                    )),
                     is_transpose: false,
                     is_square: rows == cols,
-                    simd_enabled,
                     m_type,
                 };
             }
@@ -214,13 +170,14 @@ where
                     rows,
                     cols,
                     len: rows * cols,
-                    data: MatrixData::ColMajor(ColMajorDataset::new(rows, cols, simd_optimized)),
-                    // rmd: RowMajorDataset::null(),
-                    // cmd: ColMajorDataset::new(rows, cols, simd_optimized),
-                    // did: DualIndexDataset::null(),
+                    data: MatrixData::ColMajor(ColMajorDataset::new(
+                        rows,
+                        cols,
+                        simd_optimized,
+                        simd_enabled,
+                    )),
                     is_transpose: false,
                     is_square: rows == cols,
-                    simd_enabled,
                     m_type,
                 };
             }
@@ -229,13 +186,14 @@ where
                     rows,
                     cols,
                     len: rows * cols,
-                    data: MatrixData::DualIndex(DualIndexDataset::new(rows, cols, simd_optimized)),
-                    // rmd: RowMajorDataset::null(),
-                    // cmd: ColMajorDataset::null(),
-                    // did: DualIndexDataset::new(rows, cols, simd_optimized),
+                    data: MatrixData::DualIndex(DualIndexDataset::new(
+                        rows,
+                        cols,
+                        simd_optimized,
+                        simd_enabled,
+                    )),
                     is_transpose: false,
                     is_square: rows == cols,
-                    simd_enabled,
                     m_type,
                 };
             }
@@ -272,10 +230,10 @@ where
 
     pub fn set_simd_enabled(&mut self, simd_enabled: bool) {
         if !T::simd_supported() {
-            self.simd_enabled = false;
+            dispatch_mut!(self, ds, ds.set_simd_enabled(false));
             return;
         }
-        self.simd_enabled = simd_enabled;
+        dispatch_mut!(self, ds, ds.set_simd_enabled(simd_enabled));
     }
 
     //TODO: This should return a reference
@@ -285,21 +243,11 @@ where
     // }
 
     pub fn is_simd_enabled(&self) -> bool {
-        return self.simd_enabled;
+        dispatch!(self, ds, return ds.is_simd_enabled());
     }
 
     pub fn is_simd_optimized(&self) -> bool {
-        match &self.data {
-            MatrixData::ColMajor(ds) => {
-                return ds.is_simd_optimized();
-            }
-            MatrixData::RowMajor(ds) => {
-                return ds.is_simd_optimized();
-            }
-            MatrixData::DualIndex(ds) => {
-                return ds.is_simd_optimized();
-            }
-        }
+        dispatch!(self, ds, return ds.is_simd_optimized());
     }
 
     // pub fn identity(size: usize, m_type: MatrixType, simd_optimized: bool) -> Matrix<T> {
@@ -894,17 +842,7 @@ where
     // }
 
     pub fn transpose(&mut self) {
-        match &mut self.data {
-            MatrixData::ColMajor(ds) => {
-                ds.transpose();
-            }
-            MatrixData::RowMajor(ds) => {
-                ds.transpose();
-            }
-            MatrixData::DualIndex(ds) => {
-                ds.transpose();
-            }
-        }
+        dispatch_mut!(self, ds, ds.transpose());
     }
 
     // pub(in crate::matrix) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
@@ -1151,27 +1089,6 @@ where
     //     }
     //     return sum;
     // }
-}
-
-impl<T> Matrix<T>
-where
-    T: MatrixElement<Output = T>,
-{
-    pub(in crate::matrix) fn use_simd(&self) -> bool {
-        if !self.simd_enabled {
-            return false;
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            use std::arch::is_aarch64_feature_detected;
-            if is_aarch64_feature_detected!("neon") {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }
 
 // impl<T> Matrix<T>

@@ -3,9 +3,9 @@ use crate::matrix::matrix::MatrixData;
 use crate::matrix::matrix::MatrixType;
 use crate::matrix::traits::Get;
 use crate::matrix::traits::MatrixElement;
+use crate::matrix::traits::Set;
 use std::fmt;
 use std::fmt::Debug;
-//use std::fmt::Display;
 use std::fmt::Formatter;
 
 use super::cmd::data::ColMajorDataset;
@@ -20,7 +20,7 @@ where
     pub(in crate::matrix) v_type: VectorType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Copy, Clone, Eq)]
 pub enum VectorType {
     RowVector,
     ColVector,
@@ -84,11 +84,11 @@ where
     }
 
     pub fn is_col_vector(&self) -> bool {
-        return self.m.cols() == 1;
+        return self.v_type == VectorType::ColVector;
     }
 
     pub fn is_row_vector(&self) -> bool {
-        return self.m.rows() == 1;
+        return self.v_type == VectorType::RowVector;
     }
 
     pub fn transpose(&mut self) {
@@ -139,17 +139,30 @@ where
     T: MatrixElement<Output = T> + std::ops::AddAssign,
 {
     pub fn sum(&self) -> T {
-        if self.m.cols() == 1 {
-            return self.m.sum_col(0);
+        match self.v_type {
+            VectorType::ColVector => {
+                //                return self.m.sum_col(0);
+            }
+            VectorType::RowVector => {
+                //                return self.m.sum_row(0);
+            }
         }
-        return self.m.sum_row(0);
+
+        return T::zero();
     }
 
     pub fn power(&self, pow: u16) -> Vector<T> {
-        if self.m.cols() == 1 {
-            return self.m.col_power(0, pow);
+        match self.v_type {
+            VectorType::ColVector => {
+                //                return self.m.col_power(0, pow);
+            }
+            VectorType::RowVector => {
+                //                return self.m.row_power(0, pow);
+            }
         }
-        return self.m.row_power(0, pow);
+
+        //TODO: Don't return this here instead implement the col_power methods
+        return Vector::new(self.len(), self.v_type, false);
     }
 }
 

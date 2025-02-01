@@ -1,6 +1,7 @@
 use crate::matrix::matrix::Matrix;
 use crate::matrix::matrix::MatrixType;
 use crate::matrix::traits::MatrixElement;
+use crate::matrix::traits::Set;
 
 pub struct MatrixMultiply<'a, T>
 where

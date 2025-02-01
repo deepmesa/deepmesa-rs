@@ -1,11 +1,7 @@
-pub trait SimdOperation {
-    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-    unsafe fn mul_assign(ptr: *const Self, len: usize, val: Self);
-
-    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-    unsafe fn add_assign(ptr: *const Self, len: usize, val: Self);
+pub(in crate::matrix) trait SimdPtrAddAssign<T = Self> {
+    unsafe fn ptr_add_assign(ptr: *const T, len: usize, val: T);
 }
 
-pub(in crate::matrix) trait SimdAddAssign<Rhs = Self> {
-    fn simd_add_assign(&mut self, rhs: Rhs);
+pub(in crate::matrix) trait SimdPtrAddInto<T = Self> {
+    unsafe fn ptr_add_into(ptr: *const T, dst: *const T, len: usize, val: T);
 }

@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::matrix::Matrix;
 use crate::matrix::matrix::MatrixData;
+use crate::matrix::ops::macros::dispatch_mut;
 use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::FillColumn;
 use crate::matrix::traits::FillDiagonal;
@@ -18,11 +19,12 @@ where
 {
     fn fill_row(&mut self, row: usize, val: T) {
         bounds_check_row!(row, self);
-        match &mut self.data {
-            MatrixData::ColMajor(ds) => ds.fill_row(row, val),
-            MatrixData::RowMajor(ds) => ds.fill_row(row, val),
-            MatrixData::DualIndex(ds) => ds.fill_row(row, val),
-        }
+        dispatch_mut!(self, ds, ds.fill_row(row, val));
+        // match &mut self.data {
+        //     MatrixData::ColMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::RowMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::DualIndex(ds) => ds.fill_row(row, val),
+        // }
     }
 }
 
@@ -35,20 +37,21 @@ where
         if v.is_col_vector() {
             //col major ds r x 1 (r rows, 1 column)
             let dc = DatasetColumn::<ColMajorDataset<T>, T>::from_cmd(&v.get_cmd(), 0);
-            match &mut self.data {
-                MatrixData::ColMajor(ds) => ds.fill_row(row, &dc),
-                MatrixData::RowMajor(ds) => ds.fill_row(row, &dc),
-                MatrixData::DualIndex(ds) => ds.fill_row(row, &dc),
-            }
+            dispatch_mut!(self, ds, ds.fill_row(row, &dc));
+            // match &mut self.data {
+            //     MatrixData::ColMajor(ds) => ds.fill_row(row, &dc),
+            //     MatrixData::RowMajor(ds) => ds.fill_row(row, &dc),
+            //     MatrixData::DualIndex(ds) => ds.fill_row(row, &dc),
+            // }
         } else {
             //row major ds 1 x c (1 rows, c column)
             let dr = DatasetRow::<RowMajorDataset<T>, T>::from_rmd(&v.get_rmd(), 0);
-
-            match &mut self.data {
-                MatrixData::ColMajor(ds) => ds.fill_row(row, &dr),
-                MatrixData::RowMajor(ds) => ds.fill_row(row, &dr),
-                MatrixData::DualIndex(ds) => ds.fill_row(row, &dr),
-            }
+            dispatch_mut!(self, ds, ds.fill_row(row, &dr));
+            // match &mut self.data {
+            //     MatrixData::ColMajor(ds) => ds.fill_row(row, &dr),
+            //     MatrixData::RowMajor(ds) => ds.fill_row(row, &dr),
+            //     MatrixData::DualIndex(ds) => ds.fill_row(row, &dr),
+            // }
         }
     }
 }
@@ -59,11 +62,12 @@ where
 {
     fn fill_row(&mut self, row: usize, val: &[T]) {
         bounds_check_row!(row, self);
-        match &mut self.data {
-            MatrixData::ColMajor(ds) => ds.fill_row(row, val),
-            MatrixData::RowMajor(ds) => ds.fill_row(row, val),
-            MatrixData::DualIndex(ds) => ds.fill_row(row, val),
-        }
+        dispatch_mut!(self, ds, ds.fill_row(row, val));
+        // match &mut self.data {
+        //     MatrixData::ColMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::RowMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::DualIndex(ds) => ds.fill_row(row, val),
+        // }
     }
 }
 
@@ -73,11 +77,12 @@ where
 {
     fn fill_row(&mut self, row: usize, val: &Vec<T>) {
         bounds_check_row!(row, self);
-        match &mut self.data {
-            MatrixData::ColMajor(ds) => ds.fill_row(row, val),
-            MatrixData::RowMajor(ds) => ds.fill_row(row, val),
-            MatrixData::DualIndex(ds) => ds.fill_row(row, val),
-        }
+        dispatch_mut!(self, ds, ds.fill_row(row, val));
+        // match &mut self.data {
+        //     MatrixData::ColMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::RowMajor(ds) => ds.fill_row(row, val),
+        //     MatrixData::DualIndex(ds) => ds.fill_row(row, val),
+        // }
     }
 }
 

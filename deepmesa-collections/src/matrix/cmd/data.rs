@@ -24,38 +24,31 @@ where
     pub(in crate::matrix) col_pad: usize,
     pub(in crate::matrix) simd_optimized: bool,
     pub(in crate::matrix) is_transpose: bool,
+    pub(in crate::matrix) simd_enabled: bool,
 }
 
 impl<T> ColMajorDataset<T>
 where
     T: MatrixElement,
 {
-    pub(in crate::matrix) fn null() -> ColMajorDataset<T> {
-        return ColMajorDataset {
-            cm_data: core::ptr::null_mut(),
-            col_stride: 0,
-            cols: 0,
-            rows: 0,
-            cm_len: 0,
-            col_pad: 0,
-            simd_optimized: false,
-            is_transpose: false,
-        };
-    }
-
     pub(in crate::matrix) fn new(
         rows: usize,
         cols: usize,
         simd_optimized: bool,
+        simd_enabled: bool,
     ) -> ColMajorDataset<T> {
         if simd_optimized {
-            return ColMajorDataset::simd_optimized(rows, cols);
+            return ColMajorDataset::simd_optimized(rows, cols, simd_enabled);
         } else {
-            return ColMajorDataset::standard(rows, cols);
+            return ColMajorDataset::standard(rows, cols, simd_enabled);
         }
     }
 
-    pub(in crate::matrix) fn standard(rows: usize, cols: usize) -> ColMajorDataset<T> {
+    pub(in crate::matrix) fn standard(
+        rows: usize,
+        cols: usize,
+        simd_enabled: bool,
+    ) -> ColMajorDataset<T> {
         let len = rows * cols;
         let data: *mut T;
         unsafe {
@@ -71,6 +64,7 @@ where
             col_pad: 0,
             simd_optimized: false,
             is_transpose: false,
+            simd_enabled,
         };
 
         debug_assert!(ds.col_stride > 0);
@@ -84,15 +78,19 @@ where
         return ds;
     }
 
-    pub(in crate::matrix) fn simd_optimized(rows: usize, cols: usize) -> ColMajorDataset<T> {
+    pub(in crate::matrix) fn simd_optimized(
+        rows: usize,
+        cols: usize,
+        simd_enabled: bool,
+    ) -> ColMajorDataset<T> {
         unsafe {
-            let (simd_vec_size, simd_batch_size) = simd_detect();
+            let simd_vec_size = simd_detect();
             if simd_vec_size == 0 {
-                return Self::standard(rows, cols);
+                return Self::standard(rows, cols, simd_enabled);
             }
             let data: *mut T;
 
-            let col_stride = simd_align::<T>(rows, simd_vec_size, simd_batch_size);
+            let col_stride = simd_align::<T>(rows, simd_vec_size);
             let cm_len = cols * col_stride;
             let col_pad = col_stride - rows;
             data = alloc_mem::<T>(cm_len);
@@ -106,6 +104,7 @@ where
                 col_pad,
                 simd_optimized: true,
                 is_transpose: false,
+                simd_enabled,
             };
             debug_assert!(ds.col_stride > 0);
             debug_assert!(!ds.cm_data.is_null());
@@ -116,6 +115,10 @@ where
 
             return ds;
         }
+    }
+
+    pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
+        self.simd_enabled = simd_enabled;
     }
 
     pub(in crate::matrix) fn transpose(&mut self) {
@@ -139,6 +142,21 @@ where
     #[inline(always)]
     fn cols(&self) -> usize {
         return self.cols;
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        return self.cm_len;
+    }
+
+    #[inline(always)]
+    fn data_ptr(&self) -> *const T {
+        return self.cm_data;
+    }
+
+    #[inline(always)]
+    fn is_simd_enabled(&self) -> bool {
+        return self.simd_enabled;
     }
 
     #[inline(always)]

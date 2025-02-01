@@ -6,6 +6,12 @@ use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(in crate::matrix::did) enum SyncDirection {
+    CmdToRmd,
+    RmdToCmd,
+}
+
 pub(in crate::matrix) struct DualIndexDataset<T>
 where
     T: MatrixElement,
@@ -21,38 +27,34 @@ impl<T> DualIndexDataset<T>
 where
     T: MatrixElement,
 {
-    pub(in crate::matrix) fn null() -> DualIndexDataset<T> {
-        return DualIndexDataset {
-            rmd: RowMajorDataset::null(),
-            cmd: ColMajorDataset::null(),
-            rows: 0,
-            cols: 0,
-            is_transpose: false,
-        };
-    }
-
     pub(in crate::matrix) fn new(
         rows: usize,
         cols: usize,
         simd_optimized: bool,
+        simd_enabled: bool,
     ) -> DualIndexDataset<T> {
         if simd_optimized {
             return DualIndexDataset {
-                rmd: RowMajorDataset::simd_optimized(rows, cols),
-                cmd: ColMajorDataset::simd_optimized(rows, cols),
+                rmd: RowMajorDataset::simd_optimized(rows, cols, simd_enabled),
+                cmd: ColMajorDataset::simd_optimized(rows, cols, simd_enabled),
                 rows,
                 cols,
                 is_transpose: false,
             };
         } else {
             return DualIndexDataset {
-                rmd: RowMajorDataset::standard(rows, cols),
-                cmd: ColMajorDataset::standard(rows, cols),
+                rmd: RowMajorDataset::standard(rows, cols, simd_enabled),
+                cmd: ColMajorDataset::standard(rows, cols, simd_enabled),
                 rows,
                 cols,
                 is_transpose: false,
             };
         }
+    }
+
+    pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
+        self.rmd.set_simd_enabled(simd_enabled);
+        self.cmd.set_simd_enabled(simd_enabled);
     }
 
     pub(in crate::matrix) fn transpose(&mut self) {
@@ -63,6 +65,48 @@ where
 
     pub(in crate::matrix) fn is_simd_optimized(&self) -> bool {
         return self.rmd.simd_optimized;
+    }
+
+    pub(in crate::matrix::did) fn sync(&mut self, dir: SyncDirection) {
+        for row in 0..self.rows {
+            self.sync_row(row, dir);
+        }
+    }
+
+    pub(in crate::matrix::did) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
+        //TODO: Once partial Eq is implemented for &Matrix Type remove
+        // this match and replace it with a !=
+        if self.is_transpose {
+            match dir {
+                SyncDirection::CmdToRmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = cmd_get_t!(self.cmd, row, col);
+                        rmd_assign_t!(self.rmd, row, col, val);
+                    })
+                }
+                SyncDirection::RmdToCmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = rmd_get_t!(self.rmd, row, col);
+                        cmd_assign_t!(self.cmd, row, col, val);
+                    })
+                }
+            }
+        } else {
+            match dir {
+                SyncDirection::CmdToRmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = cmd_get!(self.cmd, row, col);
+                        rmd_assign!(self.rmd, row, col, val);
+                    })
+                }
+                SyncDirection::RmdToCmd => {
+                    iterate_cols!(self, col, unsafe {
+                        let val = rmd_get!(self.rmd, row, col);
+                        cmd_assign!(self.cmd, row, col, val);
+                    })
+                }
+            }
+        }
     }
 }
 
@@ -78,6 +122,21 @@ where
     #[inline(always)]
     fn cols(&self) -> usize {
         return self.cols;
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        return self.rmd.rm_len;
+    }
+
+    #[inline(always)]
+    fn data_ptr(&self) -> *const T {
+        return self.rmd.rm_data;
+    }
+
+    #[inline(always)]
+    fn is_simd_enabled(&self) -> bool {
+        return self.rmd.simd_enabled;
     }
 
     #[inline(always)]
