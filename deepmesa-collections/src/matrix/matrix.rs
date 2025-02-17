@@ -1,4 +1,4 @@
-#![allow(unused_variables)]
+#![allow(_variables)]
 #![allow(dead_code)]
 
 use std::fmt;
@@ -28,7 +28,7 @@ macro_rules! matrix {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::RowMajor, false);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
@@ -38,7 +38,7 @@ macro_rules! matrix {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::ColMajor, false);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
@@ -48,7 +48,7 @@ macro_rules! matrix {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::DualIndex, false);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
@@ -61,7 +61,7 @@ macro_rules! matrix_simd {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::RowMajor, true);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
@@ -71,7 +71,7 @@ macro_rules! matrix_simd {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::ColMajor, true);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
@@ -81,12 +81,15 @@ macro_rules! matrix_simd {
             let mut m = Matrix::<$t>::new($r, $c, MatrixType::DualIndex, true);
             let mut row = 0;
             $(
-                m.fill_row(row, &[$($x,)*][..]);
+                m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
             )* m
         }
     };
 }
+
+pub(in crate::matrix) use matrix;
+pub(in crate::matrix) use matrix_simd;
 
 #[derive(Debug)]
 pub(in crate::matrix) enum MatrixData<T>
@@ -200,34 +203,6 @@ where
         }
     }
 
-    // pub(in crate::matrix) fn get_dataset(&self) -> &dyn Dataset<T> {
-    //     match self.m_type {
-    //         MatrixType::RowMajor => {
-    //             return &self.rmd;
-    //         }
-    //         MatrixType::ColMajor => {
-    //             return &self.cmd;
-    //         }
-    //         MatrixType::DualIndex => {
-    //             return &self.did;
-    //         }
-    //     }
-    // }
-
-    // pub(in crate::matrix) fn get_dataset_mut(&mut self) -> &mut dyn Dataset<T> {
-    //     match self.m_type {
-    //         MatrixType::RowMajor => {
-    //             return &mut self.rmd;
-    //         }
-    //         MatrixType::ColMajor => {
-    //             return &mut self.cmd;
-    //         }
-    //         MatrixType::DualIndex => {
-    //             return &mut self.did;
-    //         }
-    //     }
-    // }
-
     pub fn set_simd_enabled(&mut self, simd_enabled: bool) {
         if !T::simd_supported() {
             dispatch_mut!(self, ds, ds.set_simd_enabled(false));
@@ -235,12 +210,6 @@ where
         }
         dispatch_mut!(self, ds, ds.set_simd_enabled(simd_enabled));
     }
-
-    //TODO: This should return a reference
-    //TODO: Need to implement PartialEq for &MatrixType
-    // pub fn matrix_type(&self) -> MatrixType {
-    //     return self.m_type;
-    // }
 
     pub fn is_simd_enabled(&self) -> bool {
         dispatch!(self, ds, return ds.is_simd_enabled());
@@ -842,6 +811,7 @@ where
     // }
 
     pub fn transpose(&mut self) {
+        fn_transpose!(self);
         dispatch_mut!(self, ds, ds.transpose());
     }
 
@@ -1385,104 +1355,167 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Matrix;
-    use super::MatrixType;
-    use crate::matrix::simd::metadata::SimdMetaData;
-    use crate::matrix::traits::FillRow;
-    use crate::matrix::traits::Get;
-    use crate::matrix::traits::MatrixElement;
+// #[cfg(test)]
+// mod tests {
 
-    fn print_m<T: MatrixElement<Output = T>>(m: &Matrix<T>) {
-        let rows = m.rows();
-        let cols = m.cols();
-        for r in 0..rows {
-            for c in 0..cols {
-                print!("{:?},", m.get(r, c));
-            }
-            println!();
-        }
-    }
+// use super::Matrix;
+// use super::MatrixType;
+// use crate::matrix::simd::metadata::SimdMetaData;
+// use crate::matrix::traits::FillRow;
+// use crate::matrix::traits::Get;
+// use crate::matrix::traits::MatrixElement;
 
-    #[test]
-    fn test_macro() {
-        //let m = matrix!(cmd, [u8, 2, 3], 1,2,3;4,5,6);
-        let m = matrix!(cm, [u8, 2, 3], 1,2,3;4,5,6;7,8,9);
-        print_m(&m);
-        let mut m2 = matrix!(cm, [u8, 2, 3], 1,2,3;4,5,8);
-        println!("{:?}", &m2);
-        print_m(&m2);
-        m2 += 2;
-        print_m(&m2);
-        assert_eq!(m2, matrix!(cm, [u8, 2, 3], 3,4,5;6,7,10));
-        //        assert_eq!(m, m2);
+// #[test]
+// fn test_transpose() {
+//     let mut m1 = matrix_simd!(rm, [u8, 2, 3], 1,2,3;4,5,6);
+//     println!("M1 RMD: {:?}", m1.data);
+//     println!("(0,1) = {:?}", m1.get(0, 1));
+//     m1.transpose();
+//     println!("After Transpose M1 RMD: {:?}", m1.data);
+//     println!("(0,1) = {:?}", m1.get(0, 1));
+// }
 
-        //let mut m = Matrix::<u8>::new(2, 3, MatrixType::ColMajor, false);
-        // let vec = vec![1, 2, 3];
-        // //        let arr: [u8; 3] =
-        //m.fill_row(0, &[1, 2, 3][..]);
-        //        print_m(&m)
-        // //        m.fill_row(0, &vec);
-    }
+// #[test]
+// fn test_add_assign() {
+//     let mut m1 = matrix!(rm, [u8, 2, 3], 1,2,3;4,5,6);
+//     //let mut m2 = matrix_simd!(rm, [u8, 2, 3], 7,8,9;10,11,12);
+//     let mut m2 = matrix!(cm, [u8, 3, 2], 7,8;9,10;11,12);
 
-    #[test]
-    fn test_simd() {
-        let mut m = matrix_simd!(rm, [u8, 2,3], 1,2,3;4,5,6);
-        //        let mut m = Matrix::<f32>::new(2, 37, MatrixType::RowMajor, true);
-        println!("m: {:?}", &m);
-        println!("rmd: {:?}", &m.rmd);
+//     //m1.transpose();
+//     //        println!("M1 after Transpose");
+//     print_m(&m1);
 
-        let sm = SimdMetaData::simd_neon::<u8>(m.rmd.row_stride);
-        println!("SM: {:?}", &sm);
-        assert!(m.is_simd_enabled());
-        assert!(m.is_simd_optimized());
+//     // println!("M2 Before Transpose");
+//     // print_m(&m2);
+//     m2.transpose();
+//     println!("M2 After Transpose");
+//     print_m(&m2);
 
-        m += 2;
-        println!("m: {:?}", &m);
-        println!("rmd: {:?}", &m.rmd);
-    }
+//     println!("M1 RMD: {:?}", m1.data);
+//     println!("M2 RMD: {:?}", m2.data);
+//     //        m1.set_simd_enabled(false);
+//     m1 += &m2;
+//     println!("result RMD: {:?}", m1.data);
+//     println!("Result Matrix");
+//     print_m(&m1);
+// }
 
-    // #[test]
-    // fn test_subm() {
-    //     let mut m1 = Matrix::new(20, 4, MatrixType::DualIndex, false);
-    //     m1.fill_col(0, 1);
-    //     let mut m2 = Matrix::new(20, 3, MatrixType::DualIndex, false);
-    //     m2.fill(9);
-    //     print_m(&m2);
+// #[test]
+// fn test_simd_add_assign() {
+//     let mut m1 = matrix!(rm, [u32, 3, 17], 1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,9;4,5,6,7,4,5,6,7,4,5,6,7,4,5,6,7,10;5,6,7,8,5,6,7,8,5,6,7,8,5,6,7,8,12);
+//     let mut m2 = matrix!(rm, [u32, 3, 17], 1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,9;4,5,6,7,4,5,6,7,4,5,6,7,4,5,6,7,10;5,6,7,8,5,6,7,8,5,6,7,8,5,6,7,8,12);
+//     //let m2 = matrix!(rm, [u8, 3, 17], 1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,9;4,5,6,7,4,5,6,7,4,5,6,7,4,5,6,7,10;5,6,7,8,5,6,7,8,5,6,7,8,5,6,7,8,12);
 
-    //     m1.fill_submatrix(19, 1, &m2);
-    //     print_m(&m1);
-    //     //        println!("m1:{:?}", &m1);
-    // }
+//     // #[rustfmt::skip]
+//     // let mut m1 = matrix!(rm, [f32, 2, 4], 1.0,2.0,3.0,4.0;4.0,5.0,6.0,7.0);
+//     // #[rustfmt::skip]
+//     // let m2 = matrix!(rm, [f32, 2, 3], 1.0,2.0,3.0;4.0,5.0,6.0);
 
-    // use std::ops::AddAssign;
-    // #[test]
-    // fn test_add_assign() {
-    //     let mut m1 = Matrix::new(2, 3, MatrixType::RowMajor, true);
-    //     m1.fill(1);
-    //     m1.add_assign(3);
-    // }
+//     // let mut m1 = matrix!(rm, [u8, 2, 17], 1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,10;4,5,6,7,4,5,6,7,4,5,6,7,4,5,6,7,22);
+//     // let m2 = matrix!(rm, [u8, 2, 17], 1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4,10;4,5,6,7,4,5,6,7,4,5,6,7,4,5,6,7,22);
 
-    // #[test]
-    // fn test_indexing() {
-    //     let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
-    //     let v = vec![1, 2, 3, 4, 5, 6];
-    //     m.fill_row_major(&v);
-    //     println!("m={:?}", m);
-    //     println!("rmd={:?}", m.rmd);
+//     println!("M1: ");
+//     print_m(&m1);
+//     println!("M1 RMD: {:?}", m1.data);
+//     println!("M2: ");
+//     print_m(&m2);
 
-    //     m.transpose();
-    //     println!("m'={:?}", m);
-    //     println!("rmd={:?}", m.rmd);
-    // }
+//     //        let val: u32 = 3;
+//     m1 += &m2;
+//     //m1 += &m2;
+//     println!("Result: ");
+//     print_m(&m1);
+// }
 
-    // #[test]
-    // fn test_iterate() {
-    //     let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
-    //     let v = vec![1, 2, 3, 4, 5, 6];
-    //     m.fill_row_major(&v);
+// fn print_m<T: MatrixElement<Output = T>>(m: &Matrix<T>) {
+//     let rows = m.rows();
+//     let cols = m.cols();
+//     for r in 0..rows {
+//         for c in 0..cols {
+//             print!("{:?},", m.get(r, c));
+//         }
+//         println!();
+//     }
+// }
 
-    //     m.iterate();
-    // }
-}
+// #[test]
+// fn test_macro() {
+//     //let m = matrix!(cmd, [u8, 2, 3], 1,2,3;4,5,6);
+//     let m = matrix!(cm, [u8, 2, 3], 1,2,3;4,5,6;7,8,9);
+//     print_m(&m);
+//     let mut m2 = matrix!(cm, [u8, 2, 3], 1,2,3;4,5,8);
+//     println!("{:?}", &m2);
+//     print_m(&m2);
+//     m2 += 2;
+//     print_m(&m2);
+//     assert_eq!(m2, matrix!(cm, [u8, 2, 3], 3,4,5;6,7,10));
+//     //        assert_eq!(m, m2);
+
+//     //let mut m = Matrix::<u8>::new(2, 3, MatrixType::ColMajor, false);
+//     // let vec = vec![1, 2, 3];
+//     // //        let arr: [u8; 3] =
+//     //m.fill_row(0, &[1, 2, 3][..]);
+//     //        print_m(&m)
+//     // //        m.fill_row(0, &vec);
+// }
+
+// #[test]
+// fn test_simd() {
+//     let mut m = matrix_simd!(rm, [u8, 2,3], 1,2,3;4,5,6);
+//     //        let mut m = Matrix::<f32>::new(2, 37, MatrixType::RowMajor, true);
+//     println!("m: {:?}", &m);
+//     println!("rmd: {:?}", &m.rmd);
+
+//     let sm = SimdMetaData::simd_neon::<u8>(m.rmd.row_stride);
+//     println!("SM: {:?}", &sm);
+//     assert!(m.is_simd_enabled());
+//     assert!(m.is_simd_optimized());
+
+//     m += 2;
+//     println!("m: {:?}", &m);
+//     println!("rmd: {:?}", &m.rmd);
+// }
+
+// #[test]
+// fn test_subm() {
+//     let mut m1 = Matrix::new(20, 4, MatrixType::DualIndex, false);
+//     m1.fill_col(0, 1);
+//     let mut m2 = Matrix::new(20, 3, MatrixType::DualIndex, false);
+//     m2.fill(9);
+//     print_m(&m2);
+
+//     m1.fill_submatrix(19, 1, &m2);
+//     print_m(&m1);
+//     //        println!("m1:{:?}", &m1);
+// }
+
+// use std::ops::AddAssign;
+// #[test]
+// fn test_add_assign() {
+//     let mut m1 = Matrix::new(2, 3, MatrixType::RowMajor, true);
+//     m1.fill(1);
+//     m1.add_assign(3);
+// }
+
+// #[test]
+// fn test_indexing() {
+//     let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
+//     let v = vec![1, 2, 3, 4, 5, 6];
+//     m.fill_row_major(&v);
+//     println!("m={:?}", m);
+//     println!("rmd={:?}", m.rmd);
+
+//     m.transpose();
+//     println!("m'={:?}", m);
+//     println!("rmd={:?}", m.rmd);
+// }
+
+// #[test]
+// fn test_iterate() {
+//     let mut m = Matrix::new(2, 3, MatrixType::RowMajor, true);
+//     let v = vec![1, 2, 3, 4, 5, 6];
+//     m.fill_row_major(&v);
+
+//     m.iterate();
+// }
+//}

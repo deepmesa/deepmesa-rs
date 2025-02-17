@@ -1,89 +1,132 @@
 use crate::matrix::simd::metadata::SimdMetaData;
-use crate::matrix::simd::neon::simd_op_assign;
+use crate::matrix::simd::neon::kernel::SimdKernelNeon;
+use crate::matrix::simd::neon::vaddq::vadd_vaddq;
+use crate::matrix::simd::neon::vaddqxn::vadd_vaddqxn;
 use crate::matrix::simd::neon::vdup::vdup_vld1q_dup;
-use crate::matrix::simd::neon::SimdKernelNeon;
-use crate::matrix::simd::traits::SimdPtrAddAssign;
+use crate::matrix::simd::neon::vload::vload_vld1q;
+use crate::matrix::simd::neon::vstore::vstore_vst1q;
+use crate::matrix::simd::traits::SimdAddAssign;
 use crate::matrix::simd::vecbuf::SimdVecBuffer;
 use crate::matrix::traits::ElementType;
 use crate::matrix::traits::MatrixElement;
 use core::arch::aarch64::*;
 use core::ptr;
 
-#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-macro_rules! vec_add_assign {
-    ($type:ident, $x:ident, $ptr:ident, $v_rhs:ident) => {
-        crate::matrix::simd::neon::vload::vload_vld1q!($type, $x, v_lhs, $ptr);
-        crate::matrix::simd::neon::vaddq::vadd_vaddq!($type, $x, v_lhs, $v_rhs, v_res);
-        crate::matrix::simd::neon::vstore::vstore_vst1q!($type, $x, $ptr, v_res);
-    };
-    ($t:ident, $ptr:ident, $v_rhs:ident, $pvec_sz:expr) => {
-        let mut sv_buf = SimdVecBuffer::<$t>::neon_vec();
-        sv_buf.load($ptr, $pvec_sz);
-        let buf_ptr = sv_buf.buf;
-        vec_add_assign!($t, x1, buf_ptr, $v_rhs);
-        sv_buf.store($ptr as *mut $t);
-    };
-}
+macro_rules! impl_simd_add_assign {
+    ($t:ident) => {
+        impl SimdAddAssign<$t, $t> for $t {
+            unsafe fn simd_add_assign(ptr: *mut $t, val: $t, len: usize) {
+                let s = SimdMetaData::simd_neon::<$t>(len);
+                vdup_vld1q_dup!($t, v_rhs, val);
+                let mut idx: usize = 0;
 
-macro_rules! dispatch_add_assign {
-    ($ptr: ident, $val:ident, $len:ident, $(($t: ident, $e:ident)),*) => {
-        match $val.element_type() {
-            $(
-                ElementType::$e(val) => {
-                    $t::ptr_add_assign($ptr as *const $t, $len, val);
+                while idx < s.bat_f * s.bat_sz * s.vec_sz {
+                    let ptr_idx = ptr.add(idx);
+                    vload_vld1q!($t, x4, v_lhs, ptr_idx);
+                    vadd_vaddq!($t, x4, v_lhs, v_rhs, v_res);
+                    vstore_vst1q!($t, x4, ptr_idx, v_res);
+                    idx += s.vec_sz * s.bat_sz;
                 }
-            )*
-                _ => {
-                    panic!("Operation not supported");
+
+                if s.pbat_sz > 0 {
+                    let ptr_idx = ptr.add(idx);
+                    match s.pbat_sz {
+                        1 => {
+                            vload_vld1q!($t, x1, v_lhs, ptr_idx);
+                            vadd_vaddq!($t, x1, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x1, ptr_idx, v_res);
+                            idx += s.vec_sz;
+                        }
+                        2 => {
+                            vload_vld1q!($t, x2, v_lhs, ptr_idx);
+                            vadd_vaddq!($t, x2, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x2, ptr_idx, v_res);
+                            idx += s.vec_sz * 2;
+                        }
+                        3 => {
+                            vload_vld1q!($t, x3, v_lhs, ptr_idx);
+                            vadd_vaddq!($t, x3, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x3, ptr_idx, v_res);
+                            idx += s.vec_sz * 3;
+                        }
+                        _ => {
+                            panic!("invalid value for s.pbat_sz: {}", s.pbat_sz);
+                        }
+                    }
                 }
+                if s.pvec_sz > 0 {
+                    let mut ptr_idx = ptr.add(idx);
+                    for _ in 0..s.pvec_sz {
+                        *ptr_idx += val;
+                        ptr_idx = ptr_idx.add(1);
+                    }
+                }
+            }
+        }
+
+        impl SimdAddAssign<$t, *const $t> for $t {
+            unsafe fn simd_add_assign(ptr: *mut $t, rhs: *const $t, len: usize) {
+                let s = SimdMetaData::simd_neon::<$t>(len);
+                let mut idx: usize = 0;
+                while idx < s.bat_f * s.bat_sz * s.vec_sz {
+                    let ptr_idx = ptr.add(idx);
+                    let prhs_idx = rhs.add(idx);
+                    vload_vld1q!($t, x4, v_lhs, ptr_idx);
+                    vload_vld1q!($t, x4, v_rhs, prhs_idx);
+                    vadd_vaddqxn!($t, x4, v_lhs, v_rhs, v_res);
+                    vstore_vst1q!($t, x4, ptr_idx, v_res);
+                    idx += s.vec_sz * s.bat_sz;
+                }
+
+                if s.pbat_sz > 0 {
+                    let ptr_idx = ptr.add(idx);
+                    let prhs_idx = rhs.add(idx);
+                    match s.pbat_sz {
+                        1 => {
+                            vload_vld1q!($t, x1, v_lhs, ptr_idx);
+                            vload_vld1q!($t, x1, v_rhs, prhs_idx);
+                            vadd_vaddqxn!($t, x1, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x1, ptr_idx, v_res);
+                            idx += s.vec_sz;
+                        }
+                        2 => {
+                            vload_vld1q!($t, x2, v_lhs, ptr_idx);
+                            vload_vld1q!($t, x2, v_rhs, prhs_idx);
+                            vadd_vaddqxn!($t, x2, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x2, ptr_idx, v_res);
+                            idx += s.vec_sz * 2;
+                        }
+                        3 => {
+                            vload_vld1q!($t, x3, v_lhs, ptr_idx);
+                            vload_vld1q!($t, x3, v_rhs, prhs_idx);
+                            vadd_vaddqxn!($t, x3, v_lhs, v_rhs, v_res);
+                            vstore_vst1q!($t, x3, ptr_idx, v_res);
+                            idx += s.vec_sz * 3;
+                        }
+                        _ => {
+                            panic!("invalid value for s.pbat_sz: {}", s.pbat_sz);
+                        }
+                    }
+                }
+                if s.pvec_sz > 0 {
+                    let mut ptr_idx = ptr.add(idx);
+                    let mut prhs_idx = rhs.add(idx);
+                    for _ in 0..s.pvec_sz {
+                        *ptr_idx += *prhs_idx;
+                        ptr_idx = ptr_idx.add(1);
+                        prhs_idx = prhs_idx.add(1);
+                    }
+                }
+            }
         }
     };
 }
 
-#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-macro_rules! impl_simd_operation_add_assign {
-    ($t:ident) => {
-        simd_op_assign!(
-            $t,
-            add_assign,
-            vdup_vld1q_dup,
-            vec_add_assign,
-            vec_add_assign
-        );
-    };
-}
-
-impl<T> SimdPtrAddAssign<T> for SimdKernelNeon<T>
-where
-    T: MatrixElement,
-{
-    unsafe fn ptr_add_assign(ptr: *const T, len: usize, val: T) {
-        dispatch_add_assign!(
-            ptr,
-            val,
-            len,
-            (u8, U8),
-            (u16, U16),
-            (u32, U32),
-            (i8, I8),
-            (i16, I16),
-            (i32, I32),
-            (f32, F32),
-            (f64, F64)
-        )
-    }
-}
-
-macro_rules! impl_simd_ptr_assign {
-    ($($t:ident),*) => {
-        $(
-            impl SimdPtrAddAssign for $t {
-                unsafe fn ptr_add_assign(ptr: *const Self, len: usize, val: Self) {
-                    impl_simd_operation_add_assign!($t);
-                }
-            }
-        )*
-    };
-}
-
-impl_simd_ptr_assign!(u8, u16, u32, i8, i16, i32, f32, f64);
+impl_simd_add_assign!(u8);
+impl_simd_add_assign!(u16);
+impl_simd_add_assign!(u32);
+impl_simd_add_assign!(i8);
+impl_simd_add_assign!(i16);
+impl_simd_add_assign!(i32);
+impl_simd_add_assign!(f32);
+impl_simd_add_assign!(f64);

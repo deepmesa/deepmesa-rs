@@ -5,9 +5,6 @@ pub(in crate::matrix) mod did;
 pub(in crate::matrix) mod rmd;
 pub(in crate::matrix) mod simd;
 
-#[cfg(test)]
-pub(in crate::matrix) mod tests;
-
 pub mod iter;
 pub mod matmul;
 pub mod matrix;

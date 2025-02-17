@@ -4,18 +4,6 @@ use core::fmt::Display;
 use std::num::FpCategory;
 use std::ops::Mul;
 
-pub(in crate::matrix) trait SimdAddAssign<Rhs = Self> {
-    fn simd_add_assign(&mut self, rhs: Rhs);
-}
-
-pub(in crate::matrix) trait SimdAdd<Rhs = Self> {
-    fn simd_add(&self, rhs: Rhs) -> Self;
-}
-
-pub(in crate::matrix) trait SimdAddInto<Rhs = Self> {
-    fn simd_add_into(&self, result: &mut Self, rhs: Rhs);
-}
-
 pub trait FillRow<Rhs> {
     fn fill_row(&mut self, row: usize, val: Rhs);
 }
@@ -82,7 +70,13 @@ pub(in crate::matrix) enum ElementType {
     F64(f64),
 }
 
-pub trait MatrixElement: Sized + Default + PartialEq + Copy + Clone + Display + Debug
+pub trait MatrixElementType {
+    fn element_type(&self) -> ElementType;
+    fn ptr_element_type(ptr: *const Self) -> ElementType;
+}
+
+pub trait MatrixElement:
+    Sized + Default + PartialEq + Copy + Clone + Display + Debug + MatrixElementType
 //+ SimdOperation
 {
     type Output;
@@ -91,7 +85,6 @@ pub trait MatrixElement: Sized + Default + PartialEq + Copy + Clone + Display + 
     fn one() -> Self::Output;
     fn simd_supported() -> bool;
     fn power(&self, exp: u16) -> Self::Output;
-    fn element_type(&self) -> ElementType;
 }
 
 pub trait CheckedMul: Sized + Mul<Self, Output = Self> {
@@ -165,8 +158,8 @@ macro_rules! fn_power {
     };
 }
 
-macro_rules! impl_element_type {
-    ($signed:ident, $float:ident, $t:ty, $ty_enum: ident, $zero:literal, $one:literal, $simd_supported:ident) => {
+macro_rules! impl_matrix_element {
+    ($signed:ident, $float:ident, $t:ty, $zero:literal, $one:literal, $simd_supported:ident) => {
         impl MatrixElement for $t {
             type Output = Self;
             fn_abs!($signed);
@@ -190,23 +183,57 @@ macro_rules! impl_element_type {
             fn one() -> Self::Output {
                 $one
             }
+        }
+    };
+}
 
+impl_matrix_element!(signed, float, f32, 0.0, 1.0, true);
+impl_matrix_element!(signed, float, f64, 0.0, 1.0, true);
+impl_matrix_element!(signed, integer, i8, 0, 1, true);
+impl_matrix_element!(signed, integer, i16, 0, 1, true);
+impl_matrix_element!(signed, integer, i32, 0, 1, true);
+impl_matrix_element!(signed, integer, i64, 0, 1, false);
+impl_matrix_element!(signed, integer, i128, 0, 1, false);
+impl_matrix_element!(unsigned, integer, u8, 0, 1, true);
+impl_matrix_element!(unsigned, integer, u16, 0, 1, true);
+impl_matrix_element!(unsigned, integer, u32, 0, 1, true);
+impl_matrix_element!(unsigned, integer, u64, 0, 1, false);
+impl_matrix_element!(unsigned, integer, u128, 0, 1, false);
+
+macro_rules! impl_matrix_element_type {
+    (integer, $t:ident, $ty_enum:ident) => {
+        impl MatrixElementType for $t {
             fn element_type(&self) -> ElementType {
                 return ElementType::$ty_enum(*self);
+            }
+
+            fn ptr_element_type(ptr: *const Self) -> ElementType {
+                return ElementType::$ty_enum(0);
+            }
+        }
+    };
+    (float, $t:ident, $ty_enum:ident) => {
+        impl MatrixElementType for $t {
+            fn element_type(&self) -> ElementType {
+                return ElementType::$ty_enum(*self);
+            }
+
+            fn ptr_element_type(ptr: *const Self) -> ElementType {
+                return ElementType::$ty_enum(0.0);
             }
         }
     };
 }
 
-impl_element_type!(signed, float, f32, F32, 0.0, 1.0, true);
-impl_element_type!(signed, float, f64, F64, 0.0, 1.0, true);
-impl_element_type!(signed, integer, i8, I8, 0, 1, true);
-impl_element_type!(signed, integer, i16, I16, 0, 1, true);
-impl_element_type!(signed, integer, i32, I32, 0, 1, true);
-impl_element_type!(signed, integer, i64, I64, 0, 1, false);
-impl_element_type!(signed, integer, i128, I128, 0, 1, false);
-impl_element_type!(unsigned, integer, u8, U8, 0, 1, true);
-impl_element_type!(unsigned, integer, u16, U16, 0, 1, true);
-impl_element_type!(unsigned, integer, u32, U32, 0, 1, true);
-impl_element_type!(unsigned, integer, u64, U64, 0, 1, false);
-impl_element_type!(unsigned, integer, u128, U128, 0, 1, false);
+impl_matrix_element_type!(float, f32, F32);
+impl_matrix_element_type!(float, f64, F64);
+impl_matrix_element_type!(integer, i8, I8);
+impl_matrix_element_type!(integer, i16, I16);
+impl_matrix_element_type!(integer, i32, I32);
+impl_matrix_element_type!(integer, i64, I64);
+impl_matrix_element_type!(integer, i128, I128);
+impl_matrix_element_type!(integer, u8, U8);
+impl_matrix_element_type!(integer, u16, U16);
+impl_matrix_element_type!(integer, u32, U32);
+impl_matrix_element_type!(integer, u64, U64);
+impl_matrix_element_type!(integer, u128, U128);

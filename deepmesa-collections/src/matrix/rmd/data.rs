@@ -5,6 +5,7 @@ use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
 use std::alloc::dealloc;
 extern crate alloc;
+use crate::matrix::rmd::macros::*;
 use alloc::alloc::Layout;
 
 use std::fmt;
@@ -43,6 +44,15 @@ where
         } else {
             return RowMajorDataset::standard(rows, cols, simd_enabled);
         }
+    }
+
+    pub(in crate::matrix) fn from(dataset: &RowMajorDataset<T>) -> RowMajorDataset<T> {
+        return RowMajorDataset::new(
+            dataset.rows,
+            dataset.cols,
+            dataset.simd_optimized,
+            dataset.simd_enabled,
+        );
     }
 
     pub(in crate::matrix) fn standard(
@@ -118,6 +128,10 @@ where
         }
     }
 
+    pub(in crate::matrix) fn is_row_major(&self) -> bool {
+        return true;
+    }
+
     pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
         self.simd_enabled = simd_enabled;
     }
@@ -189,16 +203,37 @@ where
     T: MatrixElement,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "[RMD:{}x{}]:", self.rows, self.row_stride)?;
+        let limit: usize;
+        if self.is_transpose {
+            limit = self.cols;
+            write!(
+                f,
+                "[RMD/t:<{}>:{}x{}]:",
+                std::any::type_name::<T>(),
+                self.cols,
+                self.row_stride
+            )?;
+        } else {
+            limit = self.rows;
+            write!(
+                f,
+                "[RMD:<{}>:{}x{}]:",
+                std::any::type_name::<T>(),
+                self.rows,
+                self.row_stride
+            )?;
+        }
         let precision = f.precision().unwrap_or(1);
-        for row in 0..self.rows {
+        for row in 0..limit {
             for col in 0..self.row_stride {
                 write!(f, "{:.*?}", precision, unsafe { rmd_get!(self, row, col) })?;
                 if col < self.row_stride - 1 {
                     write!(f, ",")?;
                 }
             }
-            write!(f, ";")?;
+            if row < limit - 1 {
+                write!(f, ";")?;
+            }
         }
 
         Ok(())

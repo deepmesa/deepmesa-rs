@@ -1,11 +1,13 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::rmd::macros::simd_add_assign;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::simd::kernel::SimdKernel;
-use crate::matrix::simd::traits::SimdPtrAddAssign;
+use crate::matrix::simd::traits::SimdAddAssign;
 use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
-use crate::matrix::traits::SimdAddAssign;
 use std::ops::AddAssign;
 
 impl<T> AddAssign<T> for RowMajorDataset<T>
@@ -14,7 +16,9 @@ where
 {
     fn add_assign(&mut self, val: T) {
         if self.use_simd() {
-            self.simd_add_assign(val);
+            unsafe {
+                SimdKernel::simd_add_assign(self.rm_data, val, self.rm_len);
+            }
             return;
         }
 
@@ -37,39 +41,31 @@ where
     fn add_assign(&mut self, rhs: &RowMajorDataset<T>) {
         debug_assert!(self.rows == rhs.rows);
         debug_assert!(self.cols == rhs.cols);
+
         if self.is_transpose {
             if rhs.is_transpose {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd_t, rmd_t, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign_t!(self, row, col, rmd_get_t!(rhs, row, col));
                 });
             } else {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd_t, rmd, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign_t!(self, row, col, rmd_get!(rhs, row, col));
                 });
             }
         } else {
             if rhs.is_transpose {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd, rmd_t, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign!(self, row, col, rmd_get_t!(rhs, row, col));
                 });
             } else {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd, rmd, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign!(self, row, col, rmd_get!(rhs, row, col));
                 });
             }
-        }
-    }
-}
-
-impl<T> SimdAddAssign<T> for RowMajorDataset<T>
-where
-    T: MatrixElement,
-{
-    fn simd_add_assign(&mut self, val: T) {
-        let ptr = self.rm_data;
-        let len = self.rm_len;
-        unsafe {
-            SimdKernel::ptr_add_assign(ptr, len, val);
         }
     }
 }
@@ -84,20 +80,24 @@ where
 
         if self.is_transpose {
             if rhs.is_transpose {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd_t, cmd_t, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign_t!(self, row, col, cmd_get_t!(rhs, row, col));
                 });
             } else {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd_t, cmd, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign_t!(self, row, col, cmd_get!(rhs, row, col));
                 });
             }
         } else {
             if rhs.is_transpose {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd, cmd_t, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign!(self, row, col, cmd_get_t!(rhs, row, col));
                 });
             } else {
+                crate::matrix::rmd::macros::simd_add_assign!(rmd, cmd, self, rhs);
                 iterate_row_major!(self, row, col, unsafe {
                     rmd_add_assign!(self, row, col, cmd_get!(rhs, row, col));
                 });
@@ -120,25 +120,195 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::matrix::matrix::Matrix;
-    use crate::matrix::matrix::MatrixType;
+
+    use crate::matrix::cmd::data::*;
+    use crate::matrix::cmd::macros::col_major_dataset;
+    use crate::matrix::did::data::*;
+    use crate::matrix::did::macros::dual_index_dataset;
+    use crate::matrix::matrix::matrix;
+    use crate::matrix::matrix::*;
+    use crate::matrix::rmd::data::*;
+    use crate::matrix::rmd::macros::row_major_dataset;
+    use crate::matrix::traits::*;
+    use std::any::Any;
     use std::ops::AddAssign;
 
-    #[test]
-    fn test_add() {
-        let mut m = Matrix::new(3, 2, MatrixType::RowMajor, true);
-        let v = vec![1, 2, 3, 4, 5, 6];
-        m.fill_row_major(&v);
-
-        let mut m2 = Matrix::new(2, 3, MatrixType::RowMajor, true);
-        m2.fill_row_major(&v);
-
-        m.transpose();
-        //m2.transpose();
-        //        println!("m': {:?}", m);
-
-        println!("adding M={:?} and M2={:?}", m, m2);
-        m.add_assign(&m2);
-        println!("Matrix after add: {:?}", m);
+    macro_rules! lhs {
+        (rmd, $simd:ident, $t:ty) => {
+            row_major_dataset!([$t, 2, 3, $simd], 1,2,3;4,5,6)
+        };
+        (rmd_t, $simd:ident, $t:ty) => {
+            {
+                let mut rmd = row_major_dataset!([$t, 3,2, $simd], 1,4;2,5;3,6);
+                rmd.transpose();
+                rmd
+            }
+        };
     }
+
+    macro_rules! rhs {
+        (rmd, $simd:ident, $t:ty) => {
+            row_major_dataset!([$t,2,3, $simd], 6,7,8;9,10,11)
+        };
+        (cmd, $simd:ident, $t:ty) => {
+            {
+                let mut cmd = col_major_dataset!([$t,3,2, $simd], 6,9;7,10;8,11);
+                cmd.transpose();
+                cmd
+            }
+        };
+        (did, $simd:ident, $t:ty) => {
+            dual_index_dataset!([$t,2,3,false], 6,7,8;9,10,11)
+        };
+        (rmd_t, $simd:ident, $t:ty) => {
+            {
+                let mut rmd = row_major_dataset!([$t,3,2, $simd], 6,9;7,10;8,11);
+                rmd.transpose();
+                rmd
+            }
+        };
+        (cmd_t, $simd:ident, $t:ty) => {
+            col_major_dataset!([$t,2,3, false], 6,7,8;9,10,11)
+        };
+        (did_t, $simd:ident, $t:ty) => {
+            {
+                let mut did = dual_index_dataset!([$t,3,2, $simd], 6,9;7,10;8,11);
+                did.transpose();
+                did
+            }
+        };
+    }
+
+    macro_rules! result {
+        (rmd, $simd:ident, $t:ty) => {
+            row_major_dataset!([$t, 2, 3, $simd], 7,9,11;13,15,17)
+        };
+        (val, $simd:ident, $t:ty) => {
+            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9);
+        };
+    }
+
+    macro_rules! test_add_assign {
+        ($t:ty, $simd:ident, $lhs:ident, $rhs:ident) => {
+            let mut lhs = lhs!($lhs, $simd, $t);
+            let rhs = rhs!($rhs, $simd, $t);
+            lhs.add_assign(&rhs);
+            assert_eq!(lhs, result!(rmd, $simd, $t));
+        };
+    }
+
+    macro_rules! test_add_assign_val {
+        ($t:ty, $simd: ident, $lhs:ident) => {
+            let mut lhs = lhs!($lhs, $simd, $t);
+            let rhs = 3 as $t;
+            lhs.add_assign(rhs);
+            assert_eq!(lhs, result!(val, $simd, $t));
+        };
+    }
+
+    macro_rules! fn_test_add_assign_val {
+        ($fn_name:ident, $lhs:ident) => {
+            #[test]
+            fn $fn_name() {
+                test_add_assign_val!(u8, false, $lhs);
+                test_add_assign_val!(u16, false, $lhs);
+                test_add_assign_val!(u32, false, $lhs);
+                test_add_assign_val!(u64, false, $lhs);
+                test_add_assign_val!(u128, false, $lhs);
+                test_add_assign_val!(i8, false, $lhs);
+                test_add_assign_val!(i16, false, $lhs);
+                test_add_assign_val!(i32, false, $lhs);
+                test_add_assign_val!(i64, false, $lhs);
+                test_add_assign_val!(i128, false, $lhs);
+                test_add_assign_val!(f32, false, $lhs);
+                test_add_assign_val!(f64, false, $lhs);
+            }
+        };
+    }
+
+    macro_rules! fn_test_add_assign {
+        ($fn_name:ident, $lhs:ident, $rhs:ident) => {
+            #[test]
+            fn $fn_name() {
+                test_add_assign!(u8, false, $lhs, $rhs);
+                test_add_assign!(u16, false, $lhs, $rhs);
+                test_add_assign!(u32, false, $lhs, $rhs);
+                test_add_assign!(u64, false, $lhs, $rhs);
+                test_add_assign!(u128, false, $lhs, $rhs);
+                test_add_assign!(i8, false, $lhs, $rhs);
+                test_add_assign!(i16, false, $lhs, $rhs);
+                test_add_assign!(i32, false, $lhs, $rhs);
+                test_add_assign!(i64, false, $lhs, $rhs);
+                test_add_assign!(i128, false, $lhs, $rhs);
+                test_add_assign!(f32, false, $lhs, $rhs);
+                test_add_assign!(f64, false, $lhs, $rhs);
+            }
+        };
+    }
+
+    macro_rules! fn_test_add_assign_simd {
+        ($fn_name:ident, $lhs:ident, $rhs:ident) => {
+            #[test]
+            fn $fn_name() {
+                test_add_assign!(u8, true, $lhs, $rhs);
+                test_add_assign!(u16, true, $lhs, $rhs);
+                test_add_assign!(u32, true, $lhs, $rhs);
+                test_add_assign!(i8, true, $lhs, $rhs);
+                test_add_assign!(i16, true, $lhs, $rhs);
+                test_add_assign!(i32, true, $lhs, $rhs);
+                test_add_assign!(f32, true, $lhs, $rhs);
+                test_add_assign!(f64, true, $lhs, $rhs);
+            }
+        };
+    }
+
+    macro_rules! fn_test_add_assign_simd_val {
+        ($fn_name:ident, $lhs:ident) => {
+            #[test]
+            fn $fn_name() {
+                test_add_assign_val!(u8, true, $lhs);
+                test_add_assign_val!(u16, true, $lhs);
+                test_add_assign_val!(u32, true, $lhs);
+                test_add_assign_val!(i8, true, $lhs);
+                test_add_assign_val!(i16, true, $lhs);
+                test_add_assign_val!(i32, true, $lhs);
+                test_add_assign_val!(f32, true, $lhs);
+                test_add_assign_val!(f64, true, $lhs);
+            }
+        };
+    }
+
+    fn_test_add_assign_val!(test_add_assign_rmd_val, rmd);
+    fn_test_add_assign_val!(test_add_assign_rmd_t_val, rmd_t);
+
+    fn_test_add_assign!(test_add_assign_rmd_rmd, rmd, rmd);
+    fn_test_add_assign!(test_add_assign_rmd_cmd, rmd, cmd);
+    fn_test_add_assign!(test_add_assign_rmd_did, rmd, did);
+    fn_test_add_assign!(test_add_assign_rmd_rmd_t, rmd, rmd_t);
+    fn_test_add_assign!(test_add_assign_rmd_cmd_t, rmd, cmd_t);
+    fn_test_add_assign!(test_add_assign_rmd_did_t, rmd, did_t);
+
+    fn_test_add_assign!(test_add_assign_rmd_t_rmd, rmd_t, rmd);
+    fn_test_add_assign!(test_add_assign_rmd_t_cmd, rmd_t, cmd);
+    fn_test_add_assign!(test_add_assign_rmd_t_did, rmd_t, did);
+    fn_test_add_assign!(test_add_assign_rmd_t_rmd_t, rmd_t, rmd_t);
+    fn_test_add_assign!(test_add_assign_rmd_t_cmd_t, rmd_t, cmd_t);
+    fn_test_add_assign!(test_add_assign_rmd_t_did_t, rmd_t, did_t);
+
+    fn_test_add_assign_simd_val!(test_add_assign_simd_rmd_val, rmd);
+    fn_test_add_assign_simd_val!(test_add_assign_simd_rmd_t_val, rmd_t);
+
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_rmd, rmd, rmd);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_cmd, rmd, cmd);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_did, rmd, did);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_rmd_t, rmd, rmd_t);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_cmd_t, rmd, cmd_t);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_did_t, rmd, did_t);
+
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_rmd, rmd_t, rmd);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_cmd, rmd_t, cmd);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_did, rmd_t, did);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_rmd_t, rmd_t, rmd_t);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_cmd_t, rmd_t, cmd_t);
+    fn_test_add_assign_simd!(test_add_assign_simd_rmd_t_did_t, rmd_t, did_t);
 }

@@ -1,4 +1,5 @@
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::MatrixElement;
 use crate::matrix::traits::Set;
 

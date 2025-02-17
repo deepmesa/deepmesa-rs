@@ -1,5 +1,8 @@
-use crate::matrix::simd::SIMD_NEON_LOAD_SIZE_4;
-use crate::matrix::simd::SIMD_NEON_VEC_SIZE_BYTES;
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+use crate::matrix::simd::neon::SIMD_NEON_LOAD_SIZE_4;
+
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+use crate::matrix::simd::neon::SIMD_NEON_VEC_SIZE_BYTES;
 
 #[derive(Debug)]
 pub struct SimdMetaData {

@@ -1,4 +1,6 @@
+use crate::matrix::cmd::macros::*;
 use crate::matrix::did::data::DualIndexDataset;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::MatrixElement;
 use crate::matrix::traits::Set;
 

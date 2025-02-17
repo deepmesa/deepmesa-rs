@@ -1,4 +1,5 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::traits::Dataset;
 use crate::matrix::traits::FillRow;
 use crate::matrix::traits::MatrixElement;

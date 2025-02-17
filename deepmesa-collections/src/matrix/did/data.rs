@@ -1,5 +1,7 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
 use std::fmt;
@@ -7,7 +9,7 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub(in crate::matrix::did) enum SyncDirection {
+pub(in crate::matrix) enum SyncDirection {
     CmdToRmd,
     RmdToCmd,
 }
@@ -52,6 +54,15 @@ where
         }
     }
 
+    pub(in crate::matrix) fn from(dataset: &DualIndexDataset<T>) -> DualIndexDataset<T> {
+        return DualIndexDataset::new(
+            dataset.rows,
+            dataset.cols,
+            dataset.is_simd_optimized(),
+            dataset.is_simd_enabled(),
+        );
+    }
+
     pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
         self.rmd.set_simd_enabled(simd_enabled);
         self.cmd.set_simd_enabled(simd_enabled);
@@ -67,13 +78,13 @@ where
         return self.rmd.simd_optimized;
     }
 
-    pub(in crate::matrix::did) fn sync(&mut self, dir: SyncDirection) {
+    pub(in crate::matrix) fn sync(&mut self, dir: SyncDirection) {
         for row in 0..self.rows {
             self.sync_row(row, dir);
         }
     }
 
-    pub(in crate::matrix::did) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
+    pub(in crate::matrix) fn sync_row(&mut self, row: usize, dir: SyncDirection) {
         //TODO: Once partial Eq is implemented for &Matrix Type remove
         // this match and replace it with a !=
         if self.is_transpose {

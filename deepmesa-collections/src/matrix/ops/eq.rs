@@ -9,24 +9,6 @@ where
 {
     fn eq(&self, other: &Matrix<T>) -> bool {
         dispatch!(self, ds, dispatch!(other, other, return ds.eq(other)));
-
-        // match &self.data {
-        //     MatrixData::ColMajor(ds) => match &other.data {
-        //         MatrixData::ColMajor(other) => return ds.eq(other),
-        //         MatrixData::RowMajor(other) => return ds.eq(other),
-        //         MatrixData::DualIndex(other) => return ds.eq(other),
-        //     },
-        //     MatrixData::RowMajor(ds) => match &other.data {
-        //         MatrixData::ColMajor(other) => return ds.eq(other),
-        //         MatrixData::RowMajor(other) => return ds.eq(other),
-        //         MatrixData::DualIndex(other) => return ds.eq(other),
-        //     },
-
-        //     MatrixData::DualIndex(ds) => match &other.data {
-        //         MatrixData::ColMajor(other) => return ds.eq(other),
-        //         MatrixData::RowMajor(other) => return ds.eq(other),
-        //         MatrixData::DualIndex(other) => return ds.eq(other),
-        //     },
-        // }
+        //TODO: Should eq check the layout of the Matrix?Maybe not
     }
 }

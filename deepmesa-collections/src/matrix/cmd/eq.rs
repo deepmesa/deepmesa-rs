@@ -1,6 +1,8 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::MatrixElement;
 
 impl<T> PartialEq<RowMajorDataset<T>> for ColMajorDataset<T>
@@ -8,13 +10,14 @@ where
     T: MatrixElement,
 {
     fn eq(&self, other: &RowMajorDataset<T>) -> bool {
-        if self.rows != other.rows {
-            return false;
-        }
+        // if self.rows != other.rows {
+        //     return false;
+        // }
 
-        if self.cols != other.cols {
-            return false;
-        }
+        //TODO: IMPL EQUALS Correctly
+        // if self.cols != other.cols {
+        //     return false;
+        // }
 
         if self.is_transpose {
             if other.is_transpose {

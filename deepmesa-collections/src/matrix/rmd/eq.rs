@@ -1,6 +1,8 @@
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::rmd::data::RowMajorDataset;
+use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::MatrixElement;
 
 impl<T> PartialEq<RowMajorDataset<T>> for RowMajorDataset<T>

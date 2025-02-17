@@ -1,4 +1,5 @@
 use crate::matrix::alloc_mem;
+use crate::matrix::cmd::macros::*;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
 use crate::matrix::traits::Dataset;
@@ -42,6 +43,15 @@ where
         } else {
             return ColMajorDataset::standard(rows, cols, simd_enabled);
         }
+    }
+
+    pub(in crate::matrix) fn from(dataset: &ColMajorDataset<T>) -> ColMajorDataset<T> {
+        return ColMajorDataset::new(
+            dataset.rows,
+            dataset.cols,
+            dataset.simd_optimized,
+            dataset.simd_enabled,
+        );
     }
 
     pub(in crate::matrix) fn standard(
@@ -117,6 +127,10 @@ where
         }
     }
 
+    pub(in crate::matrix) fn is_col_major(&self) -> bool {
+        return true;
+    }
+
     pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
         self.simd_enabled = simd_enabled;
     }
@@ -188,16 +202,26 @@ where
     T: MatrixElement,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "[CMD:{}x{}]:", self.cols, self.col_stride)?;
+        let limit: usize;
+        if self.is_transpose {
+            limit = self.rows;
+            write!(f, "[CMD:{}x{}]:", self.rows, self.col_stride)?;
+        } else {
+            limit = self.cols;
+            write!(f, "[CMD:{}x{}]:", self.cols, self.col_stride)?;
+        }
+
         let precision = f.precision().unwrap_or(1);
-        for col in 0..self.cols {
+        for col in 0..limit {
             for row in 0..self.col_stride {
                 write!(f, "{:.*?}", precision, unsafe { cmd_get!(self, row, col) })?;
                 if row < self.col_stride - 1 {
                     write!(f, ",")?;
                 }
             }
-            write!(f, ";")?;
+            if col < limit - 1 {
+                write!(f, ";")?;
+            }
         }
 
         Ok(())

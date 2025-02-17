@@ -2,7 +2,7 @@
 all: build test doc
 
 build:
-    cargo build --all
+    cargo build --all --future-incompat-report
 
 # To run a single test: cargo test --package package-name module_path::test_name -- --nocapture
 # add -- --nocapture along with the RUST_BACKTRACE=1 env variable to show backtraces in failed tests
@@ -24,7 +24,7 @@ build:
 #     cargo test --package deepmesa-collections matrix::tests::di_new_tests -- --nocapture
 #     cargo test --package deepmesa-collections matrix::vector::tests::test_dot_product -- --nocapture
 test $RUST_BACKTRACE="1":
-     cargo test --package deepmesa-stats regression::linear::tests::test_simple_ols -- --nocapture
+     cargo test --package deepmesa-collections matrix -- --nocapture
 
 doc:
     cargo doc --no-deps --all
