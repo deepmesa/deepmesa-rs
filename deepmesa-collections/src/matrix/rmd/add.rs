@@ -4,20 +4,65 @@ use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::AddInto;
 use crate::matrix::traits::MatrixElement;
 use std::ops::Add;
+use std::ops::AddAssign;
 
 impl<T> Add<T> for RowMajorDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: T) -> Self::Output {
+    type Output = RowMajorDataset<T>;
+    fn add(mut self, rhs: T) -> RowMajorDataset<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> Add<&RowMajorDataset<T>> for RowMajorDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = RowMajorDataset<T>;
+    fn add(mut self, rhs: &RowMajorDataset<T>) -> RowMajorDataset<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> Add<&ColMajorDataset<T>> for RowMajorDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = RowMajorDataset<T>;
+    fn add(mut self, rhs: &ColMajorDataset<T>) -> RowMajorDataset<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> Add<&DualIndexDataset<T>> for RowMajorDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = RowMajorDataset<T>;
+    fn add(mut self, rhs: &DualIndexDataset<T>) -> RowMajorDataset<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> Add<T> for &RowMajorDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = RowMajorDataset<T>;
+    fn add(self, rhs: T) -> RowMajorDataset<T> {
         let mut result = RowMajorDataset::from(&self);
         self.add_into(rhs, &mut result);
         return result;
     }
 }
 
-impl<T> Add<&RowMajorDataset<T>> for RowMajorDataset<T>
+impl<T> Add<&RowMajorDataset<T>> for &RowMajorDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
@@ -29,24 +74,24 @@ where
     }
 }
 
-impl<T> Add<&ColMajorDataset<T>> for RowMajorDataset<T>
+impl<T> Add<&ColMajorDataset<T>> for &RowMajorDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: &ColMajorDataset<T>) -> Self::Output {
+    type Output = RowMajorDataset<T>;
+    fn add(self, rhs: &ColMajorDataset<T>) -> RowMajorDataset<T> {
         let mut result = RowMajorDataset::from(&self);
         self.add_into(rhs, &mut result);
         return result;
     }
 }
 
-impl<T> Add<&DualIndexDataset<T>> for RowMajorDataset<T>
+impl<T> Add<&DualIndexDataset<T>> for &RowMajorDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: &DualIndexDataset<T>) -> Self::Output {
+    type Output = RowMajorDataset<T>;
+    fn add(self, rhs: &DualIndexDataset<T>) -> RowMajorDataset<T> {
         let mut result = RowMajorDataset::from(&self);
         self.add_into(rhs, &mut result);
         return result;
@@ -119,7 +164,7 @@ mod tests {
             row_major_dataset!([$t, 2, 3, $simd], 7,9,11;13,15,17)
         };
         (val, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9);
+            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9)
         };
     }
 

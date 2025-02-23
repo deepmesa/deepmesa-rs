@@ -1,8 +1,32 @@
 use crate::matrix::matrix::Matrix;
 use crate::matrix::traits::AddInto;
 use crate::matrix::traits::MatrixElement;
+use std::ops::AddAssign;
 
 impl<T> std::ops::Add<T> for Matrix<T>
+where
+    T: MatrixElement<Output = T> + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = Matrix<T>;
+    fn add(mut self, rhs: T) -> Matrix<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> std::ops::Add<&Matrix<T>> for Matrix<T>
+where
+    T: MatrixElement<Output = T> + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = Matrix<T>;
+    fn add(mut self, rhs: &Matrix<T>) -> Matrix<T> {
+        shape_check!(self, rhs);
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> std::ops::Add<T> for &Matrix<T>
 where
     T: MatrixElement<Output = T> + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
@@ -14,7 +38,7 @@ where
     }
 }
 
-impl<T> std::ops::Add<&Matrix<T>> for Matrix<T>
+impl<T> std::ops::Add<&Matrix<T>> for &Matrix<T>
 where
     T: MatrixElement<Output = T> + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
@@ -40,16 +64,25 @@ mod tests {
 
     macro_rules! m_lhs {
         ($layout:ident, $t:ty) => {
-            matrix!($layout, [$t, 2, 3], 1,2,3;4,5,6);
+            {
+                let mut m = matrix!($layout, [$t, 2, 3], 1,2,3;4,5,6);
+                m.set_simd_enabled(false);
+                m
+            }
         };
         (simd, $layout:ident, $t:ty) => {
-            matrix_simd!($layout, [$t, 2, 3], 1,2,3;4,5,6);
+            {
+                let mut m = matrix_simd!($layout, [$t, 2, 3], 1,2,3;4,5,6);
+                m.set_simd_enabled(true);
+                m
+            }
         };
     }
     macro_rules! m_lhs_t {
         ($layout:ident, $t:ty) => {
             {
                 let mut m = matrix!($layout, [$t, 3,2], 1,4;2,5;3,6);
+                m.set_simd_enabled(false);
                 m.transpose();
                 m
             }
@@ -57,6 +90,7 @@ mod tests {
         (simd, $layout:ident, $t:ty) => {
             {
                 let mut m = matrix_simd!($layout, [$t, 3,2], 1,4;2,5;3,6);
+                m.set_simd_enabled(true);
                 m.transpose();
                 m
             }
@@ -65,49 +99,57 @@ mod tests {
 
     macro_rules! lhs {
         (rm, $t:ty) => {
-            m_lhs!(rm, $t);
+            m_lhs!(rm, $t)
         };
         (rm, simd, $t:ty) => {
-            m_lhs!(simd, rm, $t);
+            m_lhs!(simd, rm, $t)
         };
         (rm_t, $t:ty) => {
-            m_lhs_t!(rm, $t);
+            m_lhs_t!(rm, $t)
         };
         (rm_t, simd, $t:ty) => {
-            m_lhs_t!(simd, rm, $t);
+            m_lhs_t!(simd, rm, $t)
         };
         (cm, $t:ty) => {
-            m_lhs!(cm, $t);
+            m_lhs!(cm, $t)
         };
         (cm, simd, $t:ty) => {
-            m_lhs!(simd, cm, $t);
+            m_lhs!(simd, cm, $t)
         };
         (cm_t, $t:ty) => {
-            m_lhs_t!(cm, $t);
+            m_lhs_t!(cm, $t)
         };
         (cm_t, simd, $t:ty) => {
-            m_lhs_t!(simd, cm, $t);
+            m_lhs_t!(simd, cm, $t)
         };
         (di, $t:ty) => {
-            m_lhs!(di, $t);
+            m_lhs!(di, $t)
         };
         (di, simd, $t:ty) => {
-            m_lhs!(simd, di, $t);
+            m_lhs!(simd, di, $t)
         };
         (di_t, $t:ty) => {
-            m_lhs_t!(di, $t);
+            m_lhs_t!(di, $t)
         };
         (di_t, simd, $t:ty) => {
-            m_lhs_t!(simd, di, $t);
+            m_lhs_t!(simd, di, $t)
         };
     }
 
     macro_rules! m_rhs {
         ($layout:ident, $t:ty) => {
-            matrix!($layout, [$t, 2, 3], 11,12,13;14,15,16);
+            {
+                let mut m = matrix!($layout, [$t, 2, 3], 11,12,13;14,15,16);
+                m.set_simd_enabled(false);
+                m
+            }
         };
         (simd, $layout:ident, $t:ty) => {
-            matrix_simd!($layout, [$t, 2, 3], 11,12,13;14,15,16);
+            {
+                let mut m = matrix_simd!($layout, [$t, 2, 3], 11,12,13;14,15,16);
+                m.set_simd_enabled(true);
+                m
+            }
         };
     }
 
@@ -115,6 +157,7 @@ mod tests {
         ($layout:ident, $t:ty) => {
             {
                 let mut m = matrix!($layout, [$t, 3,2], 11,14;12,15;13,16);
+                m.set_simd_enabled(false);
                 m.transpose();
                 m
             }
@@ -122,6 +165,7 @@ mod tests {
         (simd, $layout:ident, $t:ty) => {
             {
                 let mut m = matrix_simd!($layout, [$t, 3,2], 11,14;12,15;13,16);
+                m.set_simd_enabled(true);
                 m.transpose();
                 m
             }
@@ -130,136 +174,151 @@ mod tests {
 
     macro_rules! rhs {
         (rm, $t:ty) => {
-            m_rhs!(rm, $t);
+            m_rhs!(rm, $t)
         };
         (rm_t, $t:ty) => {
-            m_rhs_t!(rm, $t);
+            m_rhs_t!(rm, $t)
         };
         (cm, $t:ty) => {
-            m_rhs!(cm, $t);
+            m_rhs!(cm, $t)
         };
         (cm_t, $t:ty) => {
-            m_rhs_t!(cm, $t);
+            m_rhs_t!(cm, $t)
         };
         (di, $t:ty) => {
-            m_rhs!(di, $t);
+            m_rhs!(di, $t)
         };
         (di_t, $t:ty) => {
-            m_rhs_t!(di, $t);
+            m_rhs_t!(di, $t)
         };
         //
         (rm, simd, $t:ty) => {
-            m_rhs!(simd, rm, $t);
+            m_rhs!(simd, rm, $t)
         };
         (rm_t, simd, $t:ty) => {
-            m_rhs_t!(simd, rm, $t);
+            m_rhs_t!(simd, rm, $t)
         };
         (cm, simd,$t:ty) => {
-            m_rhs!(simd, cm, $t);
+            m_rhs!(simd, cm, $t)
         };
         (cm_t, simd, $t:ty) => {
-            m_rhs_t!(simd, cm, $t);
+            m_rhs_t!(simd, cm, $t)
         };
         (di, simd, $t:ty) => {
-            m_rhs!(simd, di, $t);
+            m_rhs!(simd, di, $t)
         };
         (di_t, simd, $t:ty) => {
-            m_rhs_t!(simd, di, $t);
+            m_rhs_t!(simd, di, $t)
         };
     }
 
     macro_rules! m_res {
         ($layout:ident, $t:ty) => {
-            matrix!($layout, [$t, 2, 3], 12,14,16;18,20,22);
+            {
+                let mut m = matrix!($layout, [$t, 2, 3], 12,14,16;18,20,22);
+                m.set_simd_enabled(false);
+                m
+            }
         };
         (simd, $layout:ident, $t:ty) => {
-            matrix_simd!($layout, [$t, 2, 3], 12,14,16;18,20,22);
+            {
+                let mut m = matrix_simd!($layout, [$t, 2, 3], 12,14,16;18,20,22);
+                m.set_simd_enabled(false);
+                m
+            }
         };
     }
 
     macro_rules! m_res_val {
         ($layout:ident, $t:ty) => {
-            matrix!($layout, [$t, 2, 3], 5,6,7;8,9,10);
+            {
+                let mut m = matrix!($layout, [$t, 2, 3], 5,6,7;8,9,10);
+                m.set_simd_enabled(false);
+                m
+            }
         };
         (simd, $layout:ident, $t:ty) => {
-            matrix_simd!($layout, [$t, 2, 3], 5,6,7;8,9,10);
+            {
+                let mut m = matrix_simd!($layout, [$t, 2, 3], 5,6,7;8,9,10);
+                m.set_simd_enabled(true);
+                m
+            }
         };
     }
 
     macro_rules! result {
         (rm, $t:ty) => {
-            m_res!(rm, $t);
+            m_res!(rm, $t)
         };
         (rm_t, $t:ty) => {
-            m_res!(rm, $t);
+            m_res!(rm, $t)
         };
         (cm, $t:ty) => {
-            m_res!(cm, $t);
+            m_res!(cm, $t)
         };
         (cm_t, $t:ty) => {
-            m_res!(cm, $t);
+            m_res!(cm, $t)
         };
         (di, $t:ty) => {
-            m_res!(di, $t);
+            m_res!(di, $t)
         };
         (di_t, $t:ty) => {
-            m_res!(di, $t);
+            m_res!(di, $t)
         };
         (val, rm, $t:ty) => {
-            m_res_val!(rm, $t);
+            m_res_val!(rm, $t)
         };
         (val, rm_t, $t:ty) => {
-            m_res_val!(rm, $t);
+            m_res_val!(rm, $t)
         };
         (val, cm, $t:ty) => {
-            m_res_val!(cm, $t);
+            m_res_val!(cm, $t)
         };
         (val, cm_t, $t:ty) => {
-            m_res_val!(cm, $t);
+            m_res_val!(cm, $t)
         };
         (val, di, $t:ty) => {
-            m_res_val!(di, $t);
+            m_res_val!(di, $t)
         };
         (val, di_t, $t:ty) => {
-            m_res_val!(di, $t);
+            m_res_val!(di, $t)
         };
-
         //
         (rm, simd, $t:ty) => {
-            m_res!(simd, rm, $t);
+            m_res!(simd, rm, $t)
         };
         (rm_t, simd, $t:ty) => {
-            m_res!(simd, rm, $t);
+            m_res!(simd, rm, $t)
         };
         (cm, simd, $t:ty) => {
-            m_res!(simd, cm, $t);
+            m_res!(simd, cm, $t)
         };
         (cm_t, simd, $t:ty) => {
-            m_res!(simd, cm, $t);
+            m_res!(simd, cm, $t)
         };
         (di, simd, $t:ty) => {
-            m_res!(simd, di, $t);
+            m_res!(simd, di, $t)
         };
         (di_t, simd, $t:ty) => {
-            m_res!(simd, di, $t);
+            m_res!(simd, di, $t)
         };
         (val, simd, rm, $t:ty) => {
-            m_res_val!(simd, rm, $t);
+            m_res_val!(simd, rm, $t)
         };
         (val, simd, rm_t, $t:ty) => {
-            m_res_val!(simd, rm, $t);
+            m_res_val!(simd, rm, $t)
         };
         (val, simd, cm, $t:ty) => {
-            m_res_val!(simd, cm, $t);
+            m_res_val!(simd, cm, $t)
         };
         (val, simd, cm_t, $t:ty) => {
-            m_res_val!(simd, cm, $t);
+            m_res_val!(simd, cm, $t)
         };
         (val, simd, di, $t:ty) => {
-            m_res_val!(simd, di, $t);
+            m_res_val!(simd, di, $t)
         };
         (val, simd, di_t, $t:ty) => {
-            m_res_val!(simd, di, $t);
+            m_res_val!(simd, di, $t)
         };
     }
 

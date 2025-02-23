@@ -7,7 +7,8 @@ use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::rmd::macros::*;
 use crate::matrix::simd::kernel::SimdKernel;
 use crate::matrix::simd::traits::SimdAddAssign;
-use crate::matrix::traits::{Dataset, MatrixElement};
+use crate::matrix::traits::Dataset;
+use crate::matrix::traits::MatrixElement;
 use std::ops::AddAssign;
 
 impl<T> AddAssign<T> for DualIndexDataset<T>
@@ -251,7 +252,7 @@ mod tests {
             row_major_dataset!([$t, 2, 3, $simd], 7,9,11;13,15,17)
         };
         (val, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9);
+            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9)
         };
     }
 

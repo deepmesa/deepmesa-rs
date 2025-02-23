@@ -28,13 +28,25 @@ pub trait AddInto<Rhs, Output> {
     fn add_into(&self, rhs: Rhs, result: &mut Output);
 }
 
+pub trait SubInto<Rhs, Output> {
+    fn sub_into(&self, rhs: Rhs, result: &mut Output);
+}
+
+pub trait MulInto<Rhs, Output> {
+    fn mul_into(&self, rhs: Rhs, result: &mut Output);
+}
+
+pub trait MatMul<Rhs, Output> {
+    fn mat_mul(&self, rhs: &Rhs, result: &mut Output);
+}
+
 pub(in crate::matrix) trait Dataset<T>
 where
     T: MatrixElement,
 {
     fn rows(&self) -> usize;
     fn cols(&self) -> usize;
-    fn get(&self, row: usize, col: usize) -> T;
+    //    fn get(&self, row: usize, col: usize) -> T;
     fn len(&self) -> usize;
     fn data_ptr(&self) -> *const T;
     fn is_simd_enabled(&self) -> bool;

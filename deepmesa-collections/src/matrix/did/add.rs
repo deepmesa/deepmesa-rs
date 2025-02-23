@@ -10,11 +10,10 @@ impl<T> Add<T> for DualIndexDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: T) -> Self::Output {
-        let mut result = DualIndexDataset::from(&self);
-        self.add_into(rhs, &mut result);
-        return result;
+    type Output = DualIndexDataset<T>;
+    fn add(mut self, rhs: T) -> DualIndexDataset<T> {
+        self.add_assign(rhs);
+        return self;
     }
 }
 
@@ -22,11 +21,10 @@ impl<T> Add<&RowMajorDataset<T>> for DualIndexDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: &RowMajorDataset<T>) -> Self::Output {
-        let mut result = DualIndexDataset::from(&self);
-        self.add_into(rhs, &mut result);
-        return result;
+    type Output = DualIndexDataset<T>;
+    fn add(mut self, rhs: &RowMajorDataset<T>) -> DualIndexDataset<T> {
+        self.add_assign(rhs);
+        return self;
     }
 }
 
@@ -34,11 +32,10 @@ impl<T> Add<&ColMajorDataset<T>> for DualIndexDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: &ColMajorDataset<T>) -> Self::Output {
-        let mut result = DualIndexDataset::from(&self);
-        self.add_into(rhs, &mut result);
-        return result;
+    type Output = DualIndexDataset<T>;
+    fn add(mut self, rhs: &ColMajorDataset<T>) -> DualIndexDataset<T> {
+        self.add_assign(rhs);
+        return self;
     }
 }
 
@@ -46,8 +43,55 @@ impl<T> Add<&DualIndexDataset<T>> for DualIndexDataset<T>
 where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
-    type Output = Self;
-    fn add(self, rhs: &DualIndexDataset<T>) -> Self::Output {
+    type Output = DualIndexDataset<T>;
+    fn add(mut self, rhs: &DualIndexDataset<T>) -> DualIndexDataset<T> {
+        self.add_assign(rhs);
+        return self;
+    }
+}
+
+impl<T> Add<T> for &DualIndexDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = DualIndexDataset<T>;
+    fn add(self, rhs: T) -> DualIndexDataset<T> {
+        let mut result = DualIndexDataset::from(&self);
+        self.add_into(rhs, &mut result);
+        return result;
+    }
+}
+
+impl<T> Add<&RowMajorDataset<T>> for &DualIndexDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = DualIndexDataset<T>;
+    fn add(self, rhs: &RowMajorDataset<T>) -> DualIndexDataset<T> {
+        let mut result = DualIndexDataset::from(&self);
+        self.add_into(rhs, &mut result);
+        return result;
+    }
+}
+
+impl<T> Add<&ColMajorDataset<T>> for &DualIndexDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = DualIndexDataset<T>;
+    fn add(self, rhs: &ColMajorDataset<T>) -> DualIndexDataset<T> {
+        let mut result = DualIndexDataset::from(&self);
+        self.add_into(rhs, &mut result);
+        return result;
+    }
+}
+
+impl<T> Add<&DualIndexDataset<T>> for &DualIndexDataset<T>
+where
+    T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
+{
+    type Output = DualIndexDataset<T>;
+    fn add(self, rhs: &DualIndexDataset<T>) -> DualIndexDataset<T> {
         let mut result = DualIndexDataset::from(&self);
         self.add_into(rhs, &mut result);
         return result;
@@ -120,7 +164,7 @@ mod tests {
             row_major_dataset!([$t, 2, 3, $simd], 7,9,11;13,15,17)
         };
         (val, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9);
+            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9)
         };
     }
 

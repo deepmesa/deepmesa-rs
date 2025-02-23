@@ -92,6 +92,12 @@ pub(in crate::matrix) use matrix;
 pub(in crate::matrix) use matrix_simd;
 
 #[derive(Debug)]
+pub(in crate::matrix) enum MatrixDimension {
+    Row(usize),
+    Col(usize),
+}
+
+#[derive(Debug)]
 pub(in crate::matrix) enum MatrixData<T>
 where
     T: MatrixElement,
@@ -131,9 +137,6 @@ where
 {
     pub rows: usize,
     pub cols: usize,
-    // pub(in crate::matrix) rmd: RowMajorDataset<T>,
-    // pub(in crate::matrix) cmd: ColMajorDataset<T>,
-    // pub(in crate::matrix) did: DualIndexDataset<T>,
     pub(in crate::matrix) data: MatrixData<T>,
     pub(super) is_transpose: bool,
     pub is_square: bool,
@@ -689,34 +692,6 @@ where
     //     );
     // }
 
-    // pub fn set(&mut self, row: usize, col: usize, val: T) {
-    //     bounds_check_row!(row, self);
-    //     bounds_check_col!(col, self);
-    //     self.set_unchecked(row, col, val);
-    // }
-
-    // pub fn add(&self, val: T) -> Matrix<T> {
-    //     use crate::matrix::traits::DatasetOperation;
-    //     match self.m_type {
-    //         MatrixType::ColMajor => {
-    //             let cmd = self.cmd.add(&val);
-    //             return Matrix::from_cmd(cmd);
-    //         }
-    //         MatrixType::RowMajor => {}
-    //         MatrixType::DualIndex => {}
-    //     }
-    // }
-
-    // pub fn get_dataset(&self) -> DatasetOperator {
-    //     match self.m_type {
-    //         MatrixType::ColMajor => {
-    //             return DatasetOperator::new(&self.rmd, self.is_transpose);
-    //         }
-    //         MatrixType::RowMajor => {}
-    //         MatrixType::DualIndex => {}
-    //     }
-    // }
-
     // pub fn sub(&self, other: &Matrix) {
     //     let ptr_self = self.get_dataset();
     //     let ptr_other = other.get_dataset();
@@ -746,44 +721,6 @@ where
     //     );
     // }
 
-    // pub fn iterate(&self) {
-    //     for row in 0..self.rows() {
-    //         for col in 0..self.cols() {
-    //             unsafe {
-    //                 //TODO: This is not a general purpose method
-    //                 //                    println!("val: {:?}", rmd_get!(self.rmd, row, col));
-    //             }
-    //         }
-    //     }
-    // }
-
-    // pub fn get(&self, row: usize, col: usize) -> T {
-    //     match self.m_type {
-    //         MatrixType::ColMajor => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     return cmd_get_t!(self.cmd, row, col);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     return cmd_get!(self.cmd, row, col);
-    //                 }
-    //             }
-    //         }
-    //         _ => {
-    //             if self.is_transpose {
-    //                 unsafe {
-    //                     return rmd_get_t!(self.rmd, row, col);
-    //                 }
-    //             } else {
-    //                 unsafe {
-    //                     return rmd_get!(self.rmd, row, col);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn is_square(&self) -> bool {
         self.is_square
     }
@@ -796,19 +733,13 @@ where
         return self.cols;
     }
 
-    // pub fn col_iter(&self) -> MatrixIterator<T> {
-    //     if self.is_transpose {
-    //         return MatrixIterator::new(&self, IterType::IterRows);
-    //     }
-    //     MatrixIterator::new(&self, IterType::IterCols)
-    // }
+    pub fn col_iter(&self) -> MatrixIterator<T> {
+        MatrixIterator::new(&self, IterType::IterCols)
+    }
 
-    // pub fn row_iter(&self) -> MatrixIterator<T> {
-    //     if self.is_transpose {
-    //         return MatrixIterator::new(&self, IterType::IterCols);
-    //     }
-    //     MatrixIterator::new(&self, IterType::IterRows)
-    // }
+    pub fn row_iter(&self) -> MatrixIterator<T> {
+        MatrixIterator::new(&self, IterType::IterRows)
+    }
 
     pub fn transpose(&mut self) {
         fn_transpose!(self);

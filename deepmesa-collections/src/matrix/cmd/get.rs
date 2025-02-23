@@ -8,13 +8,16 @@ where
     T: MatrixElement,
 {
     fn get(&self, row: usize, col: usize) -> T {
-        match self.is_transpose {
-            true => unsafe {
+        debug_assert!(row < self.rows);
+        debug_assert!(col < self.cols);
+        if self.is_transpose {
+            unsafe {
                 return cmd_get_t!(self, row, col);
-            },
-            false => unsafe {
+            }
+        } else {
+            unsafe {
                 return cmd_get!(self, row, col);
-            },
+            }
         }
     }
 }

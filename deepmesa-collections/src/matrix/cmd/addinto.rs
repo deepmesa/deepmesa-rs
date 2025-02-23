@@ -7,7 +7,8 @@ use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::rmd::macros::*;
 use crate::matrix::simd::kernel::SimdKernel;
 use crate::matrix::simd::traits::SimdAddInto;
-use crate::matrix::traits::{AddInto, Dataset, MatrixElement};
+use crate::matrix::traits::Dataset;
+use crate::matrix::traits::{AddInto, MatrixElement};
 
 impl<T> AddInto<T, RowMajorDataset<T>> for ColMajorDataset<T>
 where
@@ -21,24 +22,24 @@ where
             if result.is_transpose {
                 crate::matrix::cmd::macros::simd_add_into!(cmd_t, val, rmd_t, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    rmd_add_assign_t!(result, row, col, cmd_get_t!(self, row, col) + rhs);
+                    rmd_assign_t!(result, row, col, cmd_get_t!(self, row, col) + rhs);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(cmd_t, val, rmd, self, rhs, result); // SIMD WORKS
                 iterate_row_major!(self, row, col, unsafe {
-                    rmd_add_assign!(result, row, col, cmd_get_t!(self, row, col) + rhs);
+                    rmd_assign!(result, row, col, cmd_get_t!(self, row, col) + rhs);
                 });
             }
         } else {
             if result.is_transpose {
                 crate::matrix::cmd::macros::simd_add_into!(cmd, val, rmd_t, self, rhs, result); //SIMD Works
                 iterate_row_major!(self, row, col, unsafe {
-                    rmd_add_assign_t!(result, row, col, cmd_get!(self, row, col) + rhs);
+                    rmd_assign_t!(result, row, col, cmd_get!(self, row, col) + rhs);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(cmd, val, rmd, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    rmd_add_assign!(result, row, col, cmd_get!(self, row, col) + rhs);
+                    rmd_assign!(result, row, col, cmd_get!(self, row, col) + rhs);
                 });
             }
         }
@@ -57,24 +58,24 @@ where
             if result.is_transpose {
                 crate::matrix::cmd::macros::simd_add_into!(cmd_t, val, cmd_t, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    cmd_add_assign_t!(result, row, col, cmd_get_t!(self, row, col) + rhs);
+                    cmd_assign_t!(result, row, col, cmd_get_t!(self, row, col) + rhs);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(cmd_t, val, cmd, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    cmd_add_assign!(result, row, col, cmd_get_t!(self, row, col) + rhs);
+                    cmd_assign!(result, row, col, cmd_get_t!(self, row, col) + rhs);
                 });
             }
         } else {
             if result.is_transpose {
                 crate::matrix::cmd::macros::simd_add_into!(cmd, val, cmd_t, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    cmd_add_assign_t!(result, row, col, cmd_get!(self, row, col) + rhs);
+                    cmd_assign_t!(result, row, col, cmd_get!(self, row, col) + rhs);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(cmd, val, cmd, self, rhs, result);
                 iterate_row_major!(self, row, col, unsafe {
-                    cmd_add_assign!(result, row, col, cmd_get!(self, row, col) + rhs);
+                    cmd_assign!(result, row, col, cmd_get!(self, row, col) + rhs);
                 });
             }
         }
@@ -102,8 +103,8 @@ where
                 );
                 iterate_row_major!(self, row, col, unsafe {
                     let val = cmd_get_t!(self, row, col) + rhs;
-                    cmd_add_assign_t!(result.cmd, row, col, val);
-                    rmd_add_assign_t!(result.rmd, row, col, val);
+                    cmd_assign_t!(result.cmd, row, col, val);
+                    rmd_assign_t!(result.rmd, row, col, val);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(
@@ -117,8 +118,8 @@ where
                 );
                 iterate_row_major!(self, row, col, unsafe {
                     let val = cmd_get_t!(self, row, col) + rhs;
-                    cmd_add_assign!(result.cmd, row, col, val);
-                    rmd_add_assign!(result.rmd, row, col, val);
+                    cmd_assign!(result.cmd, row, col, val);
+                    rmd_assign!(result.rmd, row, col, val);
                 });
             }
         } else {
@@ -134,8 +135,8 @@ where
                 );
                 iterate_row_major!(self, row, col, unsafe {
                     let val = cmd_get!(self, row, col) + rhs;
-                    cmd_add_assign_t!(result.cmd, row, col, val);
-                    rmd_add_assign_t!(result.rmd, row, col, val);
+                    cmd_assign_t!(result.cmd, row, col, val);
+                    rmd_assign_t!(result.rmd, row, col, val);
                 });
             } else {
                 crate::matrix::cmd::macros::simd_add_into!(
@@ -149,8 +150,8 @@ where
                 );
                 iterate_row_major!(self, row, col, unsafe {
                     let val = cmd_get!(self, row, col) + rhs;
-                    cmd_add_assign!(result.cmd, row, col, val);
-                    rmd_add_assign!(result.rmd, row, col, val);
+                    cmd_assign!(result.cmd, row, col, val);
+                    rmd_assign!(result.rmd, row, col, val);
                 });
             }
         }
@@ -174,7 +175,7 @@ where
                         cmd_t, rmd_t, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -186,7 +187,7 @@ where
                         cmd_t, rmd_t, rmd, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -200,7 +201,7 @@ where
                         cmd_t, rmd, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -210,7 +211,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd_t, rmd, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -226,7 +227,7 @@ where
                         cmd, rmd_t, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -236,7 +237,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd_t, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -248,7 +249,7 @@ where
                 if result.is_transpose {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd, rmd_t, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -258,7 +259,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -288,7 +289,7 @@ where
                         cmd_t, rmd_t, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -300,7 +301,7 @@ where
                         cmd_t, rmd_t, cmd, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -314,7 +315,7 @@ where
                         cmd_t, rmd, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -324,7 +325,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd_t, rmd, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -340,7 +341,7 @@ where
                         cmd, rmd_t, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -350,7 +351,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd_t, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -362,7 +363,7 @@ where
                 if result.is_transpose {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd, cmd_t, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -372,7 +373,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, rmd, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -403,8 +404,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + rmd_get_t!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -412,8 +413,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + rmd_get_t!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             } else {
@@ -429,8 +430,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + rmd_get!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -438,8 +439,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + rmd_get!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             }
@@ -451,8 +452,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + rmd_get_t!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -466,8 +467,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + rmd_get_t!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             } else {
@@ -477,8 +478,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + rmd_get!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -486,8 +487,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + rmd_get!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             }
@@ -512,7 +513,7 @@ where
                         cmd_t, cmd_t, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -524,7 +525,7 @@ where
                         cmd_t, cmd_t, rmd, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -538,7 +539,7 @@ where
                         cmd_t, cmd, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -548,7 +549,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd_t, cmd, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -564,7 +565,7 @@ where
                         cmd, cmd_t, rmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -574,7 +575,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd_t, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -586,7 +587,7 @@ where
                 if result.is_transpose {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd, rmd_t, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign_t!(
+                        rmd_assign_t!(
                             result,
                             row,
                             col,
@@ -596,7 +597,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd, rmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        rmd_add_assign!(
+                        rmd_assign!(
                             result,
                             row,
                             col,
@@ -626,7 +627,7 @@ where
                         cmd_t, cmd_t, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -638,7 +639,7 @@ where
                         cmd_t, cmd_t, cmd, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -652,7 +653,7 @@ where
                         cmd_t, cmd, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -662,7 +663,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd_t, cmd, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -678,7 +679,7 @@ where
                         cmd, cmd_t, cmd_t, self, rhs, result
                     );
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -688,7 +689,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd_t, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -700,7 +701,7 @@ where
                 if result.is_transpose {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd, cmd_t, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign_t!(
+                        cmd_assign_t!(
                             result,
                             row,
                             col,
@@ -710,7 +711,7 @@ where
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(cmd, cmd, cmd, self, rhs, result);
                     iterate_row_major!(self, row, col, unsafe {
-                        cmd_add_assign!(
+                        cmd_assign!(
                             result,
                             row,
                             col,
@@ -747,8 +748,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + cmd_get_t!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -762,8 +763,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + cmd_get_t!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             } else {
@@ -773,8 +774,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + cmd_get!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -782,8 +783,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get_t!(self, row, col) + cmd_get!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             }
@@ -795,8 +796,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + cmd_get_t!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -804,8 +805,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + cmd_get_t!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             } else {
@@ -815,8 +816,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + cmd_get!(rhs, row, col);
-                        cmd_add_assign_t!(result.cmd, row, col, val);
-                        rmd_add_assign_t!(result.rmd, row, col, val);
+                        cmd_assign_t!(result.cmd, row, col, val);
+                        rmd_assign_t!(result.rmd, row, col, val);
                     });
                 } else {
                     crate::matrix::cmd::macros::simd_add_into!(
@@ -830,8 +831,8 @@ where
                     );
                     iterate_row_major!(self, row, col, unsafe {
                         let val = cmd_get!(self, row, col) + cmd_get!(rhs, row, col);
-                        cmd_add_assign!(result.cmd, row, col, val);
-                        rmd_add_assign!(result.rmd, row, col, val);
+                        cmd_assign!(result.cmd, row, col, val);
+                        rmd_assign!(result.rmd, row, col, val);
                     });
                 }
             }
@@ -890,7 +891,7 @@ mod tests {
 
     macro_rules! lhs {
         (cmd, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t, 2, 3, $simd], 5,6,7;8,9,10);
+            col_major_dataset!([$t, 2, 3, $simd], 5,6,7;8,9,10)
         };
         (cmd_t, $simd:ident, $t:ty) => {
             {
@@ -903,7 +904,7 @@ mod tests {
 
     macro_rules! rhs {
         (rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t,2,3, $simd], 12,13,14;15,16,17);
+            row_major_dataset!([$t,2,3, $simd], 12,13,14;15,16,17)
         };
         (cmd, $simd:ident, $t:ty) => {
             {
@@ -913,7 +914,7 @@ mod tests {
             }
         };
         (did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t,2,3,false], 12,13,14;15,16,17);
+            dual_index_dataset!([$t,2,3,false], 12,13,14;15,16,17)
         };
         (rmd_t, $simd:ident, $t:ty) => {
             {
@@ -923,7 +924,7 @@ mod tests {
             }
         };
         (cmd_t, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t,2,3, false], 12,13,14;15,16,17);
+            col_major_dataset!([$t,2,3, false], 12,13,14;15,16,17)
         };
         (did_t, $simd:ident, $t:ty) => {
             {
@@ -936,7 +937,7 @@ mod tests {
 
     macro_rules! out {
         (rmd, $simd:ident, $t:ty) => {
-            RowMajorDataset::<$t>::new(2, 3, $simd, $simd);
+            RowMajorDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (rmd_t, $simd:ident, $t:ty) => {{
             let mut rmd = RowMajorDataset::<$t>::new(3, 2, $simd, $simd);
@@ -944,7 +945,7 @@ mod tests {
             rmd
         }};
         (cmd, $simd:ident, $t:ty) => {
-            ColMajorDataset::<$t>::new(2, 3, $simd, $simd);
+            ColMajorDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (cmd_t, $simd:ident, $t:ty) => {{
             let mut cmd = ColMajorDataset::<$t>::new(3, 2, $simd, $simd);
@@ -952,7 +953,7 @@ mod tests {
             cmd
         }};
         (did, $simd:ident, $t:ty) => {
-            DualIndexDataset::<$t>::new(2, 3, $simd, $simd);
+            DualIndexDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (did_t, $simd:ident, $t:ty) => {{
             let mut did = DualIndexDataset::<$t>::new(3, 2, $simd, $simd);
@@ -963,7 +964,7 @@ mod tests {
 
     macro_rules! result {
         (rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            row_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (rmd_t, $simd:ident, $t:ty) => {
             {
@@ -973,7 +974,7 @@ mod tests {
             }
         };
         (did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            dual_index_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (did_t, $simd:ident, $t:ty) => {
             {
@@ -983,7 +984,7 @@ mod tests {
             }
         };
         (cmd, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            col_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (cmd_t, $simd:ident, $t:ty) => {
             {
@@ -994,7 +995,7 @@ mod tests {
         };
         //5 6 7 8 9 10
         (val, rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            row_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, rmd_t, $simd:ident, $t:ty) => {
             {
@@ -1004,7 +1005,7 @@ mod tests {
             }
         };
         (val, did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            dual_index_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, did_t, $simd:ident, $t:ty) => {
             {
@@ -1014,7 +1015,7 @@ mod tests {
             }
         };
         (val, cmd, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            col_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, cmd_t, $simd:ident, $t:ty) => {
             {

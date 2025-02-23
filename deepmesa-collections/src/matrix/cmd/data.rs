@@ -173,18 +173,18 @@ where
         return self.simd_enabled;
     }
 
-    #[inline(always)]
-    fn get(&self, row: usize, col: usize) -> T {
-        if self.is_transpose {
-            unsafe {
-                return cmd_get_t!(self, row, col);
-            }
-        } else {
-            unsafe {
-                return cmd_get!(self, row, col);
-            }
-        }
-    }
+    // #[inline(always)]
+    // fn get(&self, row: usize, col: usize) -> T {
+    //     if self.is_transpose {
+    //         unsafe {
+    //             return cmd_get_t!(self, row, col);
+    //         }
+    //     } else {
+    //         unsafe {
+    //             return cmd_get!(self, row, col);
+    //         }
+    //     }
+    // }
 }
 
 impl<T> Drop for ColMajorDataset<T>

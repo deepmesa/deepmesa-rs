@@ -179,7 +179,7 @@ mod tests {
 
     macro_rules! lhs {
         (did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t, 2, 3, $simd], 5,6,7;8,9,10);
+            dual_index_dataset!([$t, 2, 3, $simd], 5,6,7;8,9,10)
         };
         (did_t, $simd:ident, $t:ty) => {
             {
@@ -192,7 +192,7 @@ mod tests {
 
     macro_rules! rhs {
         (rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t,2,3, $simd], 12,13,14;15,16,17);
+            row_major_dataset!([$t,2,3, $simd], 12,13,14;15,16,17)
         };
         (cmd, $simd:ident, $t:ty) => {
             {
@@ -202,7 +202,7 @@ mod tests {
             }
         };
         (did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t,2,3,false], 12,13,14;15,16,17);
+            dual_index_dataset!([$t,2,3,false], 12,13,14;15,16,17)
         };
         (rmd_t, $simd:ident, $t:ty) => {
             {
@@ -212,7 +212,7 @@ mod tests {
             }
         };
         (cmd_t, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t,2,3, false], 12,13,14;15,16,17);
+            col_major_dataset!([$t,2,3, false], 12,13,14;15,16,17)
         };
         (did_t, $simd:ident, $t:ty) => {
             {
@@ -225,7 +225,7 @@ mod tests {
 
     macro_rules! out {
         (rmd, $simd:ident, $t:ty) => {
-            RowMajorDataset::<$t>::new(2, 3, $simd, $simd);
+            RowMajorDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (rmd_t, $simd:ident, $t:ty) => {{
             let mut rmd = RowMajorDataset::<$t>::new(3, 2, $simd, $simd);
@@ -233,7 +233,7 @@ mod tests {
             rmd
         }};
         (cmd, $simd:ident, $t:ty) => {
-            ColMajorDataset::<$t>::new(2, 3, $simd, $simd);
+            ColMajorDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (cmd_t, $simd:ident, $t:ty) => {{
             let mut cmd = ColMajorDataset::<$t>::new(3, 2, $simd, $simd);
@@ -241,7 +241,7 @@ mod tests {
             cmd
         }};
         (did, $simd:ident, $t:ty) => {
-            DualIndexDataset::<$t>::new(2, 3, $simd, $simd);
+            DualIndexDataset::<$t>::new(2, 3, $simd, $simd)
         };
         (did_t, $simd:ident, $t:ty) => {{
             let mut did = DualIndexDataset::<$t>::new(3, 2, $simd, $simd);
@@ -252,7 +252,7 @@ mod tests {
 
     macro_rules! result {
         (rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            row_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (rmd_t, $simd:ident, $t:ty) => {
             {
@@ -262,7 +262,7 @@ mod tests {
             }
         };
         (did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            dual_index_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (did_t, $simd:ident, $t:ty) => {
             {
@@ -272,7 +272,7 @@ mod tests {
             }
         };
         (cmd, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27);
+            col_major_dataset!([$t, 2, 3, $simd], 17,19,21;23,25,27)
         };
         (cmd_t, $simd:ident, $t:ty) => {
             {
@@ -281,9 +281,8 @@ mod tests {
                 cmd
             }
         };
-        //5 6 7 8 9 10
         (val, rmd, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            row_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, rmd_t, $simd:ident, $t:ty) => {
             {
@@ -293,7 +292,7 @@ mod tests {
             }
         };
         (val, did, $simd:ident, $t:ty) => {
-            dual_index_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            dual_index_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, did_t, $simd:ident, $t:ty) => {
             {
@@ -303,7 +302,7 @@ mod tests {
             }
         };
         (val, cmd, $simd:ident, $t:ty) => {
-            col_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17);
+            col_major_dataset!([$t, 2, 3, $simd], 12,13,14;15,16,17)
         };
         (val, cmd_t, $simd:ident, $t:ty) => {
             {

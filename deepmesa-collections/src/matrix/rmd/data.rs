@@ -173,19 +173,6 @@ where
     fn is_simd_enabled(&self) -> bool {
         return self.simd_enabled;
     }
-
-    #[inline(always)]
-    fn get(&self, row: usize, col: usize) -> T {
-        if self.is_transpose {
-            unsafe {
-                return rmd_get_t!(self, row, col);
-            }
-        } else {
-            unsafe {
-                return rmd_get!(self, row, col);
-            }
-        }
-    }
 }
 
 impl<T> Drop for RowMajorDataset<T>

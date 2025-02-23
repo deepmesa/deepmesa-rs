@@ -58,8 +58,8 @@ where
         return DualIndexDataset::new(
             dataset.rows,
             dataset.cols,
-            dataset.is_simd_optimized(),
-            dataset.is_simd_enabled(),
+            dataset.rmd.simd_optimized,
+            dataset.rmd.simd_enabled,
         );
     }
 
@@ -150,18 +150,18 @@ where
         return self.rmd.simd_enabled;
     }
 
-    #[inline(always)]
-    fn get(&self, row: usize, col: usize) -> T {
-        if self.is_transpose {
-            unsafe {
-                return rmd_get_t!(self.rmd, row, col);
-            }
-        } else {
-            unsafe {
-                return rmd_get!(self.rmd, row, col);
-            }
-        }
-    }
+    // #[inline(always)]
+    // fn get(&self, row: usize, col: usize) -> T {
+    //     if self.is_transpose {
+    //         unsafe {
+    //             return rmd_get_t!(self.rmd, row, col);
+    //         }
+    //     } else {
+    //         unsafe {
+    //             return rmd_get!(self.rmd, row, col);
+    //         }
+    //     }
+    // }
 }
 
 impl<T> Debug for DualIndexDataset<T>

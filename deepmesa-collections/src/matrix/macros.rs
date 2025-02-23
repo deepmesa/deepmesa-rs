@@ -68,6 +68,19 @@ macro_rules! iterate_col_major {
     };
 }
 
+macro_rules! iterate_matmul {
+    ($lhs:ident, $rhs:ident, $row:ident, $col:ident, $idx: ident, $e_inner:expr, $e_outer:expr) => {
+        for $row in 0..$lhs.rows {
+            for $col in 0..$rhs.cols {
+                for $idx in 0..$lhs.cols {
+                    $e_inner
+                }
+                $e_outer
+            }
+        }
+    };
+}
+
 macro_rules! bounds_check_row {
     ($row:ident, $self:ident) => {
         if $row >= $self.rows {

@@ -7,6 +7,8 @@ where
     T: MatrixElement,
 {
     fn get(&self, row: usize, col: usize) -> T {
+        debug_assert!(row < self.rows);
+        debug_assert!(col < self.cols);
         return self.rmd.get(row, col);
     }
 }

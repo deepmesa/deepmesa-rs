@@ -184,7 +184,7 @@ mod tests {
             row_major_dataset!([$t, 2, 3, $simd], 7,9,11;13,15,17)
         };
         (val, $simd:ident, $t:ty) => {
-            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9);
+            row_major_dataset!([$t, 2, 3, $simd], 4,5,6;7,8,9)
         };
     }
 
