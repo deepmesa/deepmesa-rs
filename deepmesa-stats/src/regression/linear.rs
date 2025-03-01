@@ -1,10 +1,10 @@
 use crate::regression::traits::OrdinaryLeastSquares;
-use deepmesa_collections::matrix::matmul::MatrixMultiply;
-use deepmesa_collections::matrix::matrix::Matrix;
-use deepmesa_collections::matrix::matrix::MatrixType;
-use deepmesa_collections::matrix::traits::MatrixElement;
-use deepmesa_collections::matrix::vector::Vector;
-use deepmesa_collections::matrix::vector::VectorType;
+use deepmesa_matrix::matrix::matmul::MatrixMultiply;
+use deepmesa_matrix::matrix::matrix::Matrix;
+use deepmesa_matrix::matrix::matrix::MatrixType;
+use deepmesa_matrix::matrix::traits::MatrixElement;
+use deepmesa_matrix::matrix::vector::Vector;
+use deepmesa_matrix::matrix::vector::VectorType;
 
 pub struct LinearRegression<'a, T>
 where

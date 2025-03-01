@@ -3,7 +3,7 @@ pub(in crate::matrix) mod macros;
 pub(in crate::matrix) mod cmd;
 pub(in crate::matrix) mod did;
 pub(in crate::matrix) mod rmd;
-pub(in crate::matrix) mod simd;
+pub mod simd;
 
 pub mod iter;
 pub mod matmul;

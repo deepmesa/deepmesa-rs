@@ -1,6 +1,9 @@
 
 all: build test doc
 
+run: build
+    @./target/debug/deepmesa
+
 build:
     @cargo build --all
 
@@ -23,8 +26,9 @@ build:
 #     cargo test --package deepmesa-collections matrix::tests::rmm_new_tests -- --nocapture
 #     cargo test --package deepmesa-collections matrix::tests::di_new_tests -- --nocapture
 #     cargo test --package deepmesa-collections matrix::vector::tests::test_dot_product -- --nocapture
+#     @cargo test --package deepmesa-collections matrix -- --nocapture
 test $RUST_BACKTRACE="1":
-    @cargo test --package deepmesa-collections matrix -- --nocapture
+    @cargo test --package deepmesa-matrix matrix -- --nocapture
 
 doc:
     @cargo doc --no-deps --all

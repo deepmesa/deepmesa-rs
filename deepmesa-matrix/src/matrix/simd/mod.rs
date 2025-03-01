@@ -4,7 +4,7 @@ pub(in crate::matrix) mod traits;
 pub(in crate::matrix) mod vecbuf;
 
 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-pub(in crate::matrix) mod neon;
+pub mod neon;
 
 pub(in crate::matrix) fn simd_align<T>(stride: usize, simd_vec_size: usize) -> usize {
     //lanes per vector

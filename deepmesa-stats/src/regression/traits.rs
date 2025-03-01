@@ -1,4 +1,4 @@
-use deepmesa_collections::matrix::vector::Vector;
+use deepmesa_matrix::matrix::vector::Vector;
 
 pub trait OrdinaryLeastSquares {
     fn ols(&self) -> Vector<f64>;

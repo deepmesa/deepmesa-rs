@@ -1,5 +1,6 @@
 pub(in crate::matrix::simd::neon) mod addassign;
 pub(in crate::matrix::simd::neon) mod addinto;
+pub mod gemm;
 pub(in crate::matrix::simd) mod kernel;
 pub(in crate::matrix::simd::neon) mod mulassign;
 pub(in crate::matrix::simd::neon) mod mulinto;

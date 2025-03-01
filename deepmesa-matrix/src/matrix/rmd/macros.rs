@@ -14,7 +14,7 @@ macro_rules! debug_assert_rmd_t {
 }
 pub(in crate::matrix) use debug_assert_rmd_t;
 
-#[cfg(test)]
+//#[cfg(test)]
 macro_rules! row_major_dataset {
     ([$t:ty, $r:literal,$c:literal, $simd:ident], $($($x:literal),*);*) => {
         {
@@ -28,7 +28,7 @@ macro_rules! row_major_dataset {
     }
 }
 
-#[cfg(test)]
+//#[cfg(test)]
 pub(in crate::matrix) use row_major_dataset;
 
 macro_rules! simd_add_assign {
