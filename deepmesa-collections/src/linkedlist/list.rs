@@ -229,6 +229,13 @@ pub struct LinkedList<T> {
     pub(super) tail: *mut InternalNode<T>,
     len: usize,
     fl: fl::FreeList<T>,
+    pub(super) drop_policy: DropPolicy,
+}
+
+#[derive(Debug)]
+pub enum DropPolicy {
+    None,
+    PanicSafe,
 }
 
 fn inc_cid() -> usize {
@@ -257,6 +264,7 @@ impl<T> LinkedList<T> {
             head: ptr::null_mut(),
             tail: ptr::null_mut(),
             fl: fl::FreeList::new(8),
+            drop_policy: DropPolicy::None,
         }
     }
 
@@ -307,7 +315,12 @@ impl<T> LinkedList<T> {
             head: ptr::null_mut(),
             tail: ptr::null_mut(),
             fl: fl::FreeList::new(capacity),
+            drop_policy: DropPolicy::None,
         }
+    }
+
+    pub fn set_drop_policy(&mut self, drop_policy: DropPolicy) {
+        self.drop_policy = drop_policy;
     }
 
     /// Returns a bidirectional iterator over the list

@@ -2,6 +2,7 @@
 
 /// Data structures that implement various collections that are
 /// designed for performance
+#[cfg(feature = "collections")]
 pub mod collections {
     pub use deepmesa_collections::linkedlist::list::LinkedList;
     /// This module contains structs specific to the [`LinkedList`]
@@ -55,6 +56,7 @@ pub mod collections {
 }
 
 /// A collection of encoding and decoding algorithms
+#[cfg(feature = "encoding")]
 pub mod encoding {
     pub use deepmesa_encoding::prefix::unary::UnaryDecoder;
     pub use deepmesa_encoding::prefix::unary::UnaryEncoder;

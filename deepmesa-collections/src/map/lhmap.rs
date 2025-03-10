@@ -1018,7 +1018,7 @@ mod tests {
 
     #[test]
     fn test_foo() {
-        use deepmesa::collections::map::Entry;
+        use crate::map::entry::Entry;
         pub fn evict<K, V>(len: usize, capacity: usize, _e: &Entry<K, V>) -> bool {
             if len > capacity {
                 return true;
@@ -1026,8 +1026,8 @@ mod tests {
             return false;
         }
 
-        use deepmesa::collections::map::Order;
-        use deepmesa::collections::LinkedHashMap;
+        use crate::map::entry::Order;
+        use crate::map::lhmap::LinkedHashMap;
 
         let mut lhm = LinkedHashMap::<u16, &str>::new(2, Order::AccessOrder, Some(evict));
         lhm.put(1, "a");

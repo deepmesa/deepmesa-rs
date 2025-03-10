@@ -1,3 +1,4 @@
+#![allow(warnings)]
 pub mod bitvec;
 pub(crate) mod fl;
 pub mod linkedlist;
