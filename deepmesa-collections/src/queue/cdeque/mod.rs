@@ -1,52 +1,15 @@
 //queue implmentation backed by contiguous memory
+pub(in crate::queue::cdeque) mod macros;
+pub(in crate::queue::cdeque) mod traits;
+
 extern crate alloc;
+use crate::queue::cdeque::macros::*;
 use alloc::alloc::alloc_zeroed;
 use alloc::alloc::dealloc;
 use alloc::alloc::Layout;
 use core::ptr;
 use std::fmt::Debug;
-use std::ops::Index;
-use std::ops::IndexMut;
 use std::ptr::null_mut;
-
-macro_rules! bounds_check {
-    ($self:ident, $idx:ident, $e:expr) => {
-        if $idx >= $self.len {
-            $e;
-        }
-    };
-}
-
-macro_rules! bounds_check_panic {
-    ($self:ident, $idx:ident, $i:literal) => {
-        bounds_check!(
-            $self,
-            $idx,
-            panic!("index out of bounds: {}={}, len={}", $i, $idx, $self.len)
-        );
-    };
-    ($self:ident, $idx:ident) => {
-        bounds_check!(
-            $self,
-            $idx,
-            panic!("index out of bounds: index={}, len={}", $idx, $self.len)
-        );
-    };
-}
-
-macro_rules! bounds_check_none {
-    ($self:ident, $idx:ident) => {
-        bounds_check!($self, $idx, return None);
-    };
-}
-
-macro_rules! len_zero_none {
-    ($self:ident) => {
-        if $self.len == 0 {
-            return None;
-        }
-    };
-}
 
 macro_rules! cdeque {
     () => {
@@ -149,19 +112,22 @@ macro_rules! dec_tail {
 }
 
 impl<T> CircularDeque<T> {
-    //    pub fn shrink_to_fit(&mut self) {}
-    //    pub fn shrink_to(&mut self, min_capacity: usize) {}
     //    pub fn iter(&self) -> Iter<'_, T> {}
     //    pub fn iter_mut(&mut self) -> IterMut<'_, T> {}
     //    pub fn range<R>(&self, range: R) -> Iter<'_, T>}
     //    pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>}
+
+    //    pub fn shrink_to_fit(&mut self) {}
+    //    pub fn shrink_to(&mut self, min_capacity: usize) {}
     //    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>}
+
     //    pub fn split_off(&mut self, at: usize) -> Self{}
     //    pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {}
+    //    pub fn resize(&mut self, new_len: usize, value: T) {}
+
     //    pub fn make_contiguous(&mut self) -> &mut [T] {}
     //    pub fn rotate_right(&mut self, n: usize) {}
     //    pub fn partition_point<P>(&self, mut pred: P) -> usize}
-    //    pub fn resize(&mut self, new_len: usize, value: T) {}
 
     pub fn new() -> CircularDeque<T> {
         return CircularDeque {
@@ -600,26 +566,6 @@ impl<T> CircularDeque<T> {
     }
 }
 
-impl<T> Index<usize> for CircularDeque<T> {
-    type Output = T;
-
-    #[inline]
-    fn index(&self, index: usize) -> &T {
-        bounds_check_panic!(self, index);
-        let ptr = self.ptr_at(index);
-        unsafe {
-            return &(*ptr);
-        }
-    }
-}
-
-impl<T> IndexMut<usize> for CircularDeque<T> {
-    #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut T {
-        return self.get_mut(index).unwrap();
-    }
-}
-
 impl<T: Debug> CircularDeque<T> {
     pub fn rotate_left(&mut self, n: usize) {
         if self.len == 0 || n == self.len || n == 0 {
@@ -860,67 +806,6 @@ where
             }
         }
         return false;
-    }
-}
-
-use std::cmp::PartialEq;
-
-impl<T> Eq for CircularDeque<T> where T: Eq + Debug {}
-impl<T> PartialEq<CircularDeque<T>> for CircularDeque<T>
-where
-    T: PartialEq,
-{
-    fn eq(&self, other: &CircularDeque<T>) -> bool {
-        if self.len != other.len {
-            return false;
-        }
-
-        let mut idx: usize = 0;
-        loop {
-            if idx >= self.len() {
-                break;
-            }
-
-            unsafe {
-                let val = &*self.ptr_at(idx);
-                let val_rhs = &*other.ptr_at(idx);
-
-                if val.ne(&val_rhs) {
-                    return false;
-                }
-                idx += 1;
-            }
-        }
-
-        return true;
-    }
-}
-
-impl<T: Debug> Debug for CircularDeque<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{},{}]:", self.len(), self.capacity())?;
-        let mut idx: usize = 0;
-        if self.len == 0 {
-            write!(f, "()")?;
-            return Ok(());
-        }
-
-        loop {
-            unsafe {
-                let val = &*self.ptr_at(idx);
-                if idx < self.len - 1 {
-                    write!(f, "{:?},", val);
-                } else if idx == self.len - 1 {
-                    write!(f, "{:?}", val);
-                    break;
-                } else {
-                    break;
-                }
-
-                idx += 1;
-            }
-        }
-        return Ok(());
     }
 }
 
