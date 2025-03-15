@@ -142,7 +142,7 @@ macro_rules! iter_reverse {
 }
 
 impl<'a, T> Iter<'a, T> {
-    pub(crate) fn new(list: &'a LinkedList<T>) -> Iter<T> {
+    pub(crate) fn new(list: &'a LinkedList<T>) -> Iter<'a, T> {
         Iter {
             list,
             cursor: list.head_node(),
@@ -154,7 +154,7 @@ impl<'a, T> Iter<'a, T> {
 }
 
 impl<'a, T> IterMut<'a, T> {
-    pub(crate) fn new(list: &'a mut LinkedList<T>) -> IterMut<T> {
+    pub(crate) fn new(list: &'a mut LinkedList<T>) -> IterMut<'a, T> {
         IterMut {
             cursor: list.head_node(),
             list,

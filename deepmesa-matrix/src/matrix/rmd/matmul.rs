@@ -1,5 +1,6 @@
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::did::data::DualIndexDataset;
+use crate::matrix::macros::*;
 use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::rmd::macros::*;
 use crate::matrix::traits::MatMul;

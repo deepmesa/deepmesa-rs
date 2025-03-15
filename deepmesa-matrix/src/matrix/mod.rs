@@ -1,7 +1,8 @@
-#[macro_use]
-pub(in crate::matrix) mod macros;
+pub(in crate::matrix) mod cm;
 pub(in crate::matrix) mod cmd;
 pub(in crate::matrix) mod did;
+pub(in crate::matrix) mod macros;
+pub(in crate::matrix) mod rm;
 pub(in crate::matrix) mod rmd;
 pub mod simd;
 

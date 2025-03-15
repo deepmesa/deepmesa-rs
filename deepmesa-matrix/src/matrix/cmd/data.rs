@@ -1,5 +1,6 @@
 use crate::matrix::alloc_mem;
 use crate::matrix::cmd::macros::*;
+use crate::matrix::macros::*;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
 use crate::matrix::traits::Dataset;

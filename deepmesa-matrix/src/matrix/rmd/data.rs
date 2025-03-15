@@ -1,4 +1,5 @@
 use crate::matrix::alloc_mem;
+use crate::matrix::macros::*;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
 use crate::matrix::traits::Dataset;
@@ -54,7 +55,6 @@ where
             dataset.simd_enabled,
         );
     }
-
     pub(in crate::matrix) fn standard(
         rows: usize,
         cols: usize,
@@ -195,7 +195,7 @@ where
             limit = self.cols;
             write!(
                 f,
-                "[RMD/t:<{}>:{}x{}]:",
+                "\n[RMD/t:<{}>:{}x{}]:\n",
                 std::any::type_name::<T>(),
                 self.cols,
                 self.row_stride
@@ -204,7 +204,7 @@ where
             limit = self.rows;
             write!(
                 f,
-                "[RMD:<{}>:{}x{}]:",
+                "\n[RMD:<{}>:{}x{}]:\n",
                 std::any::type_name::<T>(),
                 self.rows,
                 self.row_stride
@@ -215,11 +215,11 @@ where
             for col in 0..self.row_stride {
                 write!(f, "{:.*?}", precision, unsafe { rmd_get!(self, row, col) })?;
                 if col < self.row_stride - 1 {
-                    write!(f, ",")?;
+                    write!(f, ", ")?;
                 }
             }
             if row < limit - 1 {
-                write!(f, ";")?;
+                write!(f, ";\n")?;
             }
         }
 

@@ -1,3 +1,4 @@
+use crate::matrix::macros::*;
 use crate::matrix::matrix::{Matrix, MatrixData};
 use crate::matrix::ops::macros::dispatch_mut;
 use crate::matrix::traits::{MatrixElement, Set};

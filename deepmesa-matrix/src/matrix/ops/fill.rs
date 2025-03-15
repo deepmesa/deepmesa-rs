@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::matrix::cmd::data::ColMajorDataset;
+use crate::matrix::macros::*;
 use crate::matrix::matrix::Matrix;
 use crate::matrix::matrix::MatrixData;
 use crate::matrix::matrix::MatrixDimension;

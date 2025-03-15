@@ -89,7 +89,6 @@ pub trait MatrixElementType {
 
 pub trait MatrixElement:
     Sized + Default + PartialEq + Copy + Clone + Display + Debug + MatrixElementType
-//+ SimdOperation
 {
     type Output;
     fn abs(self) -> Self;

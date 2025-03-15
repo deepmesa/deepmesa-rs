@@ -13,6 +13,7 @@ use crate::matrix::ops::macros::dispatch_mut;
 use crate::matrix::cmd::data::ColMajorDataset;
 use crate::matrix::did::data::DualIndexDataset;
 use crate::matrix::iter::{IterType, MatrixIterator};
+use crate::matrix::macros::*;
 use crate::matrix::rmd::data::RowMajorDataset;
 use crate::matrix::traits::Dataset;
 use crate::matrix::traits::FillRow;
@@ -40,7 +41,7 @@ macro_rules! matrix {
             $(
                 m.fill_row(row, &[$($x as $t,)*][..]);
                 row += 1;
-            )* m
+            ::cm)* m
         }
     };
     (di, [$t:ty, $r:literal, $c:literal], $($($x:literal),*);*) => {

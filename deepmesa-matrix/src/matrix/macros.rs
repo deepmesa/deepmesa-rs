@@ -7,6 +7,35 @@ macro_rules! fn_transpose {
     };
 }
 
+pub(in crate::matrix) use fn_transpose;
+
+macro_rules! impl_simd_fn {
+    ($self:ident) => {
+        #[inline(always)]
+        fn is_simd_enabled(&$self) -> bool {
+            return $self.simd_enabled;
+        }
+
+        fn use_simd(&$self) -> bool {
+            if !$self.is_simd_enabled() {
+                return false;
+            }
+
+            #[cfg(target_arch = "aarch64")]
+            {
+                use std::arch::is_aarch64_feature_detected;
+                if is_aarch64_feature_detected!("neon") {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    };
+}
+
+pub(in crate::matrix) use impl_simd_fn;
+
 macro_rules! shape_check {
     ($self:ident, $rhs:ident) => {
         if $self.rows != $rhs.rows {
@@ -24,6 +53,8 @@ macro_rules! shape_check {
     };
 }
 
+pub(in crate::matrix) use shape_check;
+
 macro_rules! iterate {
     ($self:ident, $idx:ident, $max:ident, $e:expr) => {
         for $idx in 0..$max {
@@ -31,6 +62,8 @@ macro_rules! iterate {
         }
     };
 }
+
+pub(in crate::matrix) use iterate;
 
 macro_rules! iterate_rows {
     ($self:ident, $row:ident, $e:expr) => {
@@ -40,6 +73,8 @@ macro_rules! iterate_rows {
     };
 }
 
+pub(in crate::matrix) use iterate_rows;
+
 macro_rules! iterate_cols {
     ($self:ident, $col:ident, $e:expr) => {
         for $col in 0..$self.cols {
@@ -47,6 +82,8 @@ macro_rules! iterate_cols {
         }
     };
 }
+
+pub(in crate::matrix) use iterate_cols;
 
 macro_rules! iterate_row_major {
     ($self:expr, $row:ident, $col:ident, $e:expr) => {
@@ -58,6 +95,8 @@ macro_rules! iterate_row_major {
     };
 }
 
+pub(in crate::matrix) use iterate_row_major;
+
 macro_rules! iterate_col_major {
     ($self:ident, $row:ident, $col:ident, $e:expr) => {
         for $col in 0..$self.cols {
@@ -67,6 +106,8 @@ macro_rules! iterate_col_major {
         }
     };
 }
+
+pub(in crate::matrix) use iterate_col_major;
 
 macro_rules! iterate_matmul {
     ($lhs:ident, $rhs:ident, $row:ident, $col:ident, $idx: ident, $e_inner:expr, $e_outer:expr) => {
@@ -81,6 +122,8 @@ macro_rules! iterate_matmul {
     };
 }
 
+pub(in crate::matrix) use iterate_matmul;
+
 macro_rules! bounds_check_row {
     ($row:ident, $self:ident) => {
         if $row >= $self.rows {
@@ -89,6 +132,8 @@ macro_rules! bounds_check_row {
     };
 }
 
+pub(in crate::matrix) use bounds_check_row;
+
 macro_rules! bounds_check_col {
     ($col:ident, $self:ident) => {
         if $col >= $self.cols {
@@ -96,6 +141,8 @@ macro_rules! bounds_check_col {
         }
     };
 }
+
+pub(in crate::matrix) use bounds_check_col;
 
 macro_rules! bounds_check_len {
     ($len:expr, $self:ident) => {
@@ -107,3 +154,5 @@ macro_rules! bounds_check_len {
         }
     };
 }
+
+pub(in crate::matrix) use bounds_check_len;
