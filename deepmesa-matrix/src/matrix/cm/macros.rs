@@ -2,10 +2,10 @@ macro_rules! matrix_cm {
     ([$t:ty, $r:literal,$c:literal, $simd: ident], $($($x:literal),*);*) => {
         {
             let mut m = MatrixColMajor::<$t>::new($r, $c, $simd);
-            let mut row = 0;
+            let mut col = 0;
             $(
-                m.fill_row(row, &[$($x as $t,)*][..]);
-                row += 1;
+                m.fill_column(col, &[$($x as $t,)*][..]);
+                col += 1;
             )* m
         }
     }

@@ -1,3 +1,4 @@
+use crate::matrix::macros::*;
 use crate::matrix::rm::MatrixRowMajor;
 use crate::matrix::traits::MatrixElement;
 use crate::matrix::traits::MulInto;
@@ -21,6 +22,7 @@ where
 {
     type Output = MatrixRowMajor<T>;
     fn mul(mut self, rhs: &MatrixRowMajor<T>) -> MatrixRowMajor<T> {
+        shape_check!(self, rhs);
         self.mul_assign(rhs);
         return self;
     }
@@ -44,6 +46,7 @@ where
 {
     type Output = MatrixRowMajor<T>;
     fn mul(self, rhs: &MatrixRowMajor<T>) -> MatrixRowMajor<T> {
+        shape_check!(self, rhs);
         let mut result = MatrixRowMajor::from(&self);
         self.mul_into(rhs, &mut result);
         return result;
@@ -53,7 +56,6 @@ where
 #[cfg(test)]
 mod tests {
 
-    use crate::matrix::matrix::*;
     use crate::matrix::rm::macros::*;
     use crate::matrix::rm::*;
     use crate::matrix::traits::*;

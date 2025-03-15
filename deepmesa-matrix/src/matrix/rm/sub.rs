@@ -1,3 +1,4 @@
+use crate::matrix::macros::shape_check;
 use crate::matrix::rm::MatrixRowMajor;
 use crate::matrix::traits::MatrixElement;
 use crate::matrix::traits::SubInto;
@@ -21,6 +22,7 @@ where
 {
     type Output = MatrixRowMajor<T>;
     fn sub(mut self, rhs: &MatrixRowMajor<T>) -> MatrixRowMajor<T> {
+        shape_check!(self, rhs);
         self.sub_assign(rhs);
         return self;
     }
@@ -44,6 +46,7 @@ where
 {
     type Output = MatrixRowMajor<T>;
     fn sub(self, rhs: &MatrixRowMajor<T>) -> MatrixRowMajor<T> {
+        shape_check!(self, rhs);
         let mut result = MatrixRowMajor::from(&self);
         self.sub_into(rhs, &mut result);
         return result;

@@ -2,7 +2,6 @@ use crate::matrix::macros::*;
 use crate::matrix::rm::macros::*;
 use crate::matrix::rm::MatrixRowMajor;
 use crate::matrix::simd::traits::SimdMulInto;
-use crate::matrix::traits::Dataset;
 use crate::matrix::traits::{MatrixElement, MulInto};
 
 use crate::matrix::simd::kernel::SimdKernel;
@@ -12,9 +11,7 @@ where
     T: MatrixElement + std::ops::MulAssign + std::ops::Mul<Output = T>,
 {
     fn mul_into(&self, rhs: T, result: &mut MatrixRowMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-
+        shape_check!(self, result);
         if self.is_transpose {
             if result.is_transpose {
                 crate::matrix::rm::macros::simd_mul_into!(rm_t, val, rm_t, self, rhs, result);
@@ -48,11 +45,8 @@ where
     T: MatrixElement + std::ops::MulAssign + std::ops::Mul<Output = T>,
 {
     fn mul_into(&self, rhs: &MatrixRowMajor<T>, result: &mut MatrixRowMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
-
+        shape_check!(self, rhs);
+        shape_check!(self, result);
         if self.is_transpose {
             if rhs.is_transpose {
                 if result.is_transpose {

@@ -35,9 +35,7 @@ where
     T: MatrixElement + std::ops::SubAssign,
 {
     fn sub_assign(&mut self, rhs: &MatrixRowMajor<T>) {
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
-
+        shape_check!(self, rhs);
         if self.is_transpose {
             if rhs.is_transpose {
                 crate::matrix::rm::macros::simd_sub_assign!(rm_t, rm_t, self, rhs);

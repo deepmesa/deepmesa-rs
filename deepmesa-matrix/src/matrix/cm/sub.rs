@@ -1,4 +1,5 @@
 use crate::matrix::cm::MatrixColMajor;
+use crate::matrix::macros::shape_check;
 use crate::matrix::traits::MatrixElement;
 use crate::matrix::traits::SubInto;
 use std::ops::Sub;
@@ -21,6 +22,7 @@ where
 {
     type Output = MatrixColMajor<T>;
     fn sub(mut self, rhs: &MatrixColMajor<T>) -> MatrixColMajor<T> {
+        shape_check!(self, rhs);
         self.sub_assign(rhs);
         return self;
     }
@@ -44,6 +46,7 @@ where
 {
     type Output = MatrixColMajor<T>;
     fn sub(self, rhs: &MatrixColMajor<T>) -> MatrixColMajor<T> {
+        shape_check!(self, rhs);
         let mut result = MatrixColMajor::from(&self);
         self.sub_into(rhs, &mut result);
         return result;
@@ -61,11 +64,11 @@ mod tests {
 
     macro_rules! lhs {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 10,20,30;40,50,60)
+            matrix_cm!([$t, 2, 3, $simd], 10,40;20,50;30,60)
         };
         (cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3,2, $simd], 10,40;20,50;30,60);
+                let mut cm = matrix_cm!([$t, 3,2, $simd], 10,20,30;40,50,60);
                 cm.transpose();
                 cm
             }
@@ -75,22 +78,22 @@ mod tests {
     macro_rules! rhs {
         (cm, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t,3,2, $simd], 6,9;7,10;8,11);
+                let mut cm = matrix_cm!([$t,3,2, $simd], 6,7,8;9,10,11);
                 cm.transpose();
                 cm
             }
         };
         (cm_t, $simd:ident, $t:ty) => {
-            matrix_cm!([$t,2,3, false], 6,7,8;9,10,11)
+            matrix_cm!([$t,2,3, false], 6,9;7,10;8,11)
         };
     }
 
     macro_rules! result {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 4,13,22;31,40,49)
+            matrix_cm!([$t, 2, 3, $simd], 4,31;13,40;22,49)
         };
         (val, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 7,17,27;37,47,57)
+            matrix_cm!([$t, 2, 3, $simd], 7,37;17,47;27,57)
         };
     }
 

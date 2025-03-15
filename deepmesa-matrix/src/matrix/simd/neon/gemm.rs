@@ -1,9 +1,3 @@
-//gemm
-
-use crate::matrix::cmd::data::*;
-use crate::matrix::cmd::macros::*;
-use crate::matrix::rmd::data::*;
-use crate::matrix::rmd::macros::*;
 use crate::matrix::simd::metadata::SimdMetaData;
 use crate::matrix::traits::*;
 use core::arch::aarch64::*;
@@ -14,6 +8,9 @@ use crate::matrix::simd::neon::SIMD_NEON_LOAD_SIZE_4;
 use crate::matrix::simd::neon::SIMD_NEON_VEC_SIZE_BYTES;
 use crate::matrix::traits::FillRow;
 use std::marker::PhantomData;
+
+use crate::matrix::rm::macros::matrix_rm;
+use crate::matrix::rm::MatrixRowMajor;
 
 use std::fmt;
 use std::fmt::Debug;
@@ -137,8 +134,8 @@ impl<T: MatrixElement> Tile<T> {
     }
 }
 
-pub fn make_rmd(rows: usize, cols: usize) -> RowMajorDataset<f64> {
-    let mut rmd = RowMajorDataset::<f64>::new(rows, cols, true, true);
+pub fn make_matrix_rm(rows: usize, cols: usize) -> MatrixRowMajor<f64> {
+    let mut rmd = MatrixRowMajor::<f64>::new(rows, cols, true);
     let mut val: f64 = 2.0;
     for i in 0..rows {
         rmd.fill_row(i, val);
@@ -148,8 +145,8 @@ pub fn make_rmd(rows: usize, cols: usize) -> RowMajorDataset<f64> {
 }
 
 pub fn run_code() {
-    let ma = row_major_dataset!([f64, 4, 4, true], 2,4,6,8;10,12,14,16;18,20,22,24;26,28,30,32);
-    let mb = row_major_dataset!([f64, 4, 4, true], 1,3,5,7;9,11,13,15;17,19,21,23;25,27,29,31);
+    let ma = matrix_rm!([f64, 4, 4, true], 2,4,6,8;10,12,14,16;18,20,22,24;26,28,30,32);
+    let mb = matrix_rm!([f64, 4, 4, true], 1,3,5,7;9,11,13,15;17,19,21,23;25,27,29,31);
     //    let mb = row_major_dataset!([f32, 8, 16, true], 4;5;6;7;8;9;10;11);
 
     dbg!(&ma);
@@ -189,8 +186,8 @@ pub unsafe fn impl_gemm() {
     //Phase 1:
     //Lets mutiply a=2x4 and b = 4x8; result = c=2x8
 
-    let ma = row_major_dataset!([f32, 2, 4, true], 2, 3, 4, 5; 10, 11, 12, 13);
-    let mb = row_major_dataset!([f32, 4, 8, true], 1, 2, 3, 4, 5, 6, 7, 8; 9, 10, 11, 12, 13, 14, 15, 16; 1, 2, 3, 4, 5, 6, 7, 8; 9, 10, 11, 12, 13, 14, 15, 16);
+    let ma = matrix_rm!([f32, 2, 4, true], 2, 3, 4, 5; 10, 11, 12, 13);
+    let mb = matrix_rm!([f32, 4, 8, true], 1, 2, 3, 4, 5, 6, 7, 8; 9, 10, 11, 12, 13, 14, 15, 16; 1, 2, 3, 4, 5, 6, 7, 8; 9, 10, 11, 12, 13, 14, 15, 16);
     dbg!(&ma);
     dbg!(&mb);
 
@@ -249,13 +246,12 @@ pub unsafe fn impl_gemm() {
 }
 
 unsafe fn do_gemm_lane() {
-    let ma = row_major_dataset!([f32, 4, 4, false], 2, 3, 4, 5; 6, 7, 8, 9; 10, 11, 12, 13; 14, 15, 16, 17);
+    let ma = matrix_rm!([f32, 4, 4, false], 2, 3, 4, 5; 6, 7, 8, 9; 10, 11, 12, 13; 14, 15, 16, 17);
     let a: *const f32 = ma.rm_data;
     let a1 = vld1q_f32(a);
     //    println!("a1 = {:?}", a1);
 
-    let mb =
-        row_major_dataset!([f32, 4, 4, false], 20,24,28,32;21,25,29,33;22,26,30,34;23,27,31,35);
+    let mb = matrix_rm!([f32, 4, 4, false], 20,24,28,32;21,25,29,33;22,26,30,34;23,27,31,35);
     let b: *const f32 = mb.rm_data;
 
     let a1 = vld1q_f32(a);
@@ -292,13 +288,12 @@ unsafe fn do_gemm() {
 
     // a = m x k matrix
     // b = k x n matrix
-    let ma = row_major_dataset!([f32, 4, 4, false], 2, 3, 4, 5; 6, 7, 8, 9; 10, 11, 12, 13; 14, 15, 16, 17);
+    let ma = matrix_rm!([f32, 4, 4, false], 2, 3, 4, 5; 6, 7, 8, 9; 10, 11, 12, 13; 14, 15, 16, 17);
     let a: *const f32 = ma.rm_data;
     let a1 = vld1q_f32(a);
     //    println!("a1 = {:?}", a1);
 
-    let mb =
-        row_major_dataset!([f32, 4, 4, false], 20,24,28,32;21,25,29,33;22,26,30,34;23,27,31,35);
+    let mb = matrix_rm!([f32, 4, 4, false], 20,24,28,32;21,25,29,33;22,26,30,34;23,27,31,35);
     let b: *const f32 = mb.rm_data;
 
     let mut c1: float32x4_t = vmovq_n_f32(0.);

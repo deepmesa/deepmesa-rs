@@ -12,9 +12,7 @@ where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
     fn add_into(&self, rhs: T, result: &mut MatrixRowMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-
+        shape_check!(self, result);
         if self.is_transpose {
             if result.is_transpose {
                 crate::matrix::rm::macros::simd_add_into!(rm_t, val, rm_t, self, rhs, result);
@@ -48,10 +46,8 @@ where
     T: MatrixElement + std::ops::AddAssign + std::ops::Add<Output = T>,
 {
     fn add_into(&self, rhs: &MatrixRowMajor<T>, result: &mut MatrixRowMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
+        shape_check!(self, rhs);
+        shape_check!(self, result);
 
         if self.is_transpose {
             if rhs.is_transpose {

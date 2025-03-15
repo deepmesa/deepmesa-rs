@@ -4,7 +4,7 @@ pub(in crate::matrix::rm) mod addinto;
 pub(in crate::matrix::rm) mod eq;
 pub(in crate::matrix::rm) mod fill;
 pub(in crate::matrix::rm) mod get;
-pub(in crate::matrix::rm) mod macros;
+pub(in crate::matrix) mod macros;
 pub(in crate::matrix::rm) mod mul;
 pub(in crate::matrix::rm) mod mulassign;
 pub(in crate::matrix::rm) mod mulinto;
@@ -14,10 +14,13 @@ pub(in crate::matrix::rm) mod subassign;
 pub(in crate::matrix::rm) mod subinto;
 
 use crate::matrix::alloc_mem;
+use crate::matrix::macros::impl_iter;
 use crate::matrix::macros::*;
 use crate::matrix::rm::macros::*;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
+use crate::matrix::traits::Get;
+use crate::matrix::IterType;
 use crate::matrix::MatrixElement;
 use std::fmt;
 use std::fmt::Debug;
@@ -138,19 +141,32 @@ where
         }
     }
 
-    pub(in crate::matrix) fn set_simd_enabled(&mut self, simd_enabled: bool) {
+    pub fn set_simd_enabled(&mut self, simd_enabled: bool) {
         self.simd_enabled = simd_enabled;
     }
 
-    pub(in crate::matrix) fn transpose(&mut self) {
+    pub fn transpose(&mut self) {
         fn_transpose!(self);
     }
 
-    pub(in crate::matrix) fn is_simd_optimized(&self) -> bool {
+    pub fn is_simd_optimized(&self) -> bool {
         return self.simd_optimized;
     }
 
     impl_simd_fn!(self);
+}
+
+impl<T> MatrixRowMajor<T>
+where
+    T: MatrixElement<Output = T>,
+{
+    pub fn iter_rows(&self) -> MatrixRowMajorIterator<T> {
+        return MatrixRowMajorIterator::new(self, IterType::IterRows);
+    }
+
+    pub fn iter_cols(&self) -> MatrixRowMajorIterator<T> {
+        return MatrixRowMajorIterator::new(self, IterType::IterCols);
+    }
 }
 
 impl<T> Drop for MatrixRowMajor<T>
@@ -171,36 +187,130 @@ where
         let limit: usize;
         if self.is_transpose {
             limit = self.cols;
-            write!(
-                f,
-                "\n[RMD/t:<{}>:{}x{}]:\n",
-                std::any::type_name::<T>(),
-                self.cols,
-                self.row_stride
-            )?;
+            if self.simd_optimized {
+                write!(
+                    f,
+                    "[RM/t:<{}>/{}:{}x{}]:",
+                    std::any::type_name::<T>(),
+                    self.row_stride,
+                    self.rows,
+                    self.cols
+                )?;
+            } else {
+                write!(
+                    f,
+                    "[RM/t:<{}>:{}x{}]:",
+                    std::any::type_name::<T>(),
+                    self.rows,
+                    self.cols
+                )?;
+            }
         } else {
             limit = self.rows;
-            write!(
-                f,
-                "\n[RMD:<{}>:{}x{}]:\n",
-                std::any::type_name::<T>(),
-                self.rows,
-                self.row_stride
-            )?;
+            if self.simd_optimized {
+                write!(
+                    f,
+                    "[RM:<{}>/{}:{}x{}]:",
+                    std::any::type_name::<T>(),
+                    self.row_stride,
+                    self.rows,
+                    self.cols
+                )?;
+            } else {
+                write!(
+                    f,
+                    "[RM:<{}>:{}x{}]:",
+                    std::any::type_name::<T>(),
+                    self.rows,
+                    self.cols,
+                )?;
+            }
         }
         let precision = f.precision().unwrap_or(1);
         for row in 0..limit {
             for col in 0..self.row_stride {
                 write!(f, "{:.*?}", precision, unsafe { rm_get!(self, row, col) })?;
                 if col < self.row_stride - 1 {
-                    write!(f, ", ")?;
+                    write!(f, ",")?;
                 }
             }
             if row < limit - 1 {
-                write!(f, ";\n")?;
+                write!(f, ";")?;
             }
         }
 
         Ok(())
+    }
+}
+
+impl_iter!(MatrixRowMajorIterator, MatrixRowMajor);
+
+#[cfg(test)]
+mod tests {
+    use crate::matrix::rm::macros::*;
+    use crate::matrix::rm::MatrixRowMajor;
+    use crate::matrix::traits::*;
+
+    #[test]
+    fn test_debug() {
+        let mut m = matrix_rm!([u8, 2, 3, false], 1,2,3;4,5,6);
+        assert_eq!(format!("{:?}", &m), "[RM:<u8>:2x3]:1,2,3;4,5,6");
+        m.transpose();
+        assert_eq!(format!("{:?}", &m), "[RM/t:<u8>:3x2]:1,2,3;4,5,6");
+        let mut m = matrix_rm!([u8, 2, 3, true], 1,2,3;4,5,6);
+        assert_eq!(
+            format!("{:?}", &m),
+            "[RM:<u8>/16:2x3]:1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0;4,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        );
+        m.transpose();
+        assert_eq!(
+            format!("{:?}", &m),
+            "[RM/t:<u8>/16:3x2]:1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0;4,5,6,0,0,0,0,0,0,0,0,0,0,0,0,0"
+        );
+    }
+
+    #[test]
+    fn test_iter_rows() {
+        let mut m = matrix_rm!([u8, 2, 3, false], 1,2,3;4,5,6);
+        let mut iter = m.iter_rows();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), None);
+        m.transpose();
+        let mut iter = m.iter_rows();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_iter_cols() {
+        let mut m = matrix_rm!([u8, 2, 3, false], 1,2,3;4,5,6);
+        let mut iter = m.iter_cols();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), None);
+
+        m.transpose();
+        let mut iter = m.iter_cols();
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(4));
+        assert_eq!(iter.next(), Some(5));
+        assert_eq!(iter.next(), Some(6));
+        assert_eq!(iter.next(), None);
     }
 }

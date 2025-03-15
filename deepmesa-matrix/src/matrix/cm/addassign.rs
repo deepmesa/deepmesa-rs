@@ -35,9 +35,7 @@ where
     T: MatrixElement + std::ops::AddAssign,
 {
     fn add_assign(&mut self, rhs: &MatrixColMajor<T>) {
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
-
+        shape_check!(self, rhs);
         if self.is_transpose {
             if rhs.is_transpose {
                 crate::matrix::cm::macros::simd_add_assign!(cm_t, cm_t, self, rhs);
@@ -77,11 +75,11 @@ mod tests {
 
     macro_rules! lhs {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 1,2,3;4,5,6)
+            matrix_cm!([$t, 2, 3, $simd], 1,4;2,5;3,6);
         };
         (cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3,2, $simd], 1,4;2,5;3,6);
+                let mut cm = matrix_cm!([$t, 3,2, $simd], 1,2,3;4,5,6);
                 cm.transpose();
                 cm
             }
@@ -91,22 +89,22 @@ mod tests {
     macro_rules! rhs {
         (cm, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t,3,2, $simd], 6,9;7,10;8,11);
+                let mut cm = matrix_cm!([$t,3,2, $simd], 6,7,8;9,10,11);
                 cm.transpose();
                 cm
             }
         };
         (cm_t, $simd:ident, $t:ty) => {
-            matrix_cm!([$t,2,3, false], 6,7,8;9,10,11)
+            matrix_cm!([$t,2,3, false], 6,9;7,10;8,11);
         };
     }
 
     macro_rules! result {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 7,9,11;13,15,17)
+            matrix_cm!([$t, 2, 3, $simd], 7,13;9,15;11,17);
         };
         (val, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 4,5,6;7,8,9)
+            matrix_cm!([$t, 2, 3, $simd], 4,7;5,8;6,9);
         };
     }
 

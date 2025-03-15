@@ -3,7 +3,6 @@ use crate::matrix::cm::MatrixColMajor;
 use crate::matrix::macros::*;
 use crate::matrix::simd::kernel::SimdKernel;
 use crate::matrix::simd::traits::SimdMulAssign;
-use crate::matrix::traits::Dataset;
 use crate::matrix::traits::MatrixElement;
 use std::ops::MulAssign;
 
@@ -36,9 +35,7 @@ where
     T: MatrixElement + std::ops::MulAssign,
 {
     fn mul_assign(&mut self, rhs: &MatrixColMajor<T>) {
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
-
+        shape_check!(self, rhs);
         if self.is_transpose {
             if rhs.is_transpose {
                 crate::matrix::cm::macros::simd_mul_assign!(cm_t, cm_t, self, rhs);
@@ -78,11 +75,11 @@ mod tests {
 
     macro_rules! lhs {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 2,3,4;5,6,7)
+            matrix_cm!([$t, 2, 3, $simd], 2,5;3,6;4,7)
         };
         (cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3,2, $simd], 2,5;3,6;4,7);
+                let mut cm = matrix_cm!([$t, 3,2, $simd], 2,3,4;5,6,7);
                 cm.transpose();
                 cm
             }
@@ -92,22 +89,22 @@ mod tests {
     macro_rules! rhs {
         (cm, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t,3,2, $simd], 6,9;7,10;8,11);
+                let mut cm = matrix_cm!([$t,3,2, $simd], 6,7,8;9,10,11);
                 cm.transpose();
                 cm
             }
         };
         (cm_t, $simd:ident, $t:ty) => {
-            matrix_cm!([$t,2,3, false], 6,7,8;9,10,11)
+            matrix_cm!([$t,2,3, false], 6,9;7,10;8,11)
         };
     }
 
     macro_rules! result {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 12,21,32;45,60,77)
+            matrix_cm!([$t, 2, 3, $simd], 12,45;21,60;32,77);
         };
         (val, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 6,9,12;15,18,21)
+            matrix_cm!([$t, 2, 3, $simd], 6,15;9,18;12,21);
         };
     }
 

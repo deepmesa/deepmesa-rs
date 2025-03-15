@@ -11,7 +11,7 @@ macro_rules! matrix_rm {
     }
 }
 
-pub(in crate::matrix::rm) use matrix_rm;
+pub(in crate::matrix) use matrix_rm;
 
 macro_rules! debug_assert_rm {
     ($d:expr) => {

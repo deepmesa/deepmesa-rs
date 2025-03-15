@@ -40,33 +40,6 @@ pub trait MatMul<Rhs, Output> {
     fn mat_mul(&self, rhs: &Rhs, result: &mut Output);
 }
 
-pub(in crate::matrix) trait Dataset<T>
-where
-    T: MatrixElement,
-{
-    fn rows(&self) -> usize;
-    fn cols(&self) -> usize;
-    //    fn get(&self, row: usize, col: usize) -> T;
-    fn len(&self) -> usize;
-    fn data_ptr(&self) -> *const T;
-    fn is_simd_enabled(&self) -> bool;
-    fn use_simd(&self) -> bool {
-        if !self.is_simd_enabled() {
-            return false;
-        }
-
-        #[cfg(target_arch = "aarch64")]
-        {
-            use std::arch::is_aarch64_feature_detected;
-            if is_aarch64_feature_detected!("neon") {
-                return true;
-            }
-        }
-
-        return false;
-    }
-}
-
 pub(in crate::matrix) enum ElementType {
     U8(u8),
     U16(u16),

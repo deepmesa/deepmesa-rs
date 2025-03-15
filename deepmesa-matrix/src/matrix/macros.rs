@@ -156,3 +156,73 @@ macro_rules! bounds_check_len {
 }
 
 pub(in crate::matrix) use bounds_check_len;
+
+macro_rules! impl_iter {
+    ($iter:ident, $matrix:ident) => {
+        pub struct $iter<'a, T>
+        where
+            T: MatrixElement,
+        {
+            m: &'a $matrix<T>,
+            row: usize,
+            col: usize,
+            iter_type: IterType,
+        }
+
+        impl<'a, T> $iter<'a, T>
+        where
+            T: MatrixElement<Output = T>,
+        {
+            pub fn new(matrix: &$matrix<T>, iter_type: IterType) -> $iter<T> {
+                $iter {
+                    m: matrix,
+                    row: 0,
+                    col: 0,
+                    iter_type,
+                }
+            }
+        }
+
+        impl<'a, T> Iterator for $iter<'a, T>
+        where
+            T: MatrixElement<Output = T>,
+        {
+            type Item = T;
+            fn next(&mut self) -> Option<T> {
+                match self.iter_type {
+                    IterType::IterRows => {
+                        if self.row >= self.m.rows {
+                            return None;
+                        }
+                    }
+                    IterType::IterCols => {
+                        if self.col >= self.m.cols {
+                            return None;
+                        }
+                    }
+                }
+                let val = self.m.get(self.row, self.col);
+                match self.iter_type {
+                    IterType::IterRows => {
+                        self.col += 1;
+                        if self.col >= self.m.cols {
+                            self.col = 0;
+                            self.row += 1;
+                        }
+                    }
+                    IterType::IterCols => {
+                        self.row += 1;
+                        if self.row >= self.m.rows {
+                            self.row = 0;
+                            self.col += 1;
+                        }
+                    }
+                }
+
+                return Some(val);
+            }
+        }
+    };
+}
+
+pub(in crate::matrix) use impl_iter;

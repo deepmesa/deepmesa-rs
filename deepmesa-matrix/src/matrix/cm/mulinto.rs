@@ -3,7 +3,6 @@ use crate::matrix::cm::MatrixColMajor;
 use crate::matrix::macros::*;
 use crate::matrix::simd::kernel::SimdKernel;
 use crate::matrix::simd::traits::SimdMulInto;
-use crate::matrix::traits::Dataset;
 use crate::matrix::traits::{MatrixElement, MulInto};
 
 impl<T> MulInto<T, MatrixColMajor<T>> for MatrixColMajor<T>
@@ -11,9 +10,7 @@ where
     T: MatrixElement + std::ops::MulAssign + std::ops::Mul<Output = T>,
 {
     fn mul_into(&self, rhs: T, result: &mut MatrixColMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-
+        shape_check!(self, result);
         if self.is_transpose {
             if result.is_transpose {
                 crate::matrix::cm::macros::simd_mul_into!(cm_t, val, cm_t, self, rhs, result);
@@ -47,11 +44,8 @@ where
     T: MatrixElement + std::ops::MulAssign + std::ops::Mul<Output = T>,
 {
     fn mul_into(&self, rhs: &MatrixColMajor<T>, result: &mut MatrixColMajor<T>) {
-        debug_assert!(self.rows == result.rows);
-        debug_assert!(self.cols == result.cols);
-        debug_assert!(self.rows == rhs.rows);
-        debug_assert!(self.cols == rhs.cols);
-
+        shape_check!(self, rhs);
+        shape_check!(self, result);
         if self.is_transpose {
             if rhs.is_transpose {
                 if result.is_transpose {
@@ -156,11 +150,11 @@ mod tests {
 
     macro_rules! lhs {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 5,6,7;8,9,10)
+            matrix_cm!([$t, 2, 3, $simd], 5,8;6,9;7,10)
         };
         (cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3,2, $simd], 5,8;6,9;7,10);
+                let mut cm = matrix_cm!([$t, 3,2, $simd], 5,6,7;8,9,10);
                 cm.transpose();
                 cm
             }
@@ -170,13 +164,13 @@ mod tests {
     macro_rules! rhs {
         (cm, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t,3,2, $simd], 2,5;3,6;4,7);
+                let mut cm = matrix_cm!([$t,3,2, $simd], 2,3,4;5,6,7);
                 cm.transpose();
                 cm
             }
         };
         (cm_t, $simd:ident, $t:ty) => {
-            matrix_cm!([$t,2,3, false], 2,3,4;5,6,7)
+            matrix_cm!([$t,2,3, false], 2,5;3,6;4,7)
         };
     }
 
@@ -193,21 +187,21 @@ mod tests {
 
     macro_rules! result {
         (cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 10,18,28;40,54,70)
+            matrix_cm!([$t, 2, 3, $simd], 10,40;18,54;28,70)
         };
         (cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3, 2, $simd], 10,40;18,54;28,70);
+                let mut cm = matrix_cm!([$t, 3, 2, $simd], 10,18,28;40,54,70);
                 cm.transpose();
                 cm
             }
         };
         (val, cm, $simd:ident, $t:ty) => {
-            matrix_cm!([$t, 2, 3, $simd], 35,42,49;56,63,70)
+            matrix_cm!([$t, 2, 3, $simd], 35,56;42,63;49,70)
         };
         (val, cm_t, $simd:ident, $t:ty) => {
             {
-                let mut cm = matrix_cm!([$t, 3, 2, $simd], 35,56;42,63;49,70);
+                let mut cm = matrix_cm!([$t, 3, 2, $simd], 35,42,49;56,63,70);
                 cm.transpose();
                 cm
             }
