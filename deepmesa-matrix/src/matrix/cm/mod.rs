@@ -18,7 +18,6 @@ use crate::matrix::cm::macros::*;
 use crate::matrix::macros::*;
 use crate::matrix::simd::simd_align;
 use crate::matrix::simd::simd_detect;
-use crate::matrix::traits::Get;
 use crate::matrix::IterType;
 use crate::matrix::MatrixElement;
 use std::fmt;

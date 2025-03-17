@@ -16,14 +16,6 @@ pub trait FillDiagonal<Rhs> {
     fn fill_diagonal(&mut self, val: Rhs);
 }
 
-pub trait Set<T> {
-    fn set(&mut self, row: usize, col: usize, val: T);
-}
-
-pub trait Get<T> {
-    fn get(&self, row: usize, col: usize) -> T;
-}
-
 pub trait AddInto<Rhs, Output> {
     fn add_into(&self, rhs: Rhs, result: &mut Output);
 }
