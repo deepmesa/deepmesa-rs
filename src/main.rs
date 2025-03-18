@@ -1,4 +1,4 @@
-use deepmesa_matrix::matrix::simd::neon::*;
+use deepmesa_ai::matrix::simd::neon::*;
 
 fn main() {
     println!("Running code...");

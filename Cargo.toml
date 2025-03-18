@@ -18,8 +18,7 @@ description = "This crate provides fast Data Structures and Algorithms in Rust. 
 deepmesa-collections = {path = "./deepmesa-collections", version = "^0.10.0" }
 deepmesa-encoding = {path = "./deepmesa-encoding", version = "^0.10.0" }
 deepmesa-common = {path = "./deepmesa-common", version = "^0.10.0" }
-deepmesa-stats = {path = "./deepmesa-stats", version = "^0.10.0" }
-deepmesa-matrix = {path = "./deepmesa-matrix", version = "^0.10.0" }
+deepmesa-ai = {path = "./deepmesa-ai", version = "^0.10.0" }
 
 [workspace]
 members = [
@@ -27,6 +26,5 @@ members = [
     "deepmesa-encoding",
     "deepmesa-collections",
     "deepmesa-common",
-    "deepmesa-stats",
-    "deepmesa-matrix",
+    "deepmesa-ai",
 ]

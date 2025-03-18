@@ -1,4 +1,3 @@
-pub(in crate::matrix) mod cm;
 pub(in crate::matrix) mod macros;
 pub(in crate::matrix) mod rm;
 pub mod simd;
