@@ -15,7 +15,6 @@ repository = "https://github.com/deepmesa/deepmesa-rs/deepmesa-ai"
 
 
 [dependencies]
-deepmesa-common = {path = "../deepmesa-common", version = "^0.10.0" }
 
 [lib]
 doc = false
