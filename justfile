@@ -28,7 +28,7 @@ build:
 #     cargo test --package deepmesa-collections matrix::vector::tests::test_dot_product -- --nocapture
 #     @cargo test --package deepmesa-collections matrix -- --nocapture
 test $RUST_BACKTRACE="1":
-    @cargo test --package deepmesa-matrix matrix -- --nocapture
+     @cargo test --package deepmesa-matrix matrix::cm::get::tests::test_index -- --nocapture
 
 doc:
     @cargo doc --no-deps --all
