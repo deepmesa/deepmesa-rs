@@ -1,5 +1,4 @@
 use crate::matrix::macros::*;
-use crate::matrix::rm::macros::simd_add_assign;
 use crate::matrix::rm::macros::*;
 use crate::matrix::rm::MatrixRowMajor;
 use crate::matrix::simd::kernel::SimdKernel;
@@ -71,7 +70,6 @@ mod tests {
     use crate::matrix::rm::macros::*;
     use crate::matrix::rm::*;
     use crate::matrix::traits::*;
-    use std::any::Any;
     use std::ops::AddAssign;
 
     macro_rules! lhs {

@@ -3,6 +3,7 @@ pub(in crate::matrix::rm) mod addassign;
 pub(in crate::matrix::rm) mod addinto;
 pub(in crate::matrix::rm) mod eq;
 pub(in crate::matrix::rm) mod fill;
+pub(in crate::matrix::rm) mod gemm;
 pub(in crate::matrix::rm) mod get;
 pub(in crate::matrix) mod macros;
 pub(in crate::matrix::rm) mod mul;
@@ -29,7 +30,7 @@ use std::alloc::dealloc;
 extern crate alloc;
 use alloc::alloc::Layout;
 
-pub(in crate::matrix) struct MatrixRowMajor<T>
+pub struct MatrixRowMajor<T>
 where
     T: MatrixElement,
 {

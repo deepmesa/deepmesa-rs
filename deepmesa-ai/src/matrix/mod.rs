@@ -17,13 +17,7 @@ pub enum IterType {
 
 use crate::matrix::rm::MatrixRowMajor;
 
-/*
-TODO:
-* Iterators
-
-*/
-
-type Matrix<T> = MatrixRowMajor<T>;
+pub type Matrix<T> = MatrixRowMajor<T>;
 
 unsafe fn alloc_mem<T: MatrixElement>(len: usize) -> *mut T {
     let layout = Layout::array::<T>(len).unwrap();

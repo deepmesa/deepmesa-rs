@@ -1,14 +1,10 @@
 use crate::matrix::simd::metadata::SimdMetaData;
-use crate::matrix::simd::neon::kernel::SimdKernelNeon;
 use crate::matrix::simd::neon::vdup::vdup_vld1q_dup;
 use crate::matrix::simd::neon::vload::vload_vld1q;
 use crate::matrix::simd::neon::vmulq::vmul_vmulq;
 use crate::matrix::simd::neon::vmulqxn::vmul_vmulqxn;
 use crate::matrix::simd::neon::vstore::vstore_vst1q;
 use crate::matrix::simd::traits::SimdMulInto;
-use crate::matrix::simd::vecbuf::SimdVecBuffer;
-use crate::matrix::traits::ElementType;
-use crate::matrix::traits::MatrixElement;
 use core::arch::aarch64::*;
 use core::ptr;
 

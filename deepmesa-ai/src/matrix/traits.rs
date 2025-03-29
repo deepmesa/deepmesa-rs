@@ -1,4 +1,3 @@
-//use crate::matrix::simd::traits::SimdOperation;
 use core::fmt::Debug;
 use core::fmt::Display;
 use std::num::FpCategory;
@@ -32,7 +31,7 @@ pub trait MatMul<Rhs, Output> {
     fn mat_mul(&self, rhs: &Rhs, result: &mut Output);
 }
 
-pub(in crate::matrix) enum ElementType {
+pub enum ElementType {
     U8(u8),
     U16(u16),
     U32(u32),
@@ -183,7 +182,7 @@ macro_rules! impl_matrix_element_type {
                 return ElementType::$ty_enum(*self);
             }
 
-            fn ptr_element_type(ptr: *const Self) -> ElementType {
+            fn ptr_element_type(_ptr: *const Self) -> ElementType {
                 return ElementType::$ty_enum(0);
             }
         }
@@ -194,7 +193,7 @@ macro_rules! impl_matrix_element_type {
                 return ElementType::$ty_enum(*self);
             }
 
-            fn ptr_element_type(ptr: *const Self) -> ElementType {
+            fn ptr_element_type(_ptr: *const Self) -> ElementType {
                 return ElementType::$ty_enum(0.0);
             }
         }

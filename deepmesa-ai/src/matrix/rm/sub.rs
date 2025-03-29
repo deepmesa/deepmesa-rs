@@ -59,7 +59,6 @@ mod tests {
     use crate::matrix::rm::macros::*;
     use crate::matrix::rm::*;
     use crate::matrix::traits::*;
-    use std::any::Any;
     use std::ops::Sub;
 
     macro_rules! lhs {

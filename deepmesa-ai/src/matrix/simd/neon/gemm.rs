@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::matrix::simd::metadata::SimdMetaData;
 use crate::matrix::traits::*;
 use core::arch::aarch64::*;
@@ -7,14 +8,9 @@ use core::arch::aarch64::*;
 use crate::matrix::simd::neon::SIMD_NEON_LOAD_SIZE_4;
 use crate::matrix::simd::neon::SIMD_NEON_VEC_SIZE_BYTES;
 use crate::matrix::traits::FillRow;
-use std::marker::PhantomData;
 
 use crate::matrix::rm::macros::matrix_rm;
 use crate::matrix::rm::MatrixRowMajor;
-
-use std::fmt;
-use std::fmt::Debug;
-use std::fmt::Formatter;
 
 pub struct Tile<T: MatrixElement> {
     pub vec_sz: usize,

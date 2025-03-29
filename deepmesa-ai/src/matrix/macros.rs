@@ -55,16 +55,6 @@ macro_rules! shape_check {
 
 pub(in crate::matrix) use shape_check;
 
-macro_rules! iterate {
-    ($self:ident, $idx:ident, $max:ident, $e:expr) => {
-        for $idx in 0..$max {
-            $e
-        }
-    };
-}
-
-pub(in crate::matrix) use iterate;
-
 macro_rules! iterate_rows {
     ($self:ident, $row:ident, $e:expr) => {
         for $row in 0..$self.rows {
@@ -97,33 +87,6 @@ macro_rules! iterate_row_major {
 
 pub(in crate::matrix) use iterate_row_major;
 
-macro_rules! iterate_col_major {
-    ($self:ident, $row:ident, $col:ident, $e:expr) => {
-        for $col in 0..$self.cols {
-            for $row in 0..$self.rows {
-                $e
-            }
-        }
-    };
-}
-
-pub(in crate::matrix) use iterate_col_major;
-
-macro_rules! iterate_matmul {
-    ($lhs:ident, $rhs:ident, $row:ident, $col:ident, $idx: ident, $e_inner:expr, $e_outer:expr) => {
-        for $row in 0..$lhs.rows {
-            for $col in 0..$rhs.cols {
-                for $idx in 0..$lhs.cols {
-                    $e_inner
-                }
-                $e_outer
-            }
-        }
-    };
-}
-
-pub(in crate::matrix) use iterate_matmul;
-
 macro_rules! bounds_check_row {
     ($row:ident, $self:ident) => {
         if $row >= $self.rows {
@@ -143,19 +106,6 @@ macro_rules! bounds_check_col {
 }
 
 pub(in crate::matrix) use bounds_check_col;
-
-macro_rules! bounds_check_len {
-    ($len:expr, $self:ident) => {
-        if $len != $self.len {
-            panic!(
-                "Data Length {} should be the same as Matrix Data Length {}",
-                $len, $self.len
-            );
-        }
-    };
-}
-
-pub(in crate::matrix) use bounds_check_len;
 
 macro_rules! impl_iter {
     ($iter:ident, $matrix:ident) => {

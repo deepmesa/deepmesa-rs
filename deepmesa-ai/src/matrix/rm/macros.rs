@@ -2,10 +2,10 @@ macro_rules! matrix_rm {
     ([$t:ty, $r:literal,$c:literal, $simd:ident], $($($x:literal),*);*) => {
         {
             let mut m = MatrixRowMajor::<$t>::new($r, $c, $simd);
-            let mut row = 0;
+            let mut _row = 0;
             $(
-                m.fill_row(row, &[$($x as $t,)*][..]);
-                row += 1;
+                m.fill_row(_row, &[$($x as $t,)*][..]);
+                _row += 1;
             )* m
         }
     }

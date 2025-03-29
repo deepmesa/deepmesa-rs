@@ -2,7 +2,6 @@
 //use deepmesa_matrix::matrix::matmul::MatrixMultiply;
 //use deepmesa_matrix::matrix::matrix::Matrix;
 //use deepmesa_matrix::matrix::matrix::MatrixType;
-use crate::matrix::traits::MatrixElement;
 //use deepmesa_matrix::matrix::vector::Vector;
 //use deepmesa_matrix::matrix::vector::VectorType;
 

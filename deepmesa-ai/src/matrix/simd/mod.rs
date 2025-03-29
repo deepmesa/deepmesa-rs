@@ -1,7 +1,6 @@
 pub(in crate::matrix) mod kernel;
 pub(in crate::matrix) mod metadata;
 pub(in crate::matrix) mod traits;
-pub(in crate::matrix) mod vecbuf;
 
 #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
 pub mod neon;

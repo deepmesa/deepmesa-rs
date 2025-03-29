@@ -213,7 +213,7 @@ mod tests {
 
     macro_rules! test_add_into_val {
         ($t:ty, $simd:ident, $lhs:ident, $out:ident) => {
-            let mut lhs = lhs!($lhs, $simd, $t);
+            let lhs = lhs!($lhs, $simd, $t);
             let rhs = 7 as $t;
             let mut out = out!($out, $simd, $t);
             lhs.add_into(rhs, &mut out);
@@ -223,7 +223,7 @@ mod tests {
 
     macro_rules! test_add_into {
         ($t:ty, $simd:ident, $lhs:ident, $rhs:ident, $out:ident) => {
-            let mut lhs = lhs!($lhs, $simd, $t);
+            let lhs = lhs!($lhs, $simd, $t);
             let rhs = rhs!($rhs, $simd, $t);
             let mut out = out!($out, $simd, $t);
             lhs.add_into(&rhs, &mut out);
