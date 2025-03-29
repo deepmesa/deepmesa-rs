@@ -1,9 +1,7 @@
 pub(in crate::matrix) mod macros;
 pub(in crate::matrix) mod rm;
-pub mod simd;
 
 pub mod traits;
-pub mod vector;
 
 extern crate alloc;
 use crate::matrix::traits::MatrixElement;

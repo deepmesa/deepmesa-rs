@@ -9,33 +9,6 @@ macro_rules! fn_transpose {
 
 pub(in crate::matrix) use fn_transpose;
 
-macro_rules! impl_simd_fn {
-    ($self:ident) => {
-        #[inline(always)]
-        fn is_simd_enabled(&$self) -> bool {
-            return $self.simd_enabled;
-        }
-
-        fn use_simd(&$self) -> bool {
-            if !$self.is_simd_enabled() {
-                return false;
-            }
-
-            #[cfg(target_arch = "aarch64")]
-            {
-                use std::arch::is_aarch64_feature_detected;
-                if is_aarch64_feature_detected!("neon") {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-    };
-}
-
-pub(in crate::matrix) use impl_simd_fn;
-
 macro_rules! shape_check {
     ($self:ident, $rhs:ident) => {
         if $self.rows != $rhs.rows {

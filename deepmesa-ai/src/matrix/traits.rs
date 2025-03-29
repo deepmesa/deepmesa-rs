@@ -58,7 +58,6 @@ pub trait MatrixElement:
     fn abs(self) -> Self;
     fn zero() -> Self::Output;
     fn one() -> Self::Output;
-    fn simd_supported() -> bool;
     fn power(&self, exp: u16) -> Self::Output;
 }
 
@@ -134,22 +133,11 @@ macro_rules! fn_power {
 }
 
 macro_rules! impl_matrix_element {
-    ($signed:ident, $float:ident, $t:ty, $zero:literal, $one:literal, $simd_supported:ident) => {
+    ($signed:ident, $float:ident, $t:ty, $zero:literal, $one:literal) => {
         impl MatrixElement for $t {
             type Output = Self;
             fn_abs!($signed);
             fn_power!($float);
-
-            fn simd_supported() -> bool {
-                #[cfg(target_arch = "aarch64")]
-                {
-                    use std::arch::is_aarch64_feature_detected;
-                    if is_aarch64_feature_detected!("neon") {
-                        return $simd_supported;
-                    }
-                }
-                return false;
-            }
 
             fn zero() -> Self::Output {
                 $zero
@@ -162,18 +150,18 @@ macro_rules! impl_matrix_element {
     };
 }
 
-impl_matrix_element!(signed, float, f32, 0.0, 1.0, true);
-impl_matrix_element!(signed, float, f64, 0.0, 1.0, true);
-impl_matrix_element!(signed, integer, i8, 0, 1, true);
-impl_matrix_element!(signed, integer, i16, 0, 1, true);
-impl_matrix_element!(signed, integer, i32, 0, 1, true);
-impl_matrix_element!(signed, integer, i64, 0, 1, false);
-impl_matrix_element!(signed, integer, i128, 0, 1, false);
-impl_matrix_element!(unsigned, integer, u8, 0, 1, true);
-impl_matrix_element!(unsigned, integer, u16, 0, 1, true);
-impl_matrix_element!(unsigned, integer, u32, 0, 1, true);
-impl_matrix_element!(unsigned, integer, u64, 0, 1, false);
-impl_matrix_element!(unsigned, integer, u128, 0, 1, false);
+impl_matrix_element!(signed, float, f32, 0.0, 1.0);
+impl_matrix_element!(signed, float, f64, 0.0, 1.0);
+impl_matrix_element!(signed, integer, i8, 0, 1);
+impl_matrix_element!(signed, integer, i16, 0, 1);
+impl_matrix_element!(signed, integer, i32, 0, 1);
+impl_matrix_element!(signed, integer, i64, 0, 1);
+impl_matrix_element!(signed, integer, i128, 0, 1);
+impl_matrix_element!(unsigned, integer, u8, 0, 1);
+impl_matrix_element!(unsigned, integer, u16, 0, 1);
+impl_matrix_element!(unsigned, integer, u32, 0, 1);
+impl_matrix_element!(unsigned, integer, u64, 0, 1);
+impl_matrix_element!(unsigned, integer, u128, 0, 1);
 
 macro_rules! impl_matrix_element_type {
     (integer, $t:ident, $ty_enum:ident) => {

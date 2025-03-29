@@ -45,7 +45,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let mut rm = matrix_rm!([u8, 2, 3, false], 3,4,5;6,7,8);
+        let mut rm = matrix_rm!([u8, 2, 3], 3,4,5;6,7,8);
         assert_eq!(3, rm.get(0, 0));
         assert_eq!(4, rm.get(0, 1));
         assert_eq!(5, rm.get(0, 2));

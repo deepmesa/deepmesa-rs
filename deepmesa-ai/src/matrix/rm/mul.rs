@@ -62,12 +62,12 @@ mod tests {
     use std::ops::Mul;
 
     macro_rules! lhs {
-        (rm, $simd:ident, $t:ty) => {
-            matrix_rm!([$t, 2, 3, $simd], 2,3,4;5,6,7)
+        (rm, $t:ty) => {
+            matrix_rm!([$t, 2, 3], 2,3,4;5,6,7)
         };
-        (rm_t, $simd:ident, $t:ty) => {
+        (rm_t, $t:ty) => {
             {
-                let mut rm = matrix_rm!([$t, 3,2, $simd], 2,5;3,6;4,7);
+                let mut rm = matrix_rm!([$t, 3,2], 2,5;3,6;4,7);
                 rm.transpose();
                 rm
             }
@@ -75,12 +75,12 @@ mod tests {
     }
 
     macro_rules! rhs {
-        (rm, $simd:ident, $t:ty) => {
-            matrix_rm!([$t,2,3, $simd], 6,7,8;9,10,11)
+        (rm, $t:ty) => {
+            matrix_rm!([$t,2,3], 6,7,8;9,10,11)
         };
-        (rm_t, $simd:ident, $t:ty) => {
+        (rm_t, $t:ty) => {
             {
-                let mut rm = matrix_rm!([$t,3,2, $simd], 6,9;7,10;8,11);
+                let mut rm = matrix_rm!([$t,3,2], 6,9;7,10;8,11);
                 rm.transpose();
                 rm
             }
@@ -88,29 +88,29 @@ mod tests {
     }
 
     macro_rules! result {
-        (rm, $simd:ident, $t:ty) => {
-            matrix_rm!([$t, 2, 3, $simd], 12,21,32;45,60,77)
+        (rm, $t:ty) => {
+            matrix_rm!([$t, 2, 3], 12,21,32;45,60,77)
         };
-        (val, $simd:ident, $t:ty) => {
-            matrix_rm!([$t, 2, 3, $simd], 6,9,12;15,18,21)
+        (val, $t:ty) => {
+            matrix_rm!([$t, 2, 3], 6,9,12;15,18,21)
         };
     }
 
     macro_rules! test_mul {
-        ($t:ty, $simd:ident, $lhs:ident, $rhs:ident) => {
-            let lhs = lhs!($lhs, $simd, $t);
-            let rhs = rhs!($rhs, $simd, $t);
+        ($t:ty, $lhs:ident, $rhs:ident) => {
+            let lhs = lhs!($lhs, $t);
+            let rhs = rhs!($rhs, $t);
             let out = lhs.mul(&rhs);
-            assert_eq!(out, result!(rm, $simd, $t));
+            assert_eq!(out, result!(rm, $t));
         };
     }
 
     macro_rules! test_mul_val {
-        ($t:ty, $simd:ident, $lhs:ident) => {
-            let lhs = lhs!($lhs, $simd, $t);
+        ($t:ty, $lhs:ident) => {
+            let lhs = lhs!($lhs, $t);
             let rhs = 3 as $t;
             let out = lhs.mul(rhs);
-            assert_eq!(out, result!(val, $simd, $t));
+            assert_eq!(out, result!(val, $t));
         };
     }
 
@@ -118,34 +118,18 @@ mod tests {
         ($fn_name:ident, $lhs:ident) => {
             #[test]
             fn $fn_name() {
-                test_mul_val!(u8, false, $lhs);
-                test_mul_val!(u16, false, $lhs);
-                test_mul_val!(u32, false, $lhs);
-                test_mul_val!(u64, false, $lhs);
-                test_mul_val!(u128, false, $lhs);
-                test_mul_val!(i8, false, $lhs);
-                test_mul_val!(i16, false, $lhs);
-                test_mul_val!(i32, false, $lhs);
-                test_mul_val!(i64, false, $lhs);
-                test_mul_val!(i128, false, $lhs);
-                test_mul_val!(f32, false, $lhs);
-                test_mul_val!(f64, false, $lhs);
-            }
-        };
-    }
-
-    macro_rules! fn_test_mul_val_simd {
-        ($fn_name:ident, $lhs:ident) => {
-            #[test]
-            fn $fn_name() {
-                test_mul_val!(u8, true, $lhs);
-                test_mul_val!(u16, true, $lhs);
-                test_mul_val!(u32, true, $lhs);
-                test_mul_val!(i8, true, $lhs);
-                test_mul_val!(i16, true, $lhs);
-                test_mul_val!(i32, true, $lhs);
-                test_mul_val!(f32, true, $lhs);
-                test_mul_val!(f64, true, $lhs);
+                test_mul_val!(u8, $lhs);
+                test_mul_val!(u16, $lhs);
+                test_mul_val!(u32, $lhs);
+                test_mul_val!(u64, $lhs);
+                test_mul_val!(u128, $lhs);
+                test_mul_val!(i8, $lhs);
+                test_mul_val!(i16, $lhs);
+                test_mul_val!(i32, $lhs);
+                test_mul_val!(i64, $lhs);
+                test_mul_val!(i128, $lhs);
+                test_mul_val!(f32, $lhs);
+                test_mul_val!(f64, $lhs);
             }
         };
     }
@@ -154,48 +138,26 @@ mod tests {
         ($fn_name:ident, $lhs:ident, $rhs:ident) => {
             #[test]
             fn $fn_name() {
-                test_mul!(u8, false, $lhs, $rhs);
-                test_mul!(u16, false, $lhs, $rhs);
-                test_mul!(u32, false, $lhs, $rhs);
-                test_mul!(u64, false, $lhs, $rhs);
-                test_mul!(u128, false, $lhs, $rhs);
-                test_mul!(i8, false, $lhs, $rhs);
-                test_mul!(i16, false, $lhs, $rhs);
-                test_mul!(i32, false, $lhs, $rhs);
-                test_mul!(i64, false, $lhs, $rhs);
-                test_mul!(i128, false, $lhs, $rhs);
-                test_mul!(f32, false, $lhs, $rhs);
-                test_mul!(f64, false, $lhs, $rhs);
-            }
-        };
-    }
-
-    macro_rules! fn_test_mul_simd {
-        ($fn_name:ident, $lhs:ident, $rhs:ident) => {
-            #[test]
-            fn $fn_name() {
-                test_mul!(u8, true, $lhs, $rhs);
-                test_mul!(u16, true, $lhs, $rhs);
-                test_mul!(u32, true, $lhs, $rhs);
-                test_mul!(i8, true, $lhs, $rhs);
-                test_mul!(i16, true, $lhs, $rhs);
-                test_mul!(i32, true, $lhs, $rhs);
-                test_mul!(f32, true, $lhs, $rhs);
-                test_mul!(f64, true, $lhs, $rhs);
+                test_mul!(u8, $lhs, $rhs);
+                test_mul!(u16, $lhs, $rhs);
+                test_mul!(u32, $lhs, $rhs);
+                test_mul!(u64, $lhs, $rhs);
+                test_mul!(u128, $lhs, $rhs);
+                test_mul!(i8, $lhs, $rhs);
+                test_mul!(i16, $lhs, $rhs);
+                test_mul!(i32, $lhs, $rhs);
+                test_mul!(i64, $lhs, $rhs);
+                test_mul!(i128, $lhs, $rhs);
+                test_mul!(f32, $lhs, $rhs);
+                test_mul!(f64, $lhs, $rhs);
             }
         };
     }
 
     fn_test_mul_val!(test_mul_val_rm, rm);
     fn_test_mul_val!(test_mul_val_rm_t, rm_t);
-    fn_test_mul_val_simd!(test_mul_simd_val_rm, rm);
-    fn_test_mul_val_simd!(test_mul_simd_val_rm_t, rm_t);
     fn_test_mul!(test_mul_rm_rm, rm, rm);
     fn_test_mul!(test_mul_rm_rm_t, rm, rm_t);
     fn_test_mul!(test_mul_rm_t_rm, rm_t, rm);
     fn_test_mul!(test_mul_rm_t_rm_t, rm_t, rm_t);
-    fn_test_mul_simd!(test_mul_simd_rm_rm, rm, rm);
-    fn_test_mul_simd!(test_mul_simd_rm_rm_t, rm, rm_t);
-    fn_test_mul_simd!(test_mul_simd_rm_t_rm, rm_t, rm);
-    fn_test_mul_simd!(test_mul_simd_rm_t_rm_t, rm_t, rm_t);
 }

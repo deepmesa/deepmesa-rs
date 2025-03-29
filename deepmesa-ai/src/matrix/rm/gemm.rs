@@ -178,9 +178,9 @@ mod tests {
 
     #[test]
     fn test_gemm() {
-        let a = matrix_rm!([f32, 2, 3, false], 1,2,3;4,5,6);
-        let b = matrix_rm!([f32, 3, 2, false], 1,2;3,4;5,6);
-        let mut c = matrix_rm!([f32, 2, 2, false], 5,6;7,8);
+        let a = matrix_rm!([f32, 2, 3], 1,2,3;4,5,6);
+        let b = matrix_rm!([f32, 3, 2], 1,2;3,4;5,6);
+        let mut c = matrix_rm!([f32, 2, 2], 5,6;7,8);
 
         let alpha: f32 = 2.0;
         let beta: f32 = 3.0;
