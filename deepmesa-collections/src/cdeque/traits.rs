@@ -58,8 +58,8 @@
 //! println!("{:?}", deque); // Prints something like "[3,4]:10,2,3"
 //! ```
 
-use crate::queue::cdeque::macros::*;
-use crate::queue::cdeque::{CircularDeque, IntoIter, Iter, IterMut};
+use crate::cdeque::cdeque::{CircularDeque, IntoIter, Iter, IterMut};
+use crate::cdeque::macros::*;
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};

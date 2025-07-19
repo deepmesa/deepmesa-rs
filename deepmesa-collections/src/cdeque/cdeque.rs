@@ -16,14 +16,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-pub mod iter;
-pub(in crate::queue::cdeque) mod macros;
-pub(in crate::queue::cdeque) mod traits;
-
-pub use iter::{Drain, IntoIter, Iter, IterMut};
+pub use crate::cdeque::iter::{Drain, IntoIter, Iter, IterMut};
 
 extern crate alloc;
-use crate::queue::cdeque::macros::*;
+use crate::cdeque::macros::*;
 use alloc::alloc::alloc_zeroed;
 use alloc::alloc::dealloc;
 use alloc::alloc::Layout;
@@ -96,12 +92,12 @@ macro_rules! cdeque {
 /// assert_eq!(deque.pop_back(), Some(2));
 /// ```
 pub struct CircularDeque<T> {
-    len: usize,
-    capacity: usize,
-    p_idxz: *mut T,
-    p_idxc: *mut T,
-    p_head: *mut T,
-    p_tail: *mut T,
+    pub(in crate::cdeque) len: usize,
+    pub(in crate::cdeque) capacity: usize,
+    pub(in crate::cdeque) p_idxz: *mut T,
+    pub(in crate::cdeque) p_idxc: *mut T,
+    pub(in crate::cdeque) p_head: *mut T,
+    pub(in crate::cdeque) p_tail: *mut T,
 }
 
 /*
@@ -2193,7 +2189,7 @@ impl<T> CircularDeque<T> {
     // Returns the pointer for the given index (between 0 and len)
     // starting at the head of the deque. If the index is greater than
     // or equal to len then the behavior is undefined
-    fn ptr_at(&self, index: usize) -> *mut T {
+    pub(in crate::cdeque) fn ptr_at(&self, index: usize) -> *mut T {
         unsafe {
             let dist = self.p_idxc.offset_from(self.p_head) as usize;
             if dist < index {

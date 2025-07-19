@@ -12,24 +12,24 @@ pub mod collections {
         pub use deepmesa_collections::linkedlist::node::NodeHandle;
     }
 
-    pub use deepmesa_collections::queue::cdeque::CircularDeque;
+    pub use deepmesa_collections::cdeque::cdeque::CircularDeque;
     /// This module contains structs specific to the [`CircularDeque`]
     pub mod deque {
         pub use deepmesa_collections::cdeque;
-        pub use deepmesa_collections::queue::cdeque::iter::Drain;
-        pub use deepmesa_collections::queue::cdeque::iter::Iter;
-        pub use deepmesa_collections::queue::cdeque::iter::IterMut;
-        pub use deepmesa_collections::queue::cdeque::ErrorCode;
-        pub use deepmesa_collections::queue::cdeque::TryAllocError;
-        pub use deepmesa_collections::queue::cdeque::TryReserveError;
+        pub use deepmesa_collections::cdeque::cdeque::ErrorCode;
+        pub use deepmesa_collections::cdeque::cdeque::TryAllocError;
+        pub use deepmesa_collections::cdeque::cdeque::TryReserveError;
+        pub use deepmesa_collections::cdeque::iter::Drain;
+        pub use deepmesa_collections::cdeque::iter::Iter;
+        pub use deepmesa_collections::cdeque::iter::IterMut;
     }
 
-    pub use deepmesa_collections::map::lhmap::LinkedHashMap;
+    pub use deepmesa_collections::lhmap::lhmap::LinkedHashMap;
 
     /// This module contains structs specific to the [`LinkedHashMap`]
     pub mod map {
-        pub use deepmesa_collections::map::entry::Entry;
-        pub use deepmesa_collections::map::entry::Order;
+        pub use deepmesa_collections::lhmap::entry::Entry;
+        pub use deepmesa_collections::lhmap::entry::Order;
     }
 
     /// This module contains traits and structs specific to the [`BitVector`]

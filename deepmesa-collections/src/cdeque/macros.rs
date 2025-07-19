@@ -35,7 +35,7 @@ macro_rules! bounds_check {
     };
 }
 
-pub(in crate::queue::cdeque) use bounds_check;
+pub(in crate::cdeque) use bounds_check;
 
 /// Performs bounds checking and panics with a descriptive message if the index is out of bounds.
 ///
@@ -65,7 +65,7 @@ macro_rules! bounds_check_panic {
     };
 }
 
-pub(in crate::queue::cdeque) use bounds_check_panic;
+pub(in crate::cdeque) use bounds_check_panic;
 
 /// Performs bounds checking and returns `None` if the index is out of bounds.
 ///
@@ -82,7 +82,7 @@ macro_rules! bounds_check_none {
     };
 }
 
-pub(in crate::queue::cdeque) use bounds_check_none;
+pub(in crate::cdeque) use bounds_check_none;
 
 /// Returns `None` if the collection is empty.
 ///
@@ -100,4 +100,4 @@ macro_rules! len_zero_none {
     };
 }
 
-pub(in crate::queue::cdeque) use len_zero_none;
+pub(in crate::cdeque) use len_zero_none;

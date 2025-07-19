@@ -17,7 +17,7 @@
    limitations under the License.
 */
 
-use crate::queue::cdeque::CircularDeque;
+use crate::cdeque::cdeque::CircularDeque;
 
 /// An iterator over the elements of a [`CircularDeque`].
 ///

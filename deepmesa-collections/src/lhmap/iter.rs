@@ -16,8 +16,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::map::entry::Entry;
-use crate::map::lhmap::LinkedHashMap;
+use crate::lhmap::entry::Entry;
+use crate::lhmap::lhmap::LinkedHashMap;
 use core::hash::Hash;
 
 pub struct Iter<'a, K, V> {
