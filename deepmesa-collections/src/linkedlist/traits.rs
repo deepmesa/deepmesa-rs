@@ -19,7 +19,6 @@
    limitations under the License.
 */
 
-use crate::linkedlist::list::DropPolicy;
 use crate::linkedlist::list::LinkedList;
 use crate::linkedlist::node::InternalNode;
 
@@ -32,53 +31,11 @@ impl<T> Drop for LinkedList<T> {
         //Create a Vec to store the items so that we don't leak memory
         // if the Drop implementation of any of the elements of the
         // LinkedList panics.
-        match self.drop_policy {
-            DropPolicy::None => {
-                while !cur.is_null() {
-                    let node = self.pop_ptr(cur);
-                    cur = self.head;
-                }
-            }
-            DropPolicy::PanicSafe => {
-                let mut node_vec = Vec::with_capacity(self.len());
-                while !cur.is_null() {
-                    let node = self.pop_ptr(cur);
-                    node_vec.push(node);
-                    cur = self.head;
-                }
-            }
+        let mut node_vec = Vec::with_capacity(self.len());
+        while !cur.is_null() {
+            let node = self.pop_ptr(cur);
+            node_vec.push(node);
+            cur = self.head;
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[derive(Debug)]
-    struct Foo {
-        val: u8,
-    }
-
-    impl Drop for Foo {
-        fn drop(&mut self) {
-            if self.val == 5 {
-                panic!("DING Panic drop val = {:?}", self.val);
-            //                println!("DING Dropping foo val={:?}", self.val);
-            } else {
-                println!("DING Dropping foo val={:?}", self.val);
-            }
-        }
-    }
-
-    use crate::linkedlist::list::*;
-
-    #[test]
-    fn test_drop_panic() {
-        let mut ll = LinkedList::<Foo>::new();
-        for i in 0..10 {
-            ll.push_head(Foo { val: i });
-        }
-
-        println!("LL={:?}", ll);
     }
 }

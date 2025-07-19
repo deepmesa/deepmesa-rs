@@ -2,7 +2,7 @@
 
 /// Data structures that implement various collections that are
 /// designed for performance
-#[cfg(feature = "collections")]
+//#[cfg(feature = "collections")]
 pub mod collections {
     pub use deepmesa_collections::linkedlist::list::LinkedList;
     /// This module contains structs specific to the [`LinkedList`]
@@ -10,6 +10,18 @@ pub mod collections {
         pub use deepmesa_collections::linkedlist::iter::Iter;
         pub use deepmesa_collections::linkedlist::iter::IterMut;
         pub use deepmesa_collections::linkedlist::node::NodeHandle;
+    }
+
+    pub use deepmesa_collections::queue::cdeque::CircularDeque;
+    /// This module contains structs specific to the [`CircularDeque`]
+    pub mod deque {
+        pub use deepmesa_collections::cdeque;
+        pub use deepmesa_collections::queue::cdeque::iter::Drain;
+        pub use deepmesa_collections::queue::cdeque::iter::Iter;
+        pub use deepmesa_collections::queue::cdeque::iter::IterMut;
+        pub use deepmesa_collections::queue::cdeque::ErrorCode;
+        pub use deepmesa_collections::queue::cdeque::TryAllocError;
+        pub use deepmesa_collections::queue::cdeque::TryReserveError;
     }
 
     pub use deepmesa_collections::map::lhmap::LinkedHashMap;
@@ -56,7 +68,7 @@ pub mod collections {
 }
 
 /// A collection of encoding and decoding algorithms
-#[cfg(feature = "encoding")]
+//#[cfg(feature = "encoding")]
 pub mod encoding {
     pub use deepmesa_encoding::prefix::unary::UnaryDecoder;
     pub use deepmesa_encoding::prefix::unary::UnaryEncoder;
