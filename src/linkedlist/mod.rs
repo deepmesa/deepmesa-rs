@@ -28,8 +28,12 @@
 //! also allows pushing and popping elements from the middle of the
 //! list in constant time.
 //!
-pub mod fl;
-pub mod iter;
-pub mod list;
-pub mod node;
-pub mod traits;
+pub(crate) mod fl;
+pub(crate) mod iter;
+pub(crate) mod list;
+pub(crate) mod node;
+pub(crate) mod traits;
+
+pub use crate::linkedlist::iter::Iter;
+pub use crate::linkedlist::iter::IterMut;
+pub use crate::linkedlist::node::NodeHandle;

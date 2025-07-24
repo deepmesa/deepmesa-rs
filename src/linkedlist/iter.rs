@@ -34,8 +34,8 @@ enum IterDirection {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::Iter;
+/// use deepmesa_collections::LinkedList;
+/// use deepmesa_collections::linkedlist::Iter;
 ///
 /// let mut list = LinkedList::<u8>::new();
 /// list.push_front(1);
@@ -69,9 +69,9 @@ pub struct Iter<'a, T> {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::IterMut;
-/// use deepmesa::collections::linkedlist::Iter;
+/// use deepmesa_collections::LinkedList;
+/// use deepmesa_collections::linkedlist::IterMut;
+/// use deepmesa_collections::linkedlist::Iter;
 ///
 /// let mut list = LinkedList::<u8>::new();
 /// list.push_front(1);

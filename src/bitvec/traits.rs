@@ -57,7 +57,7 @@ pub trait BitwiseClear {
     /// Returns a value with the `n` LSB bits of `self` cleared.
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClear;
+    /// use deepmesa_collections::bitvec::BitwiseClear;
     ///
     /// let val:u8 = 0b1011_1100;
     /// assert_eq!(val.clear_lsb(4), 0b1011_0000);
@@ -66,7 +66,7 @@ pub trait BitwiseClear {
     /// Returns a value with the `n` MSB bits of `self` cleared.
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClear;
+    /// use deepmesa_collections::bitvec::BitwiseClear;
     ///
     /// let val:u8 = 0b1011_1100;
     /// assert_eq!(val.clear_msb(4), 0b0000_1100);
@@ -75,7 +75,7 @@ pub trait BitwiseClear {
     /// Returns a value with the `nth` LSB bit of `self` cleared.
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClear;
+    /// use deepmesa_collections::bitvec::BitwiseClear;
     ///
     /// let val:u8 = 0b1011_1100;
     /// assert_eq!(val.clear_lsb_nth(3), 0b1011_0100);
@@ -84,7 +84,7 @@ pub trait BitwiseClear {
     /// Returns a value with the `nth` MSB bit of `self` cleared.
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClear;
+    /// use deepmesa_collections::bitvec::BitwiseClear;
     ///
     /// let val:u8 = 0b1011_1100;
     /// assert_eq!(val.clear_msb_nth(3), 0b1010_1100);
@@ -97,7 +97,7 @@ pub trait BitwiseClearAssign {
     /// Clears `n` LSB bits of `self`
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    /// use deepmesa_collections::bitvec::BitwiseClearAssign;
     ///
     /// let mut val:u8 = 0b1011_1100;
     /// val.clear_lsb_assign(4);
@@ -107,7 +107,7 @@ pub trait BitwiseClearAssign {
     /// Clears `n` MSB bits of `self`
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    /// use deepmesa_collections::bitvec::BitwiseClearAssign;
     ///
     /// let mut val:u8 = 0b1011_1100;
     /// val.clear_msb_assign(4);
@@ -117,7 +117,7 @@ pub trait BitwiseClearAssign {
     /// Clears `nth` LSB bit of `self`
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    /// use deepmesa_collections::bitvec::BitwiseClearAssign;
     ///
     /// let mut val:u8 = 0b1011_1100;
     /// val.clear_lsb_nth_assign(3);
@@ -128,7 +128,7 @@ pub trait BitwiseClearAssign {
     /// Clears `nth` MSB bit of `self`
     /// # Examples
     /// ```
-    /// use deepmesa::collections::bitvec::BitwiseClearAssign;
+    /// use deepmesa_collections::bitvec::BitwiseClearAssign;
     ///
     /// let mut val:u8 = 0b1011_1100;
     /// val.clear_msb_nth_assign(3);
@@ -654,7 +654,7 @@ impl NotPartialAssign for u8 {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::bitvec::AsMsb0;
+/// use deepmesa_collections::bitvec::AsMsb0;
 ///
 /// let val: u8 = 0b0000_1100;
 /// let converted = val.as_msb0(4);
@@ -666,7 +666,7 @@ impl NotPartialAssign for u8 {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::bitvec::AsMsb0;
+/// use deepmesa_collections::bitvec::AsMsb0;
 ///
 /// let val: u8 = 0b1010_1100;
 /// let converted = val.as_msb0(8);
@@ -684,7 +684,7 @@ pub trait AsMsb0 {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::bitvec::AsLsb0;
+/// use deepmesa_collections::bitvec::AsLsb0;
 ///
 /// let val: u8 = 0b1100_0000;
 /// let converted = val.as_lsb0(4);
@@ -696,7 +696,7 @@ pub trait AsMsb0 {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::bitvec::AsLsb0;
+/// use deepmesa_collections::bitvec::AsLsb0;
 ///
 /// let val: u8 = 0b1010_1100;
 /// let converted = val.as_lsb0(8);

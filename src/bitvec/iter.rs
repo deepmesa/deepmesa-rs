@@ -84,8 +84,8 @@ iter_unsigned!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterU8;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterU8;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
@@ -110,8 +110,8 @@ iter_unsigned!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterU16;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterU16;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
@@ -135,8 +135,8 @@ iter_unsigned!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterU32;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterU32;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
@@ -161,8 +161,8 @@ iter_unsigned!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterU64;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterU64;
     /// let mut bv = BitVector::new();
     /// bv.push_u64(u64::MAX, Some(64));
     ///
@@ -185,8 +185,8 @@ iter_unsigned!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterU128;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterU128;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u64(u64::MAX, Some(64));
@@ -210,8 +210,8 @@ iter_unsigned!(
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvec::Iter;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvec::Iter;
 ///
 /// let mut bv = BitVector::new();
 /// bv.push_u8(0b101, None);
@@ -239,8 +239,8 @@ pub struct Iter<'a> {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvec::IterMut;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvec::IterMut;
 ///
 /// let mut bv = BitVector::with_capacity(20);
 /// bv.push_u8(0b1011_1100, Some(8));
@@ -370,8 +370,8 @@ iter_bits!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterOnes;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterOnes;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0101, Some(8));
@@ -396,8 +396,8 @@ iter_bits!(
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
-    /// use deepmesa::collections::bitvec::IterZeros;
+    /// use deepmesa_collections::BitVector;
+    /// use deepmesa_collections::bitvec::IterZeros;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1101_1010, Some(8));

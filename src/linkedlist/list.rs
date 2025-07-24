@@ -44,7 +44,7 @@ macro_rules! nid_inc {
 /// # Getting Started
 ///
 /// ```
-/// use deepmesa::collections::LinkedList;
+/// use deepmesa_collections::LinkedList;
 ///
 /// let mut list = LinkedList::<u8>::with_capacity(10);
 /// for i in 0..10 {
@@ -97,7 +97,7 @@ macro_rules! nid_inc {
 /// remove operations.
 ///
 /// ```
-/// use deepmesa::collections::LinkedList;
+/// use deepmesa_collections::LinkedList;
 /// // create a list with capacity 0
 /// let mut list = LinkedList::<u8>::with_capacity(0);
 /// assert_eq!(list.len(), 0);
@@ -157,7 +157,7 @@ macro_rules! nid_inc {
 /// return None if the handle is invalid.
 ///
 /// ```
-/// use deepmesa::collections::LinkedList;
+/// use deepmesa_collections::LinkedList;
 /// let mut list = LinkedList::<u8>::with_capacity(10);
 /// list.push_head(1);
 /// let middle = list.push_head(100);
@@ -177,8 +177,8 @@ macro_rules! nid_inc {
 /// later.
 ///
 /// ```
-/// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::NodeHandle;
+/// use deepmesa_collections::LinkedList;
+/// use deepmesa_collections::linkedlist::NodeHandle;
 /// struct MyStruct<T> {
 ///     handle: NodeHandle<T>
 /// };
@@ -199,7 +199,7 @@ macro_rules! nid_inc {
 /// direction by reversing the iterator at any time.
 ///
 /// ```
-/// use deepmesa::collections::LinkedList;
+/// use deepmesa_collections::LinkedList;
 /// let mut list = LinkedList::<u8>::with_capacity(10);
 /// for i in 0..10 {
 ///     list.push_head(i);
@@ -246,7 +246,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let list = LinkedList::<u8>::new();
     /// ```
     pub fn new() -> LinkedList<T> {
@@ -274,7 +274,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// for i in 0..10 {
     ///     // All these are pushed without any allocations
@@ -314,7 +314,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
@@ -340,7 +340,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::new();
     /// list.push_front(1);
     /// list.push_front(2);
@@ -367,7 +367,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// list.push_front(2);
@@ -397,7 +397,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
@@ -416,7 +416,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
@@ -435,7 +435,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.front(), None);
     ///
@@ -459,7 +459,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.back(), None);
     ///
@@ -482,7 +482,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
@@ -504,7 +504,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.tail(), None);
     ///
@@ -530,7 +530,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
@@ -552,7 +552,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.head(), None);
     ///
@@ -597,7 +597,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -630,7 +630,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -665,7 +665,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -697,7 +697,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -732,7 +732,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -769,7 +769,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -808,7 +808,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -833,7 +833,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -862,7 +862,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -890,7 +890,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -917,7 +917,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     ///
@@ -944,7 +944,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
@@ -978,7 +978,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
@@ -1010,7 +1010,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.is_empty(), true);
     ///
@@ -1028,7 +1028,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_head(), false);
     /// list.push_head(1);
@@ -1047,7 +1047,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.has_tail(), false);
     /// list.push_tail(1);
@@ -1063,7 +1063,7 @@ impl<T> LinkedList<T> {
     /// memory is allocated.
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.capacity(), 10);
     /// ```
@@ -1077,7 +1077,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.len(), 0);
     ///
@@ -1095,7 +1095,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_front(1);
     /// assert_eq!(list.front(), Some(&1));
@@ -1114,7 +1114,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(1);
     /// assert_eq!(list.back(), Some(&1));
@@ -1133,7 +1133,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_head(), None);
     ///
@@ -1157,7 +1157,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_tail(), None);
     ///
@@ -1183,7 +1183,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_front(), None);
     ///
@@ -1205,7 +1205,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// assert_eq!(list.pop_back(), None);
     ///
@@ -1228,7 +1228,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(1);
@@ -1259,7 +1259,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
@@ -1290,7 +1290,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
@@ -1311,7 +1311,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// assert_eq!(list.node(&node), Some(&1));
@@ -1345,7 +1345,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_tail(1);
     /// assert_eq!(list.node(&node), Some(&1));
@@ -1378,7 +1378,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_back(0);
@@ -1404,7 +1404,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
@@ -1453,7 +1453,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
@@ -1509,7 +1509,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_back(0);
     ///
@@ -1561,7 +1561,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1612,7 +1612,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1658,7 +1658,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1691,7 +1691,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1724,7 +1724,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1753,7 +1753,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -1782,7 +1782,7 @@ impl<T> LinkedList<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);

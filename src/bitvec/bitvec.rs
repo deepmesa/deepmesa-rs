@@ -61,7 +61,7 @@ use core::ops::RangeToInclusive;
 /// ```
 ///
 /// ```
-/// use deepmesa::collections::BitVector;
+/// use deepmesa_collections::BitVector;
 ///
 /// let mut bv = BitVector::with_capacity(128);
 /// bv.push(true);
@@ -80,8 +80,8 @@ use core::ops::RangeToInclusive;
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvector;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvector;
 ///
 /// let bv = bitvector![0,1,1,0];
 /// assert_eq!(bv.len(), 4);
@@ -274,7 +274,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let bv = BitVector::new();
     /// assert_eq!(bv.capacity(), 128);
     /// ```
@@ -288,7 +288,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let bv = BitVector::with_capacity(6);
     /// assert_eq!(bv.capacity(), 8);
     /// ```
@@ -304,7 +304,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let bv = BitVector::with_capacity(22);
     /// assert_eq!(bv.capacity(), 24);
     /// ```
@@ -316,7 +316,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let mut bv = BitVector::with_capacity(22);
     /// for _ in 0..5 {
     ///     bv.push(true);
@@ -331,7 +331,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let mut bv = BitVector::with_capacity(22);
     /// assert!(bv.is_empty());
     /// bv.push(true);
@@ -347,7 +347,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     /// let mut bv = BitVector::with_capacity(22);
     /// for _ in 0..5 {
     ///     bv.push(true);
@@ -379,7 +379,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b101, None);
@@ -399,7 +399,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_1100, Some(8));
@@ -423,7 +423,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.leading_ones(0), 0);
@@ -453,7 +453,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.leading_zeros(0), 0);
@@ -484,7 +484,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.trailing_ones(0), 0);
@@ -515,7 +515,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.trailing_zeros(0), 0);
@@ -545,7 +545,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.count_ones(0), 0);
@@ -575,7 +575,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.count_zeros(0), 0);
@@ -603,7 +603,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.first_zero(0), None);
@@ -632,7 +632,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.first_one(0), None);
@@ -661,7 +661,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.last_zero(0), None);
@@ -687,7 +687,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.last_one(0), None);
@@ -712,7 +712,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.first(), None);
@@ -736,7 +736,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.first(), None);
@@ -764,7 +764,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.last(), None);
@@ -788,7 +788,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// assert_eq!(bv.first(), None);
@@ -818,7 +818,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0101, Some(8));
@@ -838,7 +838,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1101_1010, Some(8));
@@ -869,7 +869,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         ///
@@ -896,7 +896,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         ///
@@ -922,7 +922,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         /// bv.push_u16(0b1111_0011_1100_0000, Some(16));
@@ -949,7 +949,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u64(u64::MAX, Some(64));
         ///
@@ -975,7 +975,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u64(u64::MAX, Some(64));
         /// bv.push_u64(u64::MAX, Some(64));
@@ -1001,7 +1001,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u8(0b0011_0110, Some(8));
         ///
@@ -1030,7 +1030,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         ///
@@ -1059,7 +1059,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1090,7 +1090,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1121,7 +1121,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1171,7 +1171,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1216,7 +1216,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1262,7 +1262,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1307,7 +1307,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1352,7 +1352,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1391,8 +1391,8 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
-        /// use deepmesa::collections::bitvec::BitOrder;
+        /// use deepmesa_collections::BitVector;
+        /// use deepmesa_collections::bitvec::BitOrder;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u8 = 0b1100_0101;
@@ -1438,8 +1438,8 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
-        /// use deepmesa::collections::bitvec::BitOrder;
+        /// use deepmesa_collections::BitVector;
+        /// use deepmesa_collections::bitvec::BitOrder;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u16 = 0b1100_0000_0000_0101;
@@ -1484,8 +1484,8 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
-        /// use deepmesa::collections::bitvec::BitOrder;
+        /// use deepmesa_collections::BitVector;
+        /// use deepmesa_collections::bitvec::BitOrder;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u32 = 0b1100_0000_0000_0000_0000_0000_0000_0101;
@@ -1530,8 +1530,8 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
-        /// use deepmesa::collections::bitvec::BitOrder;
+        /// use deepmesa_collections::BitVector;
+        /// use deepmesa_collections::bitvec::BitOrder;
         ///
         /// let mut bv = BitVector::new();
         /// // 4 MSB bits are 1100 and 4 LSB bits are 0101
@@ -1577,8 +1577,8 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
-        /// use deepmesa::collections::bitvec::BitOrder;
+        /// use deepmesa_collections::BitVector;
+        /// use deepmesa_collections::bitvec::BitOrder;
         ///
         /// let mut bv = BitVector::new();
         /// // 4 MSB bits are 1100 and 4 LSB bits are 0101
@@ -1612,7 +1612,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u8 = 0b101;
@@ -1645,7 +1645,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u16 = 0b101;
@@ -1678,7 +1678,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u32 = 0b101;
@@ -1711,7 +1711,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u64 = 0b101;
@@ -1744,7 +1744,7 @@ impl BitVector {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// let val:u128 = 0b101;
@@ -1774,7 +1774,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1011_1100, None);
@@ -1793,7 +1793,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1011_1100, None);
@@ -1814,7 +1814,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b0100_1101, Some(8));
@@ -1837,7 +1837,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b0100_1101, Some(8));
@@ -1860,7 +1860,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b0100_1101, Some(8));
@@ -1878,7 +1878,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b0100_1101, Some(8));
@@ -1893,7 +1893,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1101, None);
@@ -1917,7 +1917,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1101, None);
@@ -1939,7 +1939,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1101, None);
@@ -1960,7 +1960,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let bv = BitVector::repeat(true, 4);
     /// assert_eq!(bv.len(), 4);
@@ -1974,7 +1974,7 @@ impl BitVector {
     /// clears it. Panic if the index exceeds the length
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
@@ -2008,7 +2008,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
@@ -2042,7 +2042,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
@@ -2062,7 +2062,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(22);
     /// bv.push(true);
@@ -2095,7 +2095,7 @@ impl BitVector {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.fill(true, 4);

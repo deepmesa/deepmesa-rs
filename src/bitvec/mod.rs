@@ -3,12 +3,39 @@ mod bitops;
 #[macro_use]
 mod macros;
 
-pub mod bitref;
-pub mod bitslice;
-pub mod bitvec;
+pub(crate) mod bitref;
+pub(crate) mod bitslice;
+pub(crate) mod bitvec;
 pub(super) mod bytes;
-pub mod iter;
-pub mod traits;
+pub(crate) mod iter;
+pub(crate) mod traits;
+
+pub use crate::bitvec::bitslice::BitSlice;
+pub use crate::bitvec::iter::Iter;
+pub use crate::bitvec::iter::IterMut;
+pub use crate::bitvec::iter::IterOnes;
+pub use crate::bitvec::iter::IterU128;
+pub use crate::bitvec::iter::IterU16;
+pub use crate::bitvec::iter::IterU32;
+pub use crate::bitvec::iter::IterU64;
+pub use crate::bitvec::iter::IterU8;
+pub use crate::bitvec::iter::IterZeros;
+pub use crate::bitvec::traits::AsLsb0;
+pub use crate::bitvec::traits::AsMsb0;
+pub use crate::bitvec::traits::BitwiseClear;
+pub use crate::bitvec::traits::BitwiseClearAssign;
+pub use crate::bitvec::traits::BitwiseLsb;
+pub use crate::bitvec::traits::BitwiseLsbAssign;
+pub use crate::bitvec::traits::BitwiseMsb;
+pub use crate::bitvec::traits::BitwiseMsbAssign;
+pub use crate::bitvec::traits::BitwisePartial;
+pub use crate::bitvec::traits::BitwisePartialAssign;
+pub use crate::bitvec::traits::NotLsb;
+pub use crate::bitvec::traits::NotLsbAssign;
+pub use crate::bitvec::traits::NotMsb;
+pub use crate::bitvec::traits::NotMsbAssign;
+pub use crate::bitvec::traits::NotPartial;
+pub use crate::bitvec::traits::NotPartialAssign;
 
 type BitCount = usize;
 
@@ -51,8 +78,8 @@ pub enum BitOrder {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvector;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvector;
 ///
 /// let bv = bitvector![1,0,1,1,0,1,0,1];
 /// assert_eq!(bv.len(), 8);
@@ -64,8 +91,8 @@ pub enum BitOrder {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvector;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvector;
 ///
 /// let bv = bitvector![1;100];
 /// assert_eq!(bv.len(), 100);
@@ -76,8 +103,8 @@ pub enum BitOrder {
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
-/// use deepmesa::collections::bitvector;
+/// use deepmesa_collections::BitVector;
+/// use deepmesa_collections::bitvector;
 ///
 /// let bv = bitvector!();
 /// assert_eq!(bv.len(), 0);

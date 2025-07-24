@@ -33,7 +33,7 @@
 //! ## Examples
 //!
 //! ```
-//! # use deepmesa::collections::CircularDeque;
+//! # use deepmesa_collections::CircularDeque;
 //! let mut deque = CircularDeque::new();
 //! deque.push_back(1);
 //! deque.push_back(2);
@@ -82,7 +82,7 @@ impl<T> Index<usize> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -112,7 +112,7 @@ impl<T> IndexMut<usize> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -149,7 +149,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque1 = CircularDeque::new();
     /// deque1.push_back(1);
     /// deque1.push_back(2);
@@ -169,7 +169,7 @@ where
     /// Deques with different lengths are not equal:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque1 = CircularDeque::new();
     /// deque1.push_back(1);
     /// deque1.push_back(2);
@@ -214,7 +214,7 @@ impl<T: Debug> Debug for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -226,7 +226,7 @@ impl<T: Debug> Debug for CircularDeque<T> {
     /// Empty deques are formatted as:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque: CircularDeque<i32> = CircularDeque::new();
     /// println!("{:?}", deque); // Prints "[0,0]:()"
     /// ```
@@ -271,7 +271,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut original = CircularDeque::new();
     /// original.push_back(1);
     /// original.push_back(2);
@@ -288,7 +288,7 @@ where
     /// Cloning creates an independent copy:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut original = CircularDeque::new();
     /// original.push_back("hello".to_string());
     /// original.push_back("world".to_string());
@@ -325,7 +325,7 @@ impl<T> Default for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque: CircularDeque<i32> = Default::default();
     /// assert_eq!(deque.len(), 0);
     /// assert_eq!(deque.capacity(), 0);
@@ -335,7 +335,7 @@ impl<T> Default for CircularDeque<T> {
     /// Using in generic contexts:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// fn create_default_collection<T: Default>() -> T {
     ///     T::default()
     /// }
@@ -359,7 +359,7 @@ impl<T> IntoIterator for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -372,7 +372,7 @@ impl<T> IntoIterator for CircularDeque<T> {
     /// Using in a for loop:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back("hello");
     /// deque.push_back("world");
@@ -398,7 +398,7 @@ impl<'a, T> IntoIterator for &'a CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -414,7 +414,7 @@ impl<'a, T> IntoIterator for &'a CircularDeque<T> {
     /// Using in a for loop:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -441,7 +441,7 @@ impl<'a, T> IntoIterator for &'a mut CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -459,7 +459,7 @@ impl<'a, T> IntoIterator for &'a mut CircularDeque<T> {
     /// Collecting mutable references:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -484,7 +484,7 @@ impl<T> FromIterator<T> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let vec = vec![1, 2, 3, 4, 5];
     /// let deque: CircularDeque<i32> = vec.into_iter().collect();
     ///
@@ -496,7 +496,7 @@ impl<T> FromIterator<T> for CircularDeque<T> {
     /// Using with iterator adaptors:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque: CircularDeque<i32> = (0..10)
     ///     .filter(|&x| x % 2 == 0)
     ///     .map(|x| x * x)
@@ -513,7 +513,7 @@ impl<T> FromIterator<T> for CircularDeque<T> {
     /// Creating from string characters:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque: CircularDeque<char> = "hello".chars().collect();
     ///
     /// assert_eq!(deque.len(), 5);
@@ -546,7 +546,7 @@ impl<T> Extend<T> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -561,7 +561,7 @@ impl<T> Extend<T> for CircularDeque<T> {
     /// Extending with an iterator adaptor:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     ///
@@ -590,7 +590,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -609,7 +609,7 @@ where
     /// Extending with references to string slices:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back("hello".to_string());
     ///
@@ -636,7 +636,7 @@ impl<T> From<Vec<T>> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let vec = vec![1, 2, 3, 4, 5];
     /// let deque = CircularDeque::from(vec);
     ///
@@ -648,7 +648,7 @@ impl<T> From<Vec<T>> for CircularDeque<T> {
     /// Using with complex types:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let vec = vec!["hello".to_string(), "world".to_string()];
     /// let deque = CircularDeque::from(vec);
     ///
@@ -660,7 +660,7 @@ impl<T> From<Vec<T>> for CircularDeque<T> {
     /// Automatic conversion with Into:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let vec = vec![1, 2, 3];
     /// let deque: CircularDeque<i32> = vec.into();
     ///
@@ -689,7 +689,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// use std::collections::HashMap;
     ///
     /// let mut deque1 = CircularDeque::new();
@@ -713,7 +713,7 @@ where
     /// Using as HashMap keys:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<CircularDeque<i32>, String> = HashMap::new();
@@ -735,7 +735,7 @@ where
     /// Order matters for hashing:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// use std::collections::hash_map::DefaultHasher;
     /// use std::hash::{Hash, Hasher};
     ///
@@ -782,7 +782,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque1 = CircularDeque::new();
     /// deque1.push_back(1);
     /// deque1.push_back(2);
@@ -799,7 +799,7 @@ where
     /// Length-based comparison when elements are equal:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut short = CircularDeque::new();
     /// short.push_back(1);
     /// short.push_back(2);
@@ -844,7 +844,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// use std::cmp::Ordering;
     ///
     /// let mut deque1 = CircularDeque::new();
@@ -861,7 +861,7 @@ where
     /// Sorting deques:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deques = vec![];
     ///
     /// let mut deque1 = CircularDeque::new();
@@ -913,7 +913,7 @@ impl<T> Drop for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// {
     ///     let mut deque = CircularDeque::new();
     ///     deque.push_back(String::from("hello"));
@@ -925,7 +925,7 @@ impl<T> Drop for CircularDeque<T> {
     /// Drop is also called when explicitly using `drop()`:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(42);
     /// drop(deque); // Explicit drop
@@ -955,7 +955,7 @@ impl<T, const N: usize> From<[T; N]> for CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let arr = [1, 2, 3, 4, 5];
     /// let deque = CircularDeque::from(arr);
     ///
@@ -967,7 +967,7 @@ impl<T, const N: usize> From<[T; N]> for CircularDeque<T> {
     /// Using with complex types:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let arr = ["hello".to_string(), "world".to_string()];
     /// let deque = CircularDeque::from(arr);
     ///
@@ -979,7 +979,7 @@ impl<T, const N: usize> From<[T; N]> for CircularDeque<T> {
     /// Empty arrays:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let arr: [i32; 0] = [];
     /// let deque = CircularDeque::from(arr);
     ///
@@ -990,7 +990,7 @@ impl<T, const N: usize> From<[T; N]> for CircularDeque<T> {
     /// Automatic conversion with Into:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let arr = [1, 2, 3];
     /// let deque: CircularDeque<i32> = arr.into();
     ///

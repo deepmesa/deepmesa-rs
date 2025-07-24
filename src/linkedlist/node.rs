@@ -81,7 +81,7 @@ pub(crate) struct InternalNode<T> {
 ///
 /// ### Example
 /// ```
-/// use deepmesa::collections::LinkedList;
+/// use deepmesa_collections::LinkedList;
 /// let mut list = LinkedList::<u8>::with_capacity(10);
 /// list.push_head(1);
 /// let middle = list.push_head(100);
@@ -101,8 +101,8 @@ pub(crate) struct InternalNode<T> {
 /// default (invalid) handles in a struct and assign them later.
 /// ### Example
 /// ```
-/// use deepmesa::collections::LinkedList;
-/// use deepmesa::collections::linkedlist::NodeHandle;
+/// use deepmesa_collections::LinkedList;
+/// use deepmesa_collections::linkedlist::NodeHandle;
 ///
 /// struct MyStruct<T> {
 ///    handle: NodeHandle<T>
@@ -172,7 +172,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -195,7 +195,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -218,7 +218,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -241,7 +241,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -265,7 +265,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
@@ -292,7 +292,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node1 = list.push_head(1);
     /// let node2 = list.push_head(2);
@@ -319,7 +319,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -344,7 +344,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -372,7 +372,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -398,7 +398,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -425,7 +425,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// list.push_head(1);
     /// let node = list.push_head(2);
@@ -453,7 +453,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     /// list.push_head(2);
@@ -477,7 +477,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -501,7 +501,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     /// let node = list.push_head(1);
     ///
@@ -533,7 +533,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(1);
@@ -558,7 +558,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
@@ -581,7 +581,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// let node = list.push_head(1);
@@ -603,7 +603,7 @@ impl<T> NodeHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
@@ -633,7 +633,7 @@ impl<T> NodeHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(10);
     ///
     /// list.push_head(0);
@@ -667,7 +667,7 @@ impl<T> NodeHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -696,7 +696,7 @@ impl<T> NodeHandle<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(3);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);
@@ -720,7 +720,7 @@ impl<T> NodeHandle<T> {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::LinkedList;
+    /// use deepmesa_collections::LinkedList;
     /// let mut list = LinkedList::<u8>::with_capacity(4);
     /// let hnd0 = list.push_tail(0);
     /// let hnd1 = list.push_tail(1);

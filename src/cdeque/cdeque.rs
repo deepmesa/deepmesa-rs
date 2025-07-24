@@ -34,8 +34,8 @@ use std::ptr::null_mut;
 /// Create an empty CircularDeque
 ///
 /// ```
-/// # use deepmesa::collections::CircularDeque;
-/// # use deepmesa::collections::deque::cdeque;
+/// # use deepmesa_collections::CircularDeque;
+/// # use deepmesa_collections::deque::cdeque;
 /// let mut empty_cdq = cdeque!();
 ///
 /// assert_eq!(empty_cdq.len(), 0);
@@ -50,8 +50,8 @@ use std::ptr::null_mut;
 /// Create a Circular Deque initialized with 3 elements
 ///
 /// ```
-/// # use deepmesa::collections::CircularDeque;
-/// # use deepmesa::collections::deque::cdeque;
+/// # use deepmesa_collections::CircularDeque;
+/// # use deepmesa_collections::deque::cdeque;
 /// let mut cdq = cdeque!(1, 2, 3);
 ///
 /// assert_eq!(cdq.len(), 3);
@@ -78,7 +78,7 @@ macro_rules! cdeque {
 /// # Examples
 ///
 /// ```
-/// # use deepmesa::collections::CircularDeque;
+/// # use deepmesa_collections::CircularDeque;
 /// let mut deque = CircularDeque::new();
 /// deque.push_back(1);
 /// deque.push_back(2);
@@ -193,7 +193,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -250,7 +250,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -313,7 +313,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -332,7 +332,7 @@ impl<T> CircularDeque<T> {
     /// Empty deques will have their capacity reduced to zero:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::<i32>::with_capacity(10);
     /// assert_eq!(deque.capacity(), 10);
     /// assert_eq!(deque.len(), 0);
@@ -345,7 +345,7 @@ impl<T> CircularDeque<T> {
     /// If the capacity already equals the length, this operation is a no-op:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -397,7 +397,7 @@ impl<T> CircularDeque<T> {
     /// Shrinking to a specific capacity:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -416,7 +416,7 @@ impl<T> CircularDeque<T> {
     /// The capacity will not shrink below the current length:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -437,7 +437,7 @@ impl<T> CircularDeque<T> {
     /// Empty deques can be shrunk to any capacity:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::<i32>::with_capacity(50);
     /// assert_eq!(deque.capacity(), 50);
     /// assert_eq!(deque.len(), 0);
@@ -456,7 +456,7 @@ impl<T> CircularDeque<T> {
     /// If the current capacity is already at or below the minimum, this is a no-op:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -507,7 +507,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -527,7 +527,7 @@ impl<T> CircularDeque<T> {
     /// is empty, then the length of the deque is returned:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(2);
     /// deque.push_back(4);
@@ -541,7 +541,7 @@ impl<T> CircularDeque<T> {
     /// If no elements of the deque match the predicate, then 0 is returned:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(2);
     /// deque.push_back(4);
@@ -591,7 +591,7 @@ impl<T> CircularDeque<T> {
     /// Basic usage:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -609,7 +609,7 @@ impl<T> CircularDeque<T> {
     /// Draining all elements:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -623,7 +623,7 @@ impl<T> CircularDeque<T> {
     /// Draining from the front:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -689,7 +689,7 @@ impl<T> CircularDeque<T> {
     /// Basic usage:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -711,7 +711,7 @@ impl<T> CircularDeque<T> {
     /// Splitting at the beginning:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -728,7 +728,7 @@ impl<T> CircularDeque<T> {
     /// Splitting at the end:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -795,7 +795,7 @@ impl<T> CircularDeque<T> {
     /// Growing the deque with a generator function:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -817,7 +817,7 @@ impl<T> CircularDeque<T> {
     /// Shrinking the deque (generator is not called):
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -833,7 +833,7 @@ impl<T> CircularDeque<T> {
     /// Using a generator that produces different values:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back("hello".to_string());
     ///
@@ -877,7 +877,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque = CircularDeque::<i32>::new();
     /// assert_eq!(deque.len(), 0);
     /// assert_eq!(deque.capacity(), 0);
@@ -908,7 +908,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque = CircularDeque::<i32>::with_capacity(10);
     /// assert_eq!(deque.len(), 0);
     /// assert_eq!(deque.capacity(), 10);
@@ -933,7 +933,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert!(deque.is_empty());
     ///
@@ -949,7 +949,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::with_capacity(2);
     /// assert!(!deque.is_full());
     ///
@@ -968,7 +968,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert_eq!(deque.len(), 0);
     ///
@@ -988,7 +988,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let deque = CircularDeque::<i32>::with_capacity(10);
     /// assert_eq!(deque.capacity(), 10);
     /// ```
@@ -1004,7 +1004,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1027,7 +1027,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1048,7 +1048,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1070,7 +1070,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_front(1);
     /// deque.push_front(2);
@@ -1092,7 +1092,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert_eq!(deque.front(), None);
     ///
@@ -1114,7 +1114,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert_eq!(deque.front_mut(), None);
     ///
@@ -1140,7 +1140,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert_eq!(deque.back(), None);
     ///
@@ -1164,7 +1164,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// assert_eq!(deque.back_mut(), None);
     ///
@@ -1193,7 +1193,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1221,7 +1221,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1249,7 +1249,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1292,7 +1292,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(3);
@@ -1345,7 +1345,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1409,7 +1409,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     ///
@@ -1437,7 +1437,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     ///
@@ -1544,7 +1544,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1568,7 +1568,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1604,7 +1604,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1630,7 +1630,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1739,7 +1739,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::CircularDeque;
+    /// use deepmesa_collections::CircularDeque;
     ///
     /// let mut cdq = CircularDeque::<i32>::new();
     /// cdq.push_back(5);
@@ -1758,7 +1758,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// use deepmesa::collections::CircularDeque;
+    /// use deepmesa_collections::CircularDeque;
     ///
     /// let mut cdq = CircularDeque::<u8>::new();
     /// cdq.push_back(1);
@@ -1789,7 +1789,7 @@ impl<T> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::with_capacity(10);
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -1956,7 +1956,7 @@ impl<T: Copy> CircularDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let slice = &[1, 2, 3, 4, 5];
     /// let deque = CircularDeque::from_slice(slice);
     ///
@@ -1981,7 +1981,7 @@ impl<T: Copy> CircularDeque<T> {
 /// # Examples
 ///
 /// ```
-/// # use deepmesa::collections::deque::ErrorCode;
+/// # use deepmesa_collections::deque::ErrorCode;
 /// let error = ErrorCode::AllocError;
 /// // Handle allocation error appropriately
 /// ```
@@ -2002,7 +2002,7 @@ pub enum ErrorCode {
 /// # Examples
 ///
 /// ```
-/// # use deepmesa::collections::{CircularDeque, deque::TryReserveError};
+/// # use deepmesa_collections::{CircularDeque, deque::TryReserveError};
 /// let mut deque = CircularDeque::<i32>::new();
 ///
 /// // This might fail if we request too much memory
@@ -2032,7 +2032,7 @@ impl TryReserveError {
 /// # Examples
 ///
 /// ```
-/// # use deepmesa::collections::deque::{TryAllocError, ErrorCode};
+/// # use deepmesa_collections::deque::{TryAllocError, ErrorCode};
 /// // TryAllocError is typically created internally by the library
 /// // when allocation operations fail
 /// ```
@@ -2226,7 +2226,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -2299,7 +2299,7 @@ where
     /// Growing the deque:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -2316,7 +2316,7 @@ where
     /// Shrinking the deque:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);
@@ -2332,7 +2332,7 @@ where
     /// Resizing to the same length is a no-op:
     ///
     /// ```
-    /// # use deepmesa::collections::CircularDeque;
+    /// # use deepmesa_collections::CircularDeque;
     /// let mut deque = CircularDeque::new();
     /// deque.push_back(1);
     /// deque.push_back(2);

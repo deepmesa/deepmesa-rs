@@ -61,7 +61,7 @@ use core::ops::RangeToInclusive;
 ///
 /// # Examples
 /// ```
-/// use deepmesa::collections::BitVector;
+/// use deepmesa_collections::BitVector;
 ///
 /// let mut bv = BitVector::with_capacity(20);
 /// bv.push_u8(0b1011_0011, None);
@@ -389,7 +389,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(22);
     /// bv.push_u8(0b1001_1011, None);
@@ -424,7 +424,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1000_0001, None);
@@ -446,7 +446,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1010_0011, None);
@@ -470,7 +470,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_1100, None);
@@ -498,7 +498,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_0000, None);
@@ -526,7 +526,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_1111, None);
@@ -560,7 +560,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_1111, None);
@@ -590,7 +590,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1111_1000, Some(8));
@@ -626,7 +626,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0000_0111, Some(8));
@@ -662,7 +662,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0000_0111, Some(8));
@@ -698,7 +698,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1111_1000, Some(8));
@@ -732,7 +732,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1111_1000, Some(8));
@@ -766,7 +766,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0000_0111, Some(8));
@@ -801,7 +801,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0000_0111, Some(8));
@@ -839,7 +839,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1111_1000, Some(8));
@@ -877,7 +877,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0000_0111, Some(8));
@@ -915,7 +915,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1111_1000, Some(8));
@@ -952,7 +952,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0100, Some(8));
@@ -978,7 +978,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0100, Some(8));
@@ -1010,7 +1010,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0100, Some(8));
@@ -1036,7 +1036,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0100, Some(8));
@@ -1068,7 +1068,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b0010_0101, Some(8));
@@ -1092,7 +1092,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1101_1010, Some(8));
@@ -1116,7 +1116,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::new();
     /// bv.push_u8(0b1011_0011, None);
@@ -1137,7 +1137,7 @@ impl BitSlice {
     ///
     /// # Examples
     /// ```
-    /// use deepmesa::collections::BitVector;
+    /// use deepmesa_collections::BitVector;
     ///
     /// let mut bv = BitVector::with_capacity(20);
     /// bv.push_u8(0b1011_1100, None);
@@ -1170,7 +1170,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         ///
@@ -1197,7 +1197,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         ///
@@ -1223,7 +1223,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0101_1101_0011_1010, Some(16));
         /// bv.push_u16(0b1111_0011_1100_0000, Some(16));
@@ -1250,7 +1250,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u64(u64::MAX, Some(64));
         ///
@@ -1276,7 +1276,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u64(u64::MAX, Some(64));
         /// bv.push_u64(u64::MAX, Some(64));
@@ -1303,7 +1303,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1317,7 +1317,7 @@ impl BitSlice {
         /// # Example of `TryFrom<&BitSlice> for u8`
         ///
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
@@ -1347,7 +1347,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1363,7 +1363,7 @@ impl BitSlice {
         /// # Example of `TryFrom<&BitSlice> for u16`
         ///
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
@@ -1393,7 +1393,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// bv.push_u32(u32::MAX, Some(32));
@@ -1408,7 +1408,7 @@ impl BitSlice {
         /// # Example of `TryFrom<&BitSlice> for u32`
         ///
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
@@ -1437,7 +1437,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// bv.push_u64(u64::MAX, Some(64));
@@ -1452,7 +1452,7 @@ impl BitSlice {
         /// # Example of `TryFrom<&BitSlice> for u64`
         ///
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
@@ -1481,7 +1481,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         ///
         /// let mut bv = BitVector::new();
         /// bv.push_u128(u128::MAX, Some(128));
@@ -1496,7 +1496,7 @@ impl BitSlice {
         /// # Example of `TryFrom<&BitSlice> for u128`
         ///
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// use core::convert::TryFrom;
         ///
         /// let mut bv = BitVector::new();
@@ -1526,7 +1526,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u8(0b0011_0110, Some(8));
         ///
@@ -1556,7 +1556,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         ///
@@ -1586,7 +1586,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1617,7 +1617,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1649,7 +1649,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// bv.push_u16(0b0011_0110_1100_0011, Some(16));
         /// bv.push_u16(0b1100_1010_0100_1100, Some(16));
@@ -1700,7 +1700,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1746,7 +1746,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1792,7 +1792,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1838,7 +1838,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
@@ -1884,7 +1884,7 @@ impl BitSlice {
         ///
         /// # Examples
         /// ```
-        /// use deepmesa::collections::BitVector;
+        /// use deepmesa_collections::BitVector;
         /// let mut bv = BitVector::new();
         /// // Push 8 bits: 0b0011_0110
         /// bv.push_u8(0b0011_0110, Some(8));
