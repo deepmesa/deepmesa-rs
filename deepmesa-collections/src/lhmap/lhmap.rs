@@ -17,16 +17,16 @@
    limitations under the License.
 */
 
+use crate::lhmap::entry::Entry;
+use crate::lhmap::entry::Order;
+use crate::lhmap::entry::PtrKey;
+use crate::lhmap::iter::Iter;
+use crate::lhmap::iter::IterMut;
+use crate::lhmap::iter::Keys;
+use crate::lhmap::iter::Values;
+use crate::lhmap::iter::ValuesMut;
 use crate::linkedlist::list::LinkedList;
 use crate::linkedlist::node::NodeHandle;
-use crate::map::entry::Entry;
-use crate::map::entry::Order;
-use crate::map::entry::PtrKey;
-use crate::map::iter::Iter;
-use crate::map::iter::IterMut;
-use crate::map::iter::Keys;
-use crate::map::iter::Values;
-use crate::map::iter::ValuesMut;
 use core::hash::Hash;
 use std::collections::HashMap;
 
@@ -1018,7 +1018,7 @@ mod tests {
 
     #[test]
     fn test_foo() {
-        use deepmesa::collections::map::Entry;
+        use crate::map::entry::Entry;
         pub fn evict<K, V>(len: usize, capacity: usize, _e: &Entry<K, V>) -> bool {
             if len > capacity {
                 return true;
@@ -1026,8 +1026,8 @@ mod tests {
             return false;
         }
 
-        use deepmesa::collections::map::Order;
-        use deepmesa::collections::LinkedHashMap;
+        use crate::map::entry::Order;
+        use crate::map::lhmap::LinkedHashMap;
 
         let mut lhm = LinkedHashMap::<u16, &str>::new(2, Order::AccessOrder, Some(evict));
         lhm.put(1, "a");

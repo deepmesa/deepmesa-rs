@@ -120,8 +120,8 @@ impl<T> FreeList<T> {
     pub(super) fn release(&mut self, ptr: *mut InternalNode<T>) -> T {
         unsafe {
             let node = ptr::read(ptr);
-            (*ptr).next = ptr::null_mut();
-            (*ptr).prev = ptr::null_mut();
+            (*ptr).next = ptr::null_mut(); // Don't need this. Push head should set the ptrs
+            (*ptr).prev = ptr::null_mut(); // Don't need this. Push head should set the ptrs
             (*ptr).fl_node = true;
             self.push_head(ptr);
             node.val

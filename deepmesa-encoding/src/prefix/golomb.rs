@@ -175,7 +175,7 @@ impl GolombEncoder {
 impl<'a> GolombDecoder<'a> {
     /// Creates a new [`GolombDecoder`] with a tunable parameter and
     /// the specified [`BitVector`] containing the encoded bits.
-    pub fn new(bitvec: &'a BitVector, param: u128) -> GolombDecoder {
+    pub fn new(bitvec: &'a BitVector, param: u128) -> GolombDecoder<'a> {
         let c = (param as f64).log2() as usize;
         let u = 2u128.pow((c + 1) as u32) - param;
 
