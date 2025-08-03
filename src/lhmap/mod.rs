@@ -17,11 +17,14 @@
    limitations under the License.
 */
 
-pub mod entry;
-pub mod iter;
-pub mod lhmap;
+pub(in crate::lhmap) mod entry;
+pub(in crate::lhmap) mod iter;
+pub(crate) mod lhmap;
 
-//pub mod avltreemap; AvlTreeMap
-//pub mod rbtreemap; RBTreeMap
-//pub mod avltreeset; AvlTreeSet
-//pub mod rbtreeset; RbTreeSet
+pub use entry::Entry;
+pub use entry::Order;
+pub use iter::Iter;
+pub use iter::IterMut;
+pub use iter::Keys;
+pub use iter::Values;
+pub use iter::ValuesMut;

@@ -47,7 +47,7 @@ use std::collections::HashMap;
 /// # Getting Started
 /// ```
 /// use deepmesa_collections::LinkedHashMap;
-/// use deepmesa_collections::map::Order;
+/// use deepmesa_collections::lhmap::Order;
 ///
 /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
 /// lhm.put(1, "a");
@@ -100,7 +100,7 @@ use std::collections::HashMap;
 /// ```
 /// // Construct a map in InsertionOrder
 /// use deepmesa_collections::LinkedHashMap;
-/// use deepmesa_collections::map::Order;
+/// use deepmesa_collections::lhmap::Order;
 ///
 /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
 /// lhm.put(1, "a");
@@ -145,7 +145,7 @@ use std::collections::HashMap;
 /// an eviction function is well suited to building an LRU Cache.
 ///
 /// ```
-/// use deepmesa_collections::map::Entry;
+/// use deepmesa_collections::lhmap::Entry;
 /// pub fn evict<K,V>(len: usize, capacity: usize, e: &Entry<K, V>) -> bool {
 ///     if len > capacity {
 ///         return true;
@@ -154,7 +154,7 @@ use std::collections::HashMap;
 /// }
 ///
 /// use deepmesa_collections::LinkedHashMap;
-/// use deepmesa_collections::map::Order;
+/// use deepmesa_collections::lhmap::Order;
 ///
 /// let mut lhm = LinkedHashMap::<u16, &str>::new(3, Order::AccessOrder, Some(evict));
 /// lhm.put(1, "a");
@@ -216,7 +216,7 @@ where
     ///
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     /// let lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// ```
     pub fn new(
@@ -264,7 +264,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// assert_eq!(10, lhm.capacity());
@@ -279,7 +279,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// assert_eq!(lhm.len(), 0);
@@ -299,7 +299,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -318,7 +318,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// assert!(lhm.is_empty());
@@ -336,7 +336,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -359,7 +359,7 @@ where
     ///
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -407,7 +407,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -456,7 +456,7 @@ where
     ///
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -504,7 +504,7 @@ where
     ///
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -532,7 +532,7 @@ where
     ///
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.insert(1, "a");
@@ -558,7 +558,7 @@ where
     /// #Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// lhm.put(1, "a");
@@ -602,7 +602,7 @@ where
     /// #Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
     /// assert_eq!(lhm.insert(1, "a"), None);
@@ -658,7 +658,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// // Construct a map in InsertionOrder
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
@@ -703,7 +703,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// // Construct a map in InsertionOrder
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
@@ -740,7 +740,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// // Construct a map in InsertionOrder
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
@@ -784,7 +784,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
 
     ///
     /// // Construct a map in InsertionOrder
@@ -830,7 +830,7 @@ where
     /// # Examples
     /// ```
     /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::map::Order;
+    /// use deepmesa_collections::lhmap::Order;
     ///
     /// // Construct a map in InsertionOrder
     /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);

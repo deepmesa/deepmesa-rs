@@ -16,58 +16,20 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-pub use crate::cdeque::iter::{Drain, IntoIter, Iter, IterMut};
-
 extern crate alloc;
 use crate::cdeque::macros::*;
+use crate::cdeque::Drain;
+use crate::cdeque::Iter;
+use crate::cdeque::IterMut;
+use crate::ErrorCode;
+use crate::TryAllocError;
+use crate::TryReserveError;
 use alloc::alloc::alloc_zeroed;
 use alloc::alloc::dealloc;
 use alloc::alloc::Layout;
 use core::ptr;
 use std::fmt::Debug;
 use std::ptr::null_mut;
-
-/// A convenience macro for creating a `CircularDeque` from a list of elements.
-///
-/// # Examples
-///
-/// Create an empty CircularDeque
-///
-/// ```
-/// # use deepmesa_collections::CircularDeque;
-/// # use deepmesa_collections::deque::cdeque;
-/// let mut empty_cdq = cdeque!();
-///
-/// assert_eq!(empty_cdq.len(), 0);
-/// empty_cdq.push_back(1);
-/// empty_cdq.push_back(2);
-/// empty_cdq.push_back(3);
-/// assert_eq!(empty_cdq.len(), 3);
-/// assert_eq!(empty_cdq.get(0), Some(&1));
-/// assert_eq!(empty_cdq.get(1), Some(&2));
-/// assert_eq!(empty_cdq.get(2), Some(&3));
-/// ```
-/// Create a Circular Deque initialized with 3 elements
-///
-/// ```
-/// # use deepmesa_collections::CircularDeque;
-/// # use deepmesa_collections::deque::cdeque;
-/// let mut cdq = cdeque!(1, 2, 3);
-///
-/// assert_eq!(cdq.len(), 3);
-/// assert_eq!(cdq.get(0), Some(&1));
-/// assert_eq!(cdq.get(1), Some(&2));
-/// assert_eq!(cdq.get(2), Some(&3));
-/// ```
-#[macro_export]
-macro_rules! cdeque {
-    () => {
-        CircularDeque::new()
-    };
-    ($($x:literal),+) => {
-        CircularDeque::from_slice(&[$($x,)*][..])
-    };
-}
 
 /// A circular double-ended queue (deque) implemented with a growable ring buffer.
 ///
@@ -1973,82 +1935,6 @@ impl<T: Copy> CircularDeque<T> {
     }
 }
 
-/// Error codes for memory allocation and capacity management operations.
-///
-/// These error codes are used to indicate various failure conditions
-/// when attempting to allocate or manage memory for the circular deque.
-///
-/// # Examples
-///
-/// ```
-/// # use deepmesa_collections::deque::ErrorCode;
-/// let error = ErrorCode::AllocError;
-/// // Handle allocation error appropriately
-/// ```
-pub enum ErrorCode {
-    /// Memory allocation failed
-    AllocError,
-    /// Memory layout computation failed
-    MemLayoutError,
-    /// Capacity overflow (requested capacity too large)
-    CapacityOverflow,
-}
-
-/// Error type returned when a memory reservation operation fails.
-///
-/// This error contains both an error code indicating the type of failure
-/// and a descriptive message explaining what went wrong.
-///
-/// # Examples
-///
-/// ```
-/// # use deepmesa_collections::{CircularDeque, deque::TryReserveError};
-/// let mut deque = CircularDeque::<i32>::new();
-///
-/// // This might fail if we request too much memory
-/// match deque.try_reserve(usize::MAX) {
-///     Ok(()) => println!("Successfully reserved memory"),
-///     Err(error) => println!("Failed to reserve memory: {}", error.msg),
-/// }
-/// ```
-pub struct TryReserveError {
-    /// The error code indicating the type of failure
-    pub code: ErrorCode,
-    /// A descriptive message explaining the error
-    pub msg: String,
-}
-
-impl TryReserveError {
-    pub(crate) fn new(code: ErrorCode, msg: String) -> TryReserveError {
-        return TryReserveError { code, msg };
-    }
-}
-
-/// Error type returned when a memory allocation operation fails.
-///
-/// This error contains both an error code indicating the type of failure
-/// and a descriptive message explaining what went wrong.
-///
-/// # Examples
-///
-/// ```
-/// # use deepmesa_collections::deque::{TryAllocError, ErrorCode};
-/// // TryAllocError is typically created internally by the library
-/// // when allocation operations fail
-/// ```
-pub struct TryAllocError {
-    /// The error code indicating the type of failure
-    code: ErrorCode,
-    /// A descriptive message explaining the error
-    msg: String,
-}
-
-impl TryAllocError {
-    pub(crate) fn new(code: ErrorCode, msg: String) -> TryAllocError {
-        return TryAllocError { code, msg };
-    }
-}
-
 //Private methods
 impl<T> CircularDeque<T> {
     fn pop_back_unchecked(&mut self) -> T {
@@ -2362,6 +2248,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::CircularDeque;
+    use crate::cdeque::cdq;
 
     macro_rules! assert_ptrs {
         ($cdq:ident) => {
@@ -2377,7 +2264,7 @@ mod tests {
 
     #[test]
     fn test_contains() {
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         assert_eq!(cdq.contains(&9), false);
         assert_eq!(cdq.contains(&1), true);
         assert_eq!(cdq.contains(&2), true);
@@ -2386,34 +2273,34 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        let mut cdq = cdeque!(1, 2, 3);
-        assert_eq!(cdq, cdeque!(1, 2, 3));
-        assert_ne!(cdq, cdeque!(1, 2, 3, 5));
+        let mut cdq = cdq!(1, 2, 3);
+        assert_eq!(cdq, cdq!(1, 2, 3));
+        assert_ne!(cdq, cdq!(1, 2, 3, 5));
     }
 
     #[test]
     fn test_append() {
-        let mut cdq = cdeque!(1, 2, 3);
-        let mut other = cdeque!(5, 6, 7, 8);
+        let mut cdq = cdq!(1, 2, 3);
+        let mut other = cdq!(5, 6, 7, 8);
         cdq.append(&mut other);
-        assert_eq!(other, cdeque!());
-        assert_eq!(cdq, cdeque!(1, 2, 3, 5, 6, 7, 8));
+        assert_eq!(other, cdq!());
+        assert_eq!(cdq, cdq!(1, 2, 3, 5, 6, 7, 8));
 
-        let mut cdq = cdeque!();
-        let mut other = cdeque!(5, 6, 7, 8);
+        let mut cdq = cdq!();
+        let mut other = cdq!(5, 6, 7, 8);
         cdq.append(&mut other);
-        assert_eq!(other, cdeque!());
-        assert_eq!(cdq, cdeque!(5, 6, 7, 8));
+        assert_eq!(other, cdq!());
+        assert_eq!(cdq, cdq!(5, 6, 7, 8));
     }
 
     #[test]
     fn test_remove() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        let mut cdq = cdq!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         assert_ptrs!(cdq);
         assert_eq!(cdq.len(), 10);
         let val = cdq.remove(3);
         assert_eq!(val, Some(4u8));
-        assert_eq!(cdq, cdeque!(1, 2, 3, 5, 6, 7, 8, 9, 10));
+        assert_eq!(cdq, cdq!(1, 2, 3, 5, 6, 7, 8, 9, 10));
         for i in 0..10 {
             cdq.remove(1);
         }
@@ -2424,55 +2311,55 @@ mod tests {
 
     #[test]
     fn test_swap_remove_back() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
 
         let val = cdq.swap_remove_back(4);
         assert_eq!(val, Some(5));
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
 
         let val = cdq.swap_remove_back(1);
         assert_eq!(val, Some(2));
-        assert_eq!(cdq, cdeque!(1, 4, 3));
+        assert_eq!(cdq, cdq!(1, 4, 3));
 
         let val = cdq.swap_remove_back(1);
         assert_eq!(val, Some(4));
-        assert_eq!(cdq, cdeque!(1, 3));
+        assert_eq!(cdq, cdq!(1, 3));
 
         let val = cdq.swap_remove_back(0);
         assert_eq!(val, Some(1));
-        assert_eq!(cdq, cdeque!(3));
+        assert_eq!(cdq, cdq!(3));
 
         let val = cdq.swap_remove_back(0);
         assert_eq!(val, Some(3));
-        assert_eq!(cdq, cdeque!());
+        assert_eq!(cdq, cdq!());
     }
 
     #[test]
     fn test_swap_remove_front() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let val = cdq.swap_remove_front(0);
         assert_eq!(val, Some(1));
-        assert_eq!(cdq, cdeque!(2, 3, 4, 5));
+        assert_eq!(cdq, cdq!(2, 3, 4, 5));
 
         let val = cdq.swap_remove_front(2);
         assert_eq!(val, Some(4));
-        assert_eq!(cdq, cdeque!(3, 2, 5));
+        assert_eq!(cdq, cdq!(3, 2, 5));
 
         let val = cdq.swap_remove_front(1);
         assert_eq!(val, Some(2));
-        assert_eq!(cdq, cdeque!(3, 5));
+        assert_eq!(cdq, cdq!(3, 5));
 
         let val = cdq.swap_remove_front(1);
         assert_eq!(val, Some(5));
-        assert_eq!(cdq, cdeque!(3));
+        assert_eq!(cdq, cdq!(3));
 
         let val = cdq.swap_remove_front(0);
         assert_eq!(val, Some(3));
-        assert_eq!(cdq, cdeque!());
+        assert_eq!(cdq, cdq!());
 
         let val = cdq.swap_remove_front(10);
         assert_eq!(val, None);
-        assert_eq!(cdq, cdeque!());
+        assert_eq!(cdq, cdq!());
     }
 
     // push_back and pop_front
@@ -2742,7 +2629,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let cdq: CircularDeque<u8> = cdeque!(1, 2, 3, 4, 7, 8, 9);
+        let cdq: CircularDeque<u8> = cdq!(1, 2, 3, 4, 7, 8, 9);
         assert_eq!(cdq.get(6).unwrap(), &9u8);
         assert_eq!(cdq.get(0).unwrap(), &1u8);
         assert_eq!(cdq.get(12), None);
@@ -2750,39 +2637,39 @@ mod tests {
 
     #[test]
     fn test_insert() {
-        let mut cdq: CircularDeque<u8> = cdeque!(1, 2, 3, 4, 7, 8, 9);
+        let mut cdq: CircularDeque<u8> = cdq!(1, 2, 3, 4, 7, 8, 9);
         cdq.insert(7, 12);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4, 7, 8, 9, 12));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4, 7, 8, 9, 12));
     }
 
     #[test]
     fn test_reserve() {
-        let mut cdq = cdeque!(1, 2, 3, 4);
+        let mut cdq = cdq!(1, 2, 3, 4);
         assert_eq!(cdq.len, 4);
         assert_eq!(cdq.capacity, 4);
         cdq.reserve(8);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
         assert_eq!(cdq.len, 4);
         assert_eq!(cdq.capacity, 12);
     }
 
     #[test]
     fn test_reserve_exact() {
-        let mut cdq = cdeque!(1, 2, 3, 4);
+        let mut cdq = cdq!(1, 2, 3, 4);
         assert_eq!(cdq.len, 4);
         assert_eq!(cdq.capacity, 4);
         cdq.reserve_exact(2);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
         assert_eq!(cdq.len, 4);
         assert_eq!(cdq.capacity, 6);
     }
 
     #[test]
     fn test_as_slices() {
-        let mut cdq: CircularDeque<u8> = cdeque!();
+        let mut cdq: CircularDeque<u8> = cdq!();
         assert_eq!(cdq.as_slices(), (&[][..], &[][..]));
 
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let s = cdq.as_slices();
         assert_eq!(cdq.as_slices(), (&[1, 2, 3, 4, 5][..], &[][..]));
 
@@ -2795,10 +2682,10 @@ mod tests {
 
     #[test]
     fn test_as_mut_slices() {
-        let mut cdq: CircularDeque<u8> = cdeque!();
+        let mut cdq: CircularDeque<u8> = cdq!();
         assert_eq!(cdq.as_mut_slices(), (&mut [][..], &mut [][..]));
 
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let s = cdq.as_mut_slices();
         let front = s.0;
         let back = s.1;
@@ -2828,25 +2715,25 @@ mod tests {
 
     #[test]
     fn test_truncate() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.truncate(3);
-        assert_eq!(cdq, cdeque!(1, 2, 3));
+        assert_eq!(cdq, cdq!(1, 2, 3));
         cdq.truncate(1);
-        assert_eq!(cdq, cdeque!(1));
+        assert_eq!(cdq, cdq!(1));
         cdq.truncate(0);
-        assert_eq!(cdq, cdeque!());
+        assert_eq!(cdq, cdq!());
     }
 
     #[test]
     fn test_clear() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.clear();
-        assert_eq!(cdq, cdeque!());
+        assert_eq!(cdq, cdq!());
     }
 
     #[test]
     fn test_retain_mut() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.retain_mut(|x| {
             if *x % 2 == 0 {
                 return false;
@@ -2856,12 +2743,12 @@ mod tests {
             }
         });
 
-        assert_eq!(cdq, cdeque!(4, 6, 8));
+        assert_eq!(cdq, cdq!(4, 6, 8));
     }
 
     #[test]
     fn test_retain() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.retain(|x| {
             if *x % 2 == 0 {
                 return false;
@@ -2870,81 +2757,81 @@ mod tests {
             }
         });
 
-        assert_eq!(cdq, cdeque!(1, 3, 5));
+        assert_eq!(cdq, cdq!(1, 3, 5));
     }
 
     #[test]
     fn test_rotate_left() {
-        let mut cdq = cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        let mut cdq = cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
         cdq.rotate_left(3);
-        assert_eq!(cdq, cdeque!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
+        assert_eq!(cdq, cdq!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
 
         for i in 1..10 {
             assert_eq!(i * 3 % 10, cdq[0]);
             cdq.rotate_left(3);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         //now test when the deque is not full
         cdq.reserve_exact(20);
 
         cdq.rotate_left(6);
-        assert_eq!(cdq, cdeque!(6, 7, 8, 9, 0, 1, 2, 3, 4, 5));
+        assert_eq!(cdq, cdq!(6, 7, 8, 9, 0, 1, 2, 3, 4, 5));
 
         for i in 1..10 {
             assert_eq!(i * 6 % 10, cdq[0]);
             cdq.rotate_left(6);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         cdq.rotate_left(3);
-        assert_eq!(cdq, cdeque!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
+        assert_eq!(cdq, cdq!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
 
         for i in 1..10 {
             assert_eq!(i * 3 % 10, cdq[0]);
             cdq.rotate_left(3);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
     }
 
     #[test]
     fn test_rotate_right() {
-        let mut cdq = cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        let mut cdq = cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
         cdq.rotate_right(3);
-        assert_eq!(cdq, cdeque!(7, 8, 9, 0, 1, 2, 3, 4, 5, 6));
+        assert_eq!(cdq, cdq!(7, 8, 9, 0, 1, 2, 3, 4, 5, 6));
 
         for i in 1..10 {
             assert_eq!((10 - (i * 3) % 10) % 10, cdq[0]);
             cdq.rotate_right(3);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         //now test when the deque is not full
         cdq.reserve_exact(20);
 
         cdq.rotate_right(4);
-        assert_eq!(cdq, cdeque!(6, 7, 8, 9, 0, 1, 2, 3, 4, 5));
+        assert_eq!(cdq, cdq!(6, 7, 8, 9, 0, 1, 2, 3, 4, 5));
 
         for i in 1..10 {
             assert_eq!((10 - (i * 4) % 10) % 10, cdq[0]);
             cdq.rotate_right(4);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         cdq.rotate_right(7);
-        assert_eq!(cdq, cdeque!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
+        assert_eq!(cdq, cdq!(3, 4, 5, 6, 7, 8, 9, 0, 1, 2));
 
         for i in 1..10 {
             assert_eq!((10 - (i * 7) % 10) % 10, cdq[0]);
             cdq.rotate_right(7);
         }
-        assert_eq!(cdq, cdeque!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
+        assert_eq!(cdq, cdq!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
     }
 
     #[test]
     fn test_make_contiguous() {
         // Test 1: Already contiguous
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let slice = cdq.make_contiguous();
         assert_eq!(slice, &[1, 2, 3, 4, 5]);
         assert_eq!(cdq.len(), 5);
@@ -2956,7 +2843,7 @@ mod tests {
         assert_eq!(empty_cdq.len(), 0);
 
         // Test 3: Single element
-        let mut single_cdq = cdeque!(42);
+        let mut single_cdq = cdq!(42);
         let single_slice = single_cdq.make_contiguous();
         assert_eq!(single_slice, &[42]);
         assert_eq!(single_cdq.len(), 1);
@@ -3076,13 +2963,13 @@ mod tests {
 
     #[test]
     fn test_back() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         assert_eq!(cdq.back(), Some(&5));
     }
 
     #[test]
     fn test_iter() {
-        let cdq = cdeque!(1, 2, 3, 4, 5);
+        let cdq = cdq!(1, 2, 3, 4, 5);
         let collected: Vec<&u8> = cdq.iter().collect();
         assert_eq!(collected, vec![&1, &2, &3, &4, &5]);
 
@@ -3092,12 +2979,12 @@ mod tests {
         assert_eq!(empty_collected, Vec::<&u8>::new());
 
         // Test with single element
-        let single_cdq = cdeque!(42);
+        let single_cdq = cdq!(42);
         let single_collected: Vec<&u8> = single_cdq.iter().collect();
         assert_eq!(single_collected, vec![&42]);
 
         // Test iterator size hint
-        let cdq = cdeque!(1, 2, 3);
+        let cdq = cdq!(1, 2, 3);
         let mut iter = cdq.iter();
         assert_eq!(iter.size_hint(), (3, Some(3)));
         assert_eq!(iter.len(), 3);
@@ -3138,7 +3025,7 @@ mod tests {
 
     #[test]
     fn test_iter_mut() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
 
         // Test basic mutable iteration
         for item in cdq.iter_mut() {
@@ -3154,14 +3041,14 @@ mod tests {
         assert_eq!(empty_collected, Vec::<&mut u8>::new());
 
         // Test with single element
-        let mut single_cdq = cdeque!(42);
+        let mut single_cdq = cdq!(42);
         for item in single_cdq.iter_mut() {
             *item += 1;
         }
         assert_eq!(single_cdq.get(0), Some(&43));
 
         // Test iterator size hint
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         let mut iter = cdq.iter_mut();
         assert_eq!(iter.size_hint(), (3, Some(3)));
         assert_eq!(iter.len(), 3);
@@ -3210,7 +3097,7 @@ mod tests {
 
     #[test]
     fn test_range() {
-        let cdq = cdeque!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        let cdq = cdq!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
         // Test basic range
         let values: Vec<&u8> = cdq.range(1..4).collect();
@@ -3268,50 +3155,50 @@ mod tests {
     #[test]
     #[should_panic(expected = "range start is greater than end")]
     fn test_range_invalid_start_greater_than_end() {
-        let cdq = cdeque!(1, 2, 3, 4, 5);
+        let cdq = cdq!(1, 2, 3, 4, 5);
         cdq.range(3..2);
     }
 
     #[test]
     #[should_panic(expected = "range end is greater than length")]
     fn test_range_invalid_end_greater_than_len() {
-        let cdq = cdeque!(1, 2, 3, 4, 5);
+        let cdq = cdq!(1, 2, 3, 4, 5);
         cdq.range(1..10);
     }
 
     #[test]
     fn test_range_mut() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        let mut cdq = cdq!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
         // Test basic range mutation
         for item in cdq.range_mut(1..4) {
             *item *= 2;
         }
-        assert_eq!(cdq, cdeque!(1, 4, 6, 8, 5, 6, 7, 8, 9, 10));
+        assert_eq!(cdq, cdq!(1, 4, 6, 8, 5, 6, 7, 8, 9, 10));
 
         // Test inclusive range mutation
         for item in cdq.range_mut(4..=6) {
             *item += 10;
         }
-        assert_eq!(cdq, cdeque!(1, 4, 6, 8, 15, 16, 17, 8, 9, 10));
+        assert_eq!(cdq, cdq!(1, 4, 6, 8, 15, 16, 17, 8, 9, 10));
 
         // Test open-ended range mutation
         for item in cdq.range_mut(7..) {
             *item = 0;
         }
-        assert_eq!(cdq, cdeque!(1, 4, 6, 8, 15, 16, 17, 0, 0, 0));
+        assert_eq!(cdq, cdq!(1, 4, 6, 8, 15, 16, 17, 0, 0, 0));
 
         // Test range from beginning
         for item in cdq.range_mut(..3) {
             *item = 99;
         }
-        assert_eq!(cdq, cdeque!(99, 99, 99, 8, 15, 16, 17, 0, 0, 0));
+        assert_eq!(cdq, cdq!(99, 99, 99, 8, 15, 16, 17, 0, 0, 0));
 
         // Test full range mutation
         for item in cdq.range_mut(..) {
             *item = 42;
         }
-        assert_eq!(cdq, cdeque!(42, 42, 42, 42, 42, 42, 42, 42, 42, 42));
+        assert_eq!(cdq, cdq!(42, 42, 42, 42, 42, 42, 42, 42, 42, 42));
 
         // Test empty range
         let mut empty_count = 0;
@@ -3324,7 +3211,7 @@ mod tests {
         for item in cdq.range_mut(5..6) {
             *item = 100;
         }
-        assert_eq!(cdq, cdeque!(42, 42, 42, 42, 42, 100, 42, 42, 42, 42));
+        assert_eq!(cdq, cdq!(42, 42, 42, 42, 42, 100, 42, 42, 42, 42));
 
         // Test range with wrapped deque
         let mut wrapped_cdq = CircularDeque::with_capacity(10);
@@ -3342,7 +3229,7 @@ mod tests {
             *item *= 10;
         }
 
-        let expected = cdeque!(1, 2, 30, 40, 50, 60, 7, 8);
+        let expected = cdq!(1, 2, 30, 40, 50, 60, 7, 8);
         assert_eq!(wrapped_cdq, expected);
 
         // Test range size hints
@@ -3358,21 +3245,21 @@ mod tests {
     #[test]
     #[should_panic(expected = "range start is greater than end")]
     fn test_range_mut_invalid_start_greater_than_end() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.range_mut(3..2);
     }
 
     #[test]
     #[should_panic(expected = "range end is greater than length")]
     fn test_range_mut_invalid_end_greater_than_len() {
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         cdq.range_mut(1..10);
     }
 
     #[test]
     fn test_shrink_to_fit() {
         // Test shrinking when capacity > length
-        let mut cdq = cdeque!(1, 2, 3, 4);
+        let mut cdq = cdq!(1, 2, 3, 4);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
 
@@ -3385,7 +3272,7 @@ mod tests {
         cdq.shrink_to_fit();
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
 
         // Test shrinking empty deque
         let mut empty_cdq: CircularDeque<i32> = CircularDeque::new();
@@ -3398,17 +3285,17 @@ mod tests {
         assert_eq!(empty_cdq.capacity(), 0);
 
         // Test when capacity already equals length
-        let mut cdq2 = cdeque!(5, 6, 7);
+        let mut cdq2 = cdq!(5, 6, 7);
         let original_capacity = cdq2.capacity();
         cdq2.shrink_to_fit();
         assert_eq!(cdq2.capacity(), original_capacity);
-        assert_eq!(cdq2, cdeque!(5, 6, 7));
+        assert_eq!(cdq2, cdq!(5, 6, 7));
     }
 
     #[test]
     fn test_shrink_to() {
         // Test shrinking to a specific capacity larger than length
-        let mut cdq = cdeque!(1, 2, 3, 4);
+        let mut cdq = cdq!(1, 2, 3, 4);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
 
@@ -3421,13 +3308,13 @@ mod tests {
         cdq.shrink_to(8);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 8);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
 
         // Test shrinking to capacity smaller than length (should use length)
         cdq.shrink_to(2);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
-        assert_eq!(cdq, cdeque!(1, 2, 3, 4));
+        assert_eq!(cdq, cdq!(1, 2, 3, 4));
 
         // Test shrinking empty deque to specific capacity
         let mut empty_cdq: CircularDeque<i32> = CircularDeque::new();
@@ -3445,25 +3332,25 @@ mod tests {
         assert_eq!(empty_cdq.capacity(), 0);
 
         // Test when current capacity is already less than or equal to min_capacity (no-op)
-        let mut cdq2 = cdeque!(10, 20, 30);
+        let mut cdq2 = cdq!(10, 20, 30);
         let original_capacity = cdq2.capacity();
         cdq2.shrink_to(10);
         assert_eq!(cdq2.capacity(), original_capacity);
-        assert_eq!(cdq2, cdeque!(10, 20, 30));
+        assert_eq!(cdq2, cdq!(10, 20, 30));
 
         // Test with exact capacity match
-        let mut cdq3 = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq3 = cdq!(1, 2, 3, 4, 5);
         cdq3.reserve(5);
         let current_capacity = cdq3.capacity();
         cdq3.shrink_to(current_capacity);
         assert_eq!(cdq3.capacity(), current_capacity);
-        assert_eq!(cdq3, cdeque!(1, 2, 3, 4, 5));
+        assert_eq!(cdq3, cdq!(1, 2, 3, 4, 5));
     }
 
     #[test]
     fn test_resize() {
         // Test growing the deque
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         assert_eq!(cdq.len(), 3);
 
         cdq.resize(6, 42);
@@ -3518,7 +3405,7 @@ mod tests {
     #[test]
     fn test_resize_with() {
         // Test growing the deque with a generator function
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         assert_eq!(cdq.len(), 3);
 
         let mut counter = 10;
@@ -3608,7 +3495,7 @@ mod tests {
     #[test]
     fn test_drain() {
         // Test basic drain functionality
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let drained: Vec<i32> = cdq.drain(1..4).collect();
         assert_eq!(drained, vec![2, 3, 4]);
         assert_eq!(cdq.len(), 2);
@@ -3616,14 +3503,14 @@ mod tests {
         assert_eq!(cdq[1], 5);
 
         // Test draining all elements
-        let mut cdq2 = cdeque!(10, 20, 30);
+        let mut cdq2 = cdq!(10, 20, 30);
         let drained: Vec<i32> = cdq2.drain(..).collect();
         assert_eq!(drained, vec![10, 20, 30]);
         assert_eq!(cdq2.len(), 0);
         assert!(cdq2.is_empty());
 
         // Test draining from the front
-        let mut cdq3 = cdeque!(1, 2, 3, 4);
+        let mut cdq3 = cdq!(1, 2, 3, 4);
         let drained: Vec<i32> = cdq3.drain(..2).collect();
         assert_eq!(drained, vec![1, 2]);
         assert_eq!(cdq3.len(), 2);
@@ -3631,7 +3518,7 @@ mod tests {
         assert_eq!(cdq3[1], 4);
 
         // Test draining from the back
-        let mut cdq4 = cdeque!(1, 2, 3, 4);
+        let mut cdq4 = cdq!(1, 2, 3, 4);
         let drained: Vec<i32> = cdq4.drain(2..).collect();
         assert_eq!(drained, vec![3, 4]);
         assert_eq!(cdq4.len(), 2);
@@ -3639,14 +3526,14 @@ mod tests {
         assert_eq!(cdq4[1], 2);
 
         // Test draining empty range
-        let mut cdq5 = cdeque!(1, 2, 3);
+        let mut cdq5 = cdq!(1, 2, 3);
         let drained: Vec<i32> = cdq5.drain(1..1).collect();
         assert_eq!(drained, vec![]);
         assert_eq!(cdq5.len(), 3);
-        assert_eq!(cdq5, cdeque!(1, 2, 3));
+        assert_eq!(cdq5, cdq!(1, 2, 3));
 
         // Test draining single element
-        let mut cdq6 = cdeque!(1, 2, 3);
+        let mut cdq6 = cdq!(1, 2, 3);
         let drained: Vec<i32> = cdq6.drain(1..2).collect();
         assert_eq!(drained, vec![2]);
         assert_eq!(cdq6.len(), 2);
@@ -3654,7 +3541,7 @@ mod tests {
         assert_eq!(cdq6[1], 3);
 
         // Test with string elements
-        let mut str_cdq = cdeque!("a", "b", "c", "d");
+        let mut str_cdq = cdq!("a", "b", "c", "d");
         let drained: Vec<&str> = str_cdq.drain(1..3).collect();
         assert_eq!(drained, vec!["b", "c"]);
         assert_eq!(str_cdq.len(), 2);
@@ -3665,21 +3552,21 @@ mod tests {
     #[test]
     #[should_panic(expected = "range start is greater than range end")]
     fn test_drain_invalid_range() {
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         cdq.drain(2..1);
     }
 
     #[test]
     #[should_panic(expected = "range end is greater than length")]
     fn test_drain_out_of_bounds() {
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         cdq.drain(1..5);
     }
 
     #[test]
     fn test_split_off() {
         // Test basic split functionality
-        let mut cdq = cdeque!(1, 2, 3, 4, 5);
+        let mut cdq = cdq!(1, 2, 3, 4, 5);
         let split_deque = cdq.split_off(2);
 
         assert_eq!(cdq.len(), 2);
@@ -3692,7 +3579,7 @@ mod tests {
         assert_eq!(split_deque[2], 5);
 
         // Test splitting at the beginning
-        let mut cdq2 = cdeque!(1, 2, 3);
+        let mut cdq2 = cdq!(1, 2, 3);
         let split_deque2 = cdq2.split_off(0);
 
         assert_eq!(cdq2.len(), 0);
@@ -3704,7 +3591,7 @@ mod tests {
         assert_eq!(split_deque2[2], 3);
 
         // Test splitting at the end
-        let mut cdq3 = cdeque!(1, 2, 3);
+        let mut cdq3 = cdq!(1, 2, 3);
         let split_deque3 = cdq3.split_off(3);
 
         assert_eq!(cdq3.len(), 3);
@@ -3716,7 +3603,7 @@ mod tests {
         assert!(split_deque3.is_empty());
 
         // Test splitting single element deque
-        let mut cdq4 = cdeque!(42);
+        let mut cdq4 = cdq!(42);
         let split_deque4 = cdq4.split_off(0);
 
         assert_eq!(cdq4.len(), 0);
@@ -3726,7 +3613,7 @@ mod tests {
         assert_eq!(split_deque4[0], 42);
 
         // Test splitting at index 1 of two-element deque
-        let mut cdq5 = cdeque!(10, 20);
+        let mut cdq5 = cdq!(10, 20);
         let split_deque5 = cdq5.split_off(1);
 
         assert_eq!(cdq5.len(), 1);
@@ -3736,7 +3623,7 @@ mod tests {
         assert_eq!(split_deque5[0], 20);
 
         // Test with string elements
-        let mut str_cdq = cdeque!("a", "b", "c", "d");
+        let mut str_cdq = cdq!("a", "b", "c", "d");
         let split_str_deque = str_cdq.split_off(2);
 
         assert_eq!(str_cdq.len(), 2);
@@ -3760,25 +3647,25 @@ mod tests {
     #[test]
     #[should_panic(expected = "split index 5 is greater than length 3")]
     fn test_split_off_out_of_bounds() {
-        let mut cdq = cdeque!(1, 2, 3);
+        let mut cdq = cdq!(1, 2, 3);
         cdq.split_off(5);
     }
 
     #[test]
     fn test_partition_point() {
         // Test basic partition functionality
-        let cdq = cdeque!(1, 2, 3, 3, 5, 6, 7);
+        let cdq = cdq!(1, 2, 3, 3, 5, 6, 7);
         let i = cdq.partition_point(|&x| x < 5);
         assert_eq!(i, 4);
         assert!(cdq.iter().take(i).all(|&x| x < 5));
         assert!(cdq.iter().skip(i).all(|&x| !(x < 5)));
 
         // Test all elements match predicate
-        let cdq2 = cdeque!(2, 4, 8);
+        let cdq2 = cdq!(2, 4, 8);
         assert_eq!(cdq2.partition_point(|&x| x < 100), 3);
 
         // Test no elements match predicate
-        let cdq3 = cdeque!(2, 4, 8);
+        let cdq3 = cdq!(2, 4, 8);
         assert_eq!(cdq3.partition_point(|&x| x > 100), 0);
 
         // Test empty deque
@@ -3786,44 +3673,44 @@ mod tests {
         assert_eq!(empty_cdq.partition_point(|&x| x < 100), 0);
 
         // Test single element - matches
-        let cdq4 = cdeque!(5);
+        let cdq4 = cdq!(5);
         assert_eq!(cdq4.partition_point(|&x| x < 10), 1);
 
         // Test single element - doesn't match
-        let cdq5 = cdeque!(5);
+        let cdq5 = cdq!(5);
         assert_eq!(cdq5.partition_point(|&x| x > 10), 0);
 
         // Test with all elements matching
-        let cdq6 = cdeque!(1, 2, 3, 4);
+        let cdq6 = cdq!(1, 2, 3, 4);
         assert_eq!(cdq6.partition_point(|&x| x < 10), 4);
 
         // Test with no elements matching
-        let cdq7 = cdeque!(1, 2, 3, 4);
+        let cdq7 = cdq!(1, 2, 3, 4);
         assert_eq!(cdq7.partition_point(|&x| x > 10), 0);
 
         // Test partition with different predicate
-        let cdq8 = cdeque!(1, 3, 5, 7, 2, 4, 6, 8);
+        let cdq8 = cdq!(1, 3, 5, 7, 2, 4, 6, 8);
         let i = cdq8.partition_point(|&x| x % 2 == 1);
         assert_eq!(i, 4);
         assert!(cdq8.iter().take(i).all(|&x| x % 2 == 1));
         assert!(cdq8.iter().skip(i).all(|&x| x % 2 == 0));
 
         // Test with strings
-        let str_cdq = cdeque!("a", "bb", "ccc", "dddd", "eeeee");
+        let str_cdq = cdq!("a", "bb", "ccc", "dddd", "eeeee");
         let i = str_cdq.partition_point(|&s| s.len() < 4);
         assert_eq!(i, 3);
         assert!(str_cdq.iter().take(i).all(|&s| s.len() < 4));
         assert!(str_cdq.iter().skip(i).all(|&s| s.len() >= 4));
 
         // Test with repeated elements at boundary
-        let cdq9 = cdeque!(1, 2, 3, 3, 3, 4, 5);
+        let cdq9 = cdq!(1, 2, 3, 3, 3, 4, 5);
         let i = cdq9.partition_point(|&x| x <= 3);
         assert_eq!(i, 5);
         assert!(cdq9.iter().take(i).all(|&x| x <= 3));
         assert!(cdq9.iter().skip(i).all(|&x| x > 3));
 
         // Test binary search behavior - sorted array
-        let sorted_cdq = cdeque!(1, 3, 5, 7, 9, 11, 13);
+        let sorted_cdq = cdq!(1, 3, 5, 7, 9, 11, 13);
         let i = sorted_cdq.partition_point(|&x| x < 8);
         assert_eq!(i, 4);
         assert!(sorted_cdq.iter().take(i).all(|&x| x < 8));
@@ -3837,8 +3724,8 @@ mod tests {
         use std::hash::{Hash, Hasher};
 
         // Test that equal deques have equal hashes
-        let mut deque1 = cdeque!(1, 2, 3, 4, 5);
-        let mut deque2 = cdeque!(1, 2, 3, 4, 5);
+        let mut deque1 = cdq!(1, 2, 3, 4, 5);
+        let mut deque2 = cdq!(1, 2, 3, 4, 5);
 
         let mut hasher1 = DefaultHasher::new();
         let mut hasher2 = DefaultHasher::new();
@@ -3849,14 +3736,14 @@ mod tests {
         assert_eq!(hasher1.finish(), hasher2.finish());
 
         // Test that different deques have different hashes
-        let deque3 = cdeque!(1, 2, 3, 4, 6); // Different last element
+        let deque3 = cdq!(1, 2, 3, 4, 6); // Different last element
         let mut hasher3 = DefaultHasher::new();
         deque3.hash(&mut hasher3);
 
         assert_ne!(hasher1.finish(), hasher3.finish());
 
         // Test that order matters for hashing
-        let deque4 = cdeque!(5, 4, 3, 2, 1); // Reverse order
+        let deque4 = cdq!(5, 4, 3, 2, 1); // Reverse order
         let mut hasher4 = DefaultHasher::new();
         deque4.hash(&mut hasher4);
 
@@ -3865,9 +3752,9 @@ mod tests {
         // Test using deques as HashMap keys
         let mut map: HashMap<CircularDeque<i32>, String> = HashMap::new();
 
-        let key1 = cdeque!(1, 2, 3);
-        let key2 = cdeque!(4, 5, 6);
-        let key3 = cdeque!(1, 2, 3); // Same as key1
+        let key1 = cdq!(1, 2, 3);
+        let key2 = cdq!(4, 5, 6);
+        let key3 = cdq!(1, 2, 3); // Same as key1
 
         map.insert(key1, "first".to_string());
         map.insert(key2, "second".to_string());
@@ -3875,21 +3762,21 @@ mod tests {
 
         assert_eq!(map.len(), 2);
 
-        let lookup_key = cdeque!(1, 2, 3);
+        let lookup_key = cdq!(1, 2, 3);
         assert_eq!(map.get(&lookup_key), Some(&"third".to_string()));
 
         // Test using deques in HashSet
         let mut set: HashSet<CircularDeque<i32>> = HashSet::new();
 
-        set.insert(cdeque!(1, 2, 3));
-        set.insert(cdeque!(4, 5, 6));
-        set.insert(cdeque!(1, 2, 3)); // Duplicate, should not increase size
+        set.insert(cdq!(1, 2, 3));
+        set.insert(cdq!(4, 5, 6));
+        set.insert(cdq!(1, 2, 3)); // Duplicate, should not increase size
 
         assert_eq!(set.len(), 2);
 
-        assert!(set.contains(&cdeque!(1, 2, 3)));
-        assert!(set.contains(&cdeque!(4, 5, 6)));
-        assert!(!set.contains(&cdeque!(7, 8, 9)));
+        assert!(set.contains(&cdq!(1, 2, 3)));
+        assert!(set.contains(&cdq!(4, 5, 6)));
+        assert!(!set.contains(&cdq!(7, 8, 9)));
 
         // Test empty deques
         let empty1: CircularDeque<i32> = CircularDeque::new();
@@ -3904,9 +3791,9 @@ mod tests {
         assert_eq!(hasher_empty1.finish(), hasher_empty2.finish());
 
         // Test single element deques
-        let single1 = cdeque!(42);
-        let single2 = cdeque!(42);
-        let single3 = cdeque!(43);
+        let single1 = cdq!(42);
+        let single2 = cdq!(42);
+        let single3 = cdq!(43);
 
         let mut hasher_s1 = DefaultHasher::new();
         let mut hasher_s2 = DefaultHasher::new();
@@ -3923,7 +3810,7 @@ mod tests {
     #[test]
     fn test_clone_trait() {
         // Test basic cloning
-        let mut original = cdeque!(1, 2, 3, 4, 5);
+        let mut original = cdq!(1, 2, 3, 4, 5);
         let cloned = original.clone();
 
         assert_eq!(original, cloned);
@@ -3996,13 +3883,13 @@ mod tests {
     #[test]
     fn test_into_iterator_trait() {
         // Test consuming iteration (IntoIterator for CircularDeque<T>)
-        let mut deque = cdeque!(1, 2, 3, 4, 5);
+        let mut deque = cdq!(1, 2, 3, 4, 5);
         let collected: Vec<i32> = deque.into_iter().collect();
         assert_eq!(collected, vec![1, 2, 3, 4, 5]);
         // deque is now consumed and cannot be used
 
         // Test reference iteration (IntoIterator for &CircularDeque<T>)
-        let deque = cdeque!(10, 20, 30);
+        let deque = cdq!(10, 20, 30);
         let collected: Vec<&i32> = (&deque).into_iter().collect();
         assert_eq!(collected, vec![&10, &20, &30]);
 
@@ -4011,7 +3898,7 @@ mod tests {
         assert_eq!(deque[0], 10);
 
         // Test mutable reference iteration (IntoIterator for &mut CircularDeque<T>)
-        let mut deque = cdeque!(1, 2, 3);
+        let mut deque = cdq!(1, 2, 3);
 
         // Modify elements through mutable iterator
         for item in &mut deque {
@@ -4028,7 +3915,7 @@ mod tests {
         assert_eq!(deque.len(), 4);
 
         // Test for loop syntax (uses IntoIterator)
-        let test_deque = cdeque!("a", "b", "c");
+        let test_deque = cdq!("a", "b", "c");
         let mut result = Vec::new();
 
         for item in &test_deque {
@@ -4093,25 +3980,25 @@ mod tests {
     #[test]
     fn test_extend_trait() {
         // Test Extend<T>
-        let mut deque = cdeque!(1, 2);
+        let mut deque = cdq!(1, 2);
         deque.extend(vec![3, 4, 5]);
 
         assert_eq!(deque.len(), 5);
-        assert_eq!(deque, cdeque!(1, 2, 3, 4, 5));
+        assert_eq!(deque, cdq!(1, 2, 3, 4, 5));
 
         // Test extending with iterator
-        let mut deque2 = cdeque!(10);
+        let mut deque2 = cdq!(10);
         deque2.extend((20..=50).step_by(10));
 
         assert_eq!(deque2.len(), 5);
-        assert_eq!(deque2, cdeque!(10, 20, 30, 40, 50));
+        assert_eq!(deque2, cdq!(10, 20, 30, 40, 50));
 
         // Test extending empty deque
         let mut empty_deque = CircularDeque::new();
         empty_deque.extend(vec![1, 2, 3]);
 
         assert_eq!(empty_deque.len(), 3);
-        assert_eq!(empty_deque, cdeque!(1, 2, 3));
+        assert_eq!(empty_deque, cdq!(1, 2, 3));
 
         // Test Extend<&T> with cloning
         let mut deque3 = CircularDeque::new();
@@ -4129,21 +4016,21 @@ mod tests {
         assert_eq!(source[0], "c");
 
         // Test extending with references to primitives
-        let mut int_deque = cdeque!(1, 2);
+        let mut int_deque = cdq!(1, 2);
         let int_source = vec![3, 4, 5];
         int_deque.extend(&int_source);
 
         assert_eq!(int_deque.len(), 5);
-        assert_eq!(int_deque, cdeque!(1, 2, 3, 4, 5));
+        assert_eq!(int_deque, cdq!(1, 2, 3, 4, 5));
         assert_eq!(int_source.len(), 3); // Source unchanged
 
         // Test extending with empty iterator
-        let mut deque4 = cdeque!(1, 2, 3);
+        let mut deque4 = cdq!(1, 2, 3);
         let empty_vec: Vec<i32> = vec![];
         deque4.extend(empty_vec);
 
         assert_eq!(deque4.len(), 3);
-        assert_eq!(deque4, cdeque!(1, 2, 3));
+        assert_eq!(deque4, cdq!(1, 2, 3));
     }
 
     #[test]
