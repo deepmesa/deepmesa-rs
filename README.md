@@ -21,7 +21,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-deepmesa = "0.*.*"
+deepmesa-collections = "0.*.*"
 ```
 
 # Contributing
