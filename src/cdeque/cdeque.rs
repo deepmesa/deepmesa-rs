@@ -464,7 +464,6 @@ impl<T> CircularDeque<T> {
     /// If the deque is not partitioned, the returned result is unspecified and meaningless,
     /// as this method performs a kind of binary search.
     ///
-    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
     ///
     /// # Examples
     ///

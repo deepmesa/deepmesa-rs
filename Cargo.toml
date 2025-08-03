@@ -8,7 +8,7 @@ categories = [
 ]
 description = "A collection of data structures and algorithms designed for performance"
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/deepmesa-collections"
 homepage = "https://www.arrsingh.com/deepmesa-collections"
 repository = "https://github.com/deepmesa/collections-rs"
