@@ -18,6 +18,7 @@
 */
 
 use crate::lhmap::entry::Entry;
+use crate::lhmap::entry::EntryHandle;
 use crate::lhmap::entry::Order;
 use crate::lhmap::entry::PtrKey;
 use crate::lhmap::iter::Iter;
@@ -345,6 +346,45 @@ where
     /// ```
     pub fn contains_key(&self, key: &K) -> bool {
         return self.map.contains_key(&PtrKey::new(key));
+    }
+
+    /// Returns a handle to the entry corresponding to the key, or None
+    /// if the key is not present in the map.
+    ///
+    /// The returned handle can be used to manipulate the position of the
+    /// entry within the map's iteration order without affecting the
+    /// iteration order of access methods like `get()`, `get_mut()`, etc.
+    ///
+    /// This method should complete in *O*(*1*) time.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa_collections::LinkedHashMap;
+    /// use deepmesa_collections::lhmap::Order;
+    ///
+    /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+    /// lhm.insert(1, "a");
+    /// lhm.insert(2, "b");
+    /// lhm.insert(3, "c");
+    ///
+    /// // Get handle for key 1
+    /// if let Some(handle) = lhm.entry_handle(&1) {
+    ///     // Move it to the end of iteration order
+    ///     handle.move_to_end(&mut lhm);
+    /// }
+    ///
+    /// // Now iteration order will be: 2, 3, 1
+    /// let keys: Vec<_> = lhm.keys().copied().collect();
+    /// assert_eq!(keys, vec![2, 3, 1]);
+    ///
+    /// // Non-existent key returns None
+    /// assert_eq!(lhm.entry_handle(&99), None);
+    /// ```
+    pub fn entry_handle(&self, key: &K) -> Option<EntryHandle<K, V>> {
+        if let Some(node_handle) = self.map.get(&PtrKey::new(key)) {
+            return Some(EntryHandle::new(node_handle.clone()));
+        }
+        None
     }
 
     /// Returns a reference to the value corresponding to the key. If
@@ -1063,5 +1103,176 @@ mod tests {
         // println!("{:?}", iter.next());
         // println!("{:?}", iter.next());
         // println!("{:?}", iter.next());
+    }
+
+    #[test]
+    fn test_entry_handle_basic() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Test getting valid handle
+        let handle1 = lhm.entry_handle(&1);
+        assert!(handle1.is_some());
+        
+        // Test getting invalid handle
+        let handle_invalid = lhm.entry_handle(&99);
+        assert!(handle_invalid.is_none());
+    }
+
+
+    #[test]
+    fn test_entry_handle_move_to_end_insertion_order() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Initial order should be 1, 2, 3
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3]);
+
+        // Move key 1 to end
+        if let Some(handle) = lhm.entry_handle(&1) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+
+        // Order should now be 2, 3, 1
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![2, 3, 1]);
+
+        // Values should remain unchanged (use mutable reference for get)
+        assert_eq!(lhm.get(&1), Some(&"a"));
+        assert_eq!(lhm.get(&2), Some(&"b"));
+        assert_eq!(lhm.get(&3), Some(&"c"));
+    }
+
+    #[test]
+    fn test_entry_handle_move_to_end_access_order() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Initial order should be 1, 2, 3 (insertion order)
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3]);
+
+        // Move key 1 to end using handle (should work regardless of AccessOrder)
+        if let Some(handle) = lhm.entry_handle(&1) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+
+        // Order should now be 2, 3, 1
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![2, 3, 1]);
+    }
+
+    #[test]
+    fn test_entry_handle_move_to_end_already_at_end() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Move key 3 to end first to make it actually at the end
+        if let Some(handle) = lhm.entry_handle(&3) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+        
+        // Now 3 should be at the end: [1, 2, 3]
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3]);
+
+        // Move key 3 to end again (it's already at the end)
+        if let Some(handle) = lhm.entry_handle(&3) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+
+        // Order should remain the same: 1, 2, 3
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_entry_handle_invalid_handle() {
+        let mut lhm1 = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        let mut lhm2 = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        
+        lhm1.put(1, "a");
+        lhm2.put(1, "b");
+
+        // Get handle from lhm1
+        let handle = lhm1.entry_handle(&1).unwrap();
+        
+        // Remove the entry from lhm1 to invalidate the handle
+        lhm1.remove(&1);
+        
+        // Try to use invalid handle - should return false
+        assert_eq!(handle.move_to_end(&mut lhm1), false);
+    }
+
+    #[test]
+    fn test_entry_handle_multiple_operations() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+        lhm.put(4, "d");
+
+        // Initial order: [1, 2, 3, 4]
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3, 4]);
+
+        // Move key 2 to end: [1, 3, 4, 2]
+        if let Some(handle) = lhm.entry_handle(&2) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 3, 4, 2]);
+
+        // Move key 1 to end: [3, 4, 2, 1]
+        if let Some(handle) = lhm.entry_handle(&1) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![3, 4, 2, 1]);
+    }
+
+    #[test]
+    fn test_entry_handle_with_access_operations() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::AccessOrder, None);
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Initial order: [1, 2, 3]
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![1, 2, 3]);
+
+        // Access key 1 (should move it to head in AccessOrder, making it last in iteration)
+        lhm.get(&1);
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![2, 3, 1]); // 1 moved to most recently accessed (end)
+
+        // Use handle to move key 2 to end (should move it to head of list, end of iteration)
+        if let Some(handle) = lhm.entry_handle(&2) {
+            assert!(handle.move_to_end(&mut lhm));
+        }
+        let keys: Vec<_> = lhm.keys().copied().collect();
+        assert_eq!(keys, vec![3, 1, 2]); // 2 moved to end
+    }
+
+    #[test]
+    fn test_entry_handle_default() {
+        let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+        lhm.put(1, "a");
+
+        // Create a default handle (invalid)
+        let default_handle = crate::lhmap::entry::EntryHandle::<u16, &str>::default();
+        
+        // Try to use it - should return false
+        assert_eq!(default_handle.move_to_end(&mut lhm), false);
     }
 }
