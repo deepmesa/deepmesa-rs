@@ -91,10 +91,10 @@ impl<K, V> Entry<K, V> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Order {
     /// LinkedHashMap iteration order from least-recently accessed to
-    /// most-recently accessed (Most Significant Bit).
+    /// most-recently accessed.
     AccessOrder,
 
     /// LinkedHashMap iteration order from least-recently inserted to
-    /// most-recently inserted (Most Significant Bit).
+    /// most-recently inserted.
     InsertionOrder,
 }

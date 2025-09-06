@@ -166,6 +166,17 @@ use std::collections::HashMap;
 /// assert_eq!(lhm.get(&1), None);
 ///
 /// ```
+/// 
+/// # Head/Tail Semantics
+/// 
+/// This LinkedHashMap uses the following head/tail semantics:
+/// - **Head**: Contains the oldest elements (least recently inserted/accessed)
+/// - **Tail**: Contains the newest elements (most recently inserted/accessed)
+/// - **Iteration**: Always proceeds from head to tail (oldest to newest)
+/// - **Eviction**: Removes elements from the head (oldest elements first)
+/// 
+/// New elements are added to the tail, and in AccessOrder mode, accessed 
+/// elements are moved to the tail (marking them as most recently used).
 pub struct LinkedHashMap<K, V>
 where
     K: Hash + Eq,
@@ -209,8 +220,8 @@ where
     /// Creates an empty LinkedHashMap with the specified capacity and
     /// iteration order. The evict_eldest function can be supplied
     /// that is called everytime a new entry is inserted into the map
-    /// with the current length, capacity and the last entry in the
-    /// linkedlist (most recently inserted or accessed).
+    /// with the current length, capacity and the first entry in the
+    /// linkedlist (least recently inserted or accessed).
     ///
     /// # Examples
     ///
@@ -349,7 +360,7 @@ where
 
     /// Returns a reference to the value corresponding to the key. If
     /// the Map was created with AccessOrder then the key accessed is
-    /// moved to the head of the underlying linked list (least
+    /// moved to the tail of the underlying linked list (most
     /// recently used).
     ///
     /// If the key is not present then this method returns None and
@@ -381,8 +392,8 @@ where
     pub fn get(&mut self, key: &K) -> Option<&V> {
         if let Some(llnode) = self.map.get(&PtrKey::new(key)) {
             if self.order == Order::AccessOrder {
-                if !self.ll.make_head(llnode) {
-                    panic!("failed to make head!");
+                if !self.ll.make_tail(llnode) {
+                    panic!("failed to make tail!");
                 }
             }
 
@@ -398,7 +409,7 @@ where
 
     /// Returns the key-value pair corresponding to the supplied key.
     /// the Map was created with AccessOrder then the key accessed is
-    /// moved to the head of the underlying linked list (most
+    /// moved to the tail of the underlying linked list (most
     /// recently accessed).
     ///
     /// If the key is not present then this method returns None and
@@ -429,8 +440,8 @@ where
     pub fn get_key_value(&mut self, key: &K) -> Option<(&K, &V)> {
         if let Some(llnode) = self.map.get(&PtrKey::new(key)) {
             if self.order == Order::AccessOrder {
-                if !self.ll.make_head(llnode) {
-                    panic!("failed to make head!");
+                if !self.ll.make_tail(llnode) {
+                    panic!("failed to make tail!");
                 }
             }
 
@@ -446,7 +457,7 @@ where
 
     /// Returns a mutable reference to the value corresponding to the key. If
     /// the Map was created with AccessOrder then the key accessed is
-    /// moved to the head of the underlying linked list (least
+    /// moved to the tail of the underlying linked list (most
     /// recently used).
     ///
     /// If the key is not present then this method returns None and
@@ -479,8 +490,8 @@ where
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         if let Some(llnode) = self.map.get(&PtrKey::new(key)) {
             if self.order == Order::AccessOrder {
-                if !self.ll.make_head(llnode) {
-                    panic!("failed to make head!");
+                if !self.ll.make_tail(llnode) {
+                    panic!("failed to make tail!");
                 }
             }
 
@@ -552,8 +563,8 @@ where
 
     /// Inserts a key-value pair into the map. Unlike the insert
     /// method this does not return the old value previously stored.
-    /// The new value inserted is placed at the head of the underlying
-    /// linked list (least recently used).
+    /// The new value inserted is placed at the tail of the underlying
+    /// linked list (most recently used).
     ///
     /// #Examples
     /// ```
@@ -570,13 +581,13 @@ where
                 None => panic!("Value not found in LL"),
                 Some(entry) => {
                     (*entry).val = v;
-                    if !self.ll.make_head(llnode) {
-                        panic!("failed to make head!");
+                    if !self.ll.make_tail(llnode) {
+                        panic!("failed to make tail!");
                     }
                 }
             },
             None => {
-                let ll_node = self.ll.push_head(Entry::new(k, v));
+                let ll_node = self.ll.push_tail(Entry::new(k, v));
 
                 match self.ll.node(&ll_node) {
                     None => panic!("Value not found in LL"),
@@ -594,7 +605,7 @@ where
     /// Inserts a key-value pair into the map and returns the old
     /// value (if any). If a value was not present for this key then
     /// this method returns None.  The new value inserted is placed at
-    /// the head of the underlying linked list (least recently used).
+    /// the tail of the underlying linked list (most recently used).
     ///
     /// The key is not updated and only the value corresponding to the
     /// key is updated.
@@ -616,7 +627,7 @@ where
 
         match self.map.get(&PtrKey::new(&k)) {
             None => {
-                let ll_node = self.ll.push_head(Entry::new(k, v));
+                let ll_node = self.ll.push_tail(Entry::new(k, v));
 
                 match self.ll.node(&ll_node) {
                     None => panic!("Value not found in LL"),
@@ -630,8 +641,8 @@ where
                 None => panic!("value not found in linkedlist"),
                 Some(entry) => {
                     retval = Some(std::mem::replace(&mut (*entry).val, v));
-                    if !self.ll.make_head(llnode) {
-                        panic!("failed to make head!");
+                    if !self.ll.make_tail(llnode) {
+                        panic!("failed to make tail!");
                     }
                 }
             },
@@ -853,10 +864,10 @@ where
 
     fn evict_eldest(&mut self) {
         if let Some(ee_fn) = self.evict_eldest {
-            if let Some(entry) = self.ll.tail() {
+            if let Some(entry) = self.ll.head() {
                 if ee_fn(self.len(), self.cap, entry) {
-                    match self.ll.pop_tail() {
-                        None => panic!("pop tail unexpectedly returned None"),
+                    match self.ll.pop_head() {
+                        None => panic!("pop head unexpectedly returned None"),
                         Some(entry) => {
                             self.map.remove(&PtrKey::new(&entry.key));
                         }

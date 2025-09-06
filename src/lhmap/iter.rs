@@ -30,7 +30,7 @@ where
 {
     pub(crate) fn new(lhmap: &'a LinkedHashMap<K, V>) -> Iter<K, V> {
         Iter {
-            ll_iter: lhmap.ll.iter().reverse(),
+            ll_iter: lhmap.ll.iter(),
         }
     }
 
@@ -63,7 +63,7 @@ where
 {
     pub(crate) fn new(lhmap: &'a mut LinkedHashMap<K, V>) -> IterMut<K, V> {
         IterMut {
-            ll_iter: lhmap.ll.iter_mut().reverse(),
+            ll_iter: lhmap.ll.iter_mut(),
         }
     }
 
@@ -96,7 +96,7 @@ where
 {
     pub(crate) fn new(lhmap: &'a LinkedHashMap<K, V>) -> Keys<'a, K, V> {
         Keys {
-            ll_iter: lhmap.ll.iter().reverse(),
+            ll_iter: lhmap.ll.iter(),
         }
     }
 
@@ -129,7 +129,7 @@ where
 {
     pub(crate) fn new(lhmap: &'a LinkedHashMap<K, V>) -> Values<'a, K, V> {
         Values {
-            ll_iter: lhmap.ll.iter().reverse(),
+            ll_iter: lhmap.ll.iter(),
         }
     }
 
@@ -163,7 +163,7 @@ where
 {
     pub(crate) fn new(lhmap: &'a mut LinkedHashMap<K, V>) -> ValuesMut<'a, K, V> {
         ValuesMut {
-            ll_iter: lhmap.ll.iter_mut().reverse(),
+            ll_iter: lhmap.ll.iter_mut(),
         }
     }
 
