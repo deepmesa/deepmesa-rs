@@ -138,7 +138,7 @@ pub enum Order {
 ///
 /// if let Some(handle) = lhm.entry_handle(&1) {
 ///     // Move entry with key 1 to the end of iteration order
-///     handle.move_to_end(&mut lhm);
+///     lhm.make_tail(handle);
 /// }
 /// ```
 #[derive(Debug, Clone)]
@@ -183,37 +183,4 @@ where
         Self { node_handle }
     }
 
-    /// Moves the entry associated with this handle to the end of the 
-    /// LinkedHashMap's iteration order.
-    ///
-    /// If the entry is already at the end of the iteration order, this 
-    /// operation has no effect. This method works regardless of whether the
-    /// map uses InsertionOrder or AccessOrder.
-    ///
-    /// Returns `true` if the entry was successfully moved to the end (or was
-    /// already at the end), and `false` if this handle is invalid.
-    ///
-    /// This operation completes in O(1) time.
-    ///
-    /// # Examples
-    /// ```
-    /// use deepmesa_collections::LinkedHashMap;
-    /// use deepmesa_collections::lhmap::Order;
-    ///
-    /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
-    /// lhm.put(1, "a");
-    /// lhm.put(2, "b");
-    /// lhm.put(3, "c");
-    ///
-    /// if let Some(handle) = lhm.entry_handle(&1) {
-    ///     assert!(handle.move_to_end(&mut lhm));
-    ///     
-    ///     // Now key 1 will be the last in iteration order
-    ///     let keys: Vec<_> = lhm.keys().copied().collect();
-    ///     assert_eq!(keys, vec![2, 3, 1]);
-    /// }
-    /// ```
-    pub fn move_to_end(&self, map: &mut crate::LinkedHashMap<K, V>) -> bool {
-        map.ll.make_head(&self.node_handle)
-    }
 }
