@@ -22,6 +22,7 @@ pub(in crate::lhmap) mod iter;
 pub(crate) mod lhmap;
 
 pub use entry::Entry;
+pub use entry::EntryHandle;
 pub use entry::Order;
 pub use iter::Iter;
 pub use iter::IterMut;

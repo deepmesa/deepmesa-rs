@@ -2,6 +2,7 @@
 
 [![0 dependencies!](https://0dependencies.dev/0dependencies.svg)](https://0dependencies.dev)
 ![License](https://img.shields.io/badge/License-Apache--2.0-blue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A high-performance Rust crate providing hand-crafted data structures and algorithms optimized for speed and memory efficiency. Each data structure is designed with zero external dependencies and extensive benchmarking to deliver superior performance over standard library alternatives.
 
@@ -144,7 +145,7 @@ Contributions in any form (suggestions, bug reports, pull requests, and feedback
 
 This project is dual-licensed under the MIT LICENSE or the Apache-2 LICENSE:
 
-- [Apache License, Version 2.0](LICENSE) ([LICENSE-APACHE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0)
+- [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 - [MIT License](http://opensource.org/licenses/MIT)
 
 #### Contribution
