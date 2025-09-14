@@ -1,12 +1,8 @@
 #![allow(warnings)]
 pub mod bitvec;
-pub mod cdeque;
 pub(crate) mod fl;
 pub mod lhmap;
 pub mod linkedlist;
-mod stack;
-mod tree;
-mod vector;
 
 /// Error type returned when a memory allocation operation fails.
 ///
@@ -36,7 +32,7 @@ impl TryAllocError {
 /// Error codes for memory allocation and capacity management operations.
 ///
 /// These error codes are used to indicate various failure conditions
-/// when attempting to allocate or manage memory for the circular deque.
+/// when attempting to allocate or manage memory for collections.
 ///
 /// # Examples
 ///
@@ -62,14 +58,8 @@ pub enum ErrorCode {
 /// # Examples
 ///
 /// ```
-/// # use deepmesa_collections::{CircularDeque, TryReserveError};
-/// let mut deque = CircularDeque::<i32>::new();
-///
-/// // This might fail if we request too much memory
-/// match deque.try_reserve(usize::MAX) {
-///     Ok(()) => println!("Successfully reserved memory"),
-///     Err(error) => println!("Failed to reserve memory: {}", error.msg),
-/// }
+/// # use deepmesa_collections::TryReserveError;
+/// // TryReserveError is typically used by collections that support reservation
 /// ```
 pub struct TryReserveError {
     /// The error code indicating the type of failure
@@ -84,7 +74,6 @@ impl TryReserveError {
     }
 }
 
-pub use crate::cdeque::cdeque::CircularDeque;
 pub use crate::lhmap::lhmap::LinkedHashMap;
 pub use crate::linkedlist::list::LinkedList;
 
