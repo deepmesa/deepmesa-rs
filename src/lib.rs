@@ -5,7 +5,7 @@ pub(crate) mod fl;
 pub mod lhmap;
 pub mod linkedlist;
 mod stack;
-mod tree;
+pub mod tree;
 mod vector;
 
 /// Error type returned when a memory allocation operation fails.
@@ -84,14 +84,8 @@ impl TryReserveError {
     }
 }
 
+pub use crate::bitvec::bitvec::BitVector;
 pub use crate::cdeque::cdeque::CircularDeque;
 pub use crate::lhmap::lhmap::LinkedHashMap;
 pub use crate::linkedlist::list::LinkedList;
-
-// /// This module contains structs specific to the [`LinkedHashMap`]
-// pub mod map {
-//     pub use crate::lhmap::entry::Entry;
-//     pub use crate::lhmap::entry::Order;
-// }
-
-pub use crate::bitvec::bitvec::BitVector;
+pub use crate::tree::rb::rbtree::RedBlackTree;
