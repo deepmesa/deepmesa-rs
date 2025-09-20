@@ -654,6 +654,47 @@ where
     /// assert_eq!(lhm.remove_head(), Some((3, "c")));
     /// assert_eq!(lhm.remove_head(), None);
     /// ```
+    /// Returns a reference to the head (oldest) entry in the LinkedHashMap.
+    ///
+    /// The head entry is the least recently inserted or accessed entry depending
+    /// on the map's order mode. This is the entry that would be removed by the
+    /// eviction policy.
+    ///
+    /// Returns `Some((&key, &value))` if the map is not empty, or `None` if the
+    /// map is empty.
+    ///
+    /// This operation completes in O(1) time and does not modify the map.
+    ///
+    /// Returns a reference to the entry at the head of the LinkedHashMap.
+    ///
+    /// This method does not change the access order and works the same
+    /// regardless of whether the map uses InsertionOrder or AccessOrder.
+    /// Unlike insertion operations, this method is purely a read operation
+    /// and will not affect the ordering of entries.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa_collections::LinkedHashMap;
+    /// use deepmesa_collections::lhmap::Order;
+    ///
+    /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+    /// assert_eq!(lhm.head(), None);
+    ///
+    /// lhm.put(1, "a");
+    /// lhm.put(2, "b");
+    /// lhm.put(3, "c");
+    ///
+    /// // Head is the oldest entry
+    /// assert_eq!(lhm.head(), Some((&1, &"a")));
+    /// ```
+    pub fn head(&self) -> Option<(&K, &V)> {
+        if let Some(entry) = self.ll.head() {
+            Some((&entry.key, &entry.val))
+        } else {
+            None
+        }
+    }
+
     pub fn remove_head(&mut self) -> Option<(K, V)> {
         if let Some(entry) = self.ll.pop_head() {
             self.map.remove(&PtrKey::new(&entry.key));
@@ -690,6 +731,47 @@ where
     /// assert_eq!(lhm.remove_tail(), Some((1, "a")));
     /// assert_eq!(lhm.remove_tail(), None);
     /// ```
+    /// Returns a reference to the tail (newest) entry in the LinkedHashMap.
+    ///
+    /// The tail entry is the most recently inserted or accessed entry depending
+    /// on the map's order mode. This is the opposite of the entry that would be
+    /// removed by the eviction policy.
+    ///
+    /// Returns `Some((&key, &value))` if the map is not empty, or `None` if the
+    /// map is empty.
+    ///
+    /// This operation completes in O(1) time and does not modify the map.
+    ///
+    /// Returns a reference to the entry at the tail of the LinkedHashMap.
+    ///
+    /// This method does not change the access order and works the same
+    /// regardless of whether the map uses InsertionOrder or AccessOrder.
+    /// Unlike insertion operations, this method is purely a read operation
+    /// and will not affect the ordering of entries.
+    ///
+    /// # Examples
+    /// ```
+    /// use deepmesa_collections::LinkedHashMap;
+    /// use deepmesa_collections::lhmap::Order;
+    ///
+    /// let mut lhm = LinkedHashMap::<u16, &str>::new(10, Order::InsertionOrder, None);
+    /// assert_eq!(lhm.tail(), None);
+    ///
+    /// lhm.put(1, "a");
+    /// lhm.put(2, "b");
+    /// lhm.put(3, "c");
+    ///
+    /// // Tail is the newest entry
+    /// assert_eq!(lhm.tail(), Some((&3, &"c")));
+    /// ```
+    pub fn tail(&self) -> Option<(&K, &V)> {
+        if let Some(entry) = self.ll.tail() {
+            Some((&entry.key, &entry.val))
+        } else {
+            None
+        }
+    }
+
     pub fn remove_tail(&mut self) -> Option<(K, V)> {
         if let Some(entry) = self.ll.pop_tail() {
             self.map.remove(&PtrKey::new(&entry.key));
@@ -2202,5 +2284,103 @@ mod tests {
         // Should have [2, 4] left
         let keys: Vec<_> = lhm.keys().copied().collect();
         assert_eq!(keys, vec![2, 4]);
+    }
+
+    #[test]
+    fn test_head() {
+        let mut lhm: LinkedHashMap<u16, &str> = LinkedHashMap::new(10, Order::InsertionOrder, None);
+
+        // Empty map should return None
+        assert_eq!(lhm.head(), None);
+
+        // Add some entries
+        lhm.put(1, "a");
+        assert_eq!(lhm.head(), Some((&1, &"a")));
+
+        lhm.put(2, "b");
+        assert_eq!(lhm.head(), Some((&1, &"a"))); // Head should still be first inserted
+
+        lhm.put(3, "c");
+        assert_eq!(lhm.head(), Some((&1, &"a"))); // Head should still be first inserted
+
+        // Remove head and check next becomes head
+        assert_eq!(lhm.remove_head(), Some((1, "a")));
+        assert_eq!(lhm.head(), Some((&2, &"b")));
+
+        assert_eq!(lhm.remove_head(), Some((2, "b")));
+        assert_eq!(lhm.head(), Some((&3, &"c")));
+
+        assert_eq!(lhm.remove_head(), Some((3, "c")));
+        assert_eq!(lhm.head(), None);
+    }
+
+    #[test]
+    fn test_head_access_order() {
+        let mut lhm: LinkedHashMap<u16, &str> = LinkedHashMap::new(10, Order::AccessOrder, None);
+
+        // Add entries
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Head should be least recently accessed (first inserted)
+        assert_eq!(lhm.head(), Some((&1, &"a")));
+
+        // Access element 1 - it should move to tail, making 2 the new head
+        lhm.get(&1);
+        assert_eq!(lhm.head(), Some((&2, &"b")));
+
+        // Access element 2 - it should move to tail, making 3 the new head
+        lhm.get(&2);
+        assert_eq!(lhm.head(), Some((&3, &"c")));
+    }
+
+    #[test]
+    fn test_tail() {
+        let mut lhm: LinkedHashMap<u16, &str> = LinkedHashMap::new(10, Order::InsertionOrder, None);
+
+        // Empty map should return None
+        assert_eq!(lhm.tail(), None);
+
+        // Add some entries
+        lhm.put(1, "a");
+        assert_eq!(lhm.tail(), Some((&1, &"a")));
+
+        lhm.put(2, "b");
+        assert_eq!(lhm.tail(), Some((&2, &"b"))); // Tail should be last inserted
+
+        lhm.put(3, "c");
+        assert_eq!(lhm.tail(), Some((&3, &"c"))); // Tail should be last inserted
+
+        // Remove tail and check previous becomes tail
+        assert_eq!(lhm.remove_tail(), Some((3, "c")));
+        assert_eq!(lhm.tail(), Some((&2, &"b")));
+
+        assert_eq!(lhm.remove_tail(), Some((2, "b")));
+        assert_eq!(lhm.tail(), Some((&1, &"a")));
+
+        assert_eq!(lhm.remove_tail(), Some((1, "a")));
+        assert_eq!(lhm.tail(), None);
+    }
+
+    #[test]
+    fn test_tail_access_order() {
+        let mut lhm: LinkedHashMap<u16, &str> = LinkedHashMap::new(10, Order::AccessOrder, None);
+
+        // Add entries
+        lhm.put(1, "a");
+        lhm.put(2, "b");
+        lhm.put(3, "c");
+
+        // Tail should be most recently accessed (last inserted)
+        assert_eq!(lhm.tail(), Some((&3, &"c")));
+
+        // Access element 1 - it should move to tail
+        lhm.get(&1);
+        assert_eq!(lhm.tail(), Some((&1, &"a")));
+
+        // Access element 2 - it should move to tail
+        lhm.get(&2);
+        assert_eq!(lhm.tail(), Some((&2, &"b")));
     }
 }
