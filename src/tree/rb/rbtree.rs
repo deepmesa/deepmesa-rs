@@ -85,7 +85,7 @@ impl<T> RedBlackTree<T> {
             nid: 0,
             capacity,
             root: ptr::null_mut(),
-            fl: SLFreeList::new(8),
+            fl: SLFreeList::new(capacity),
             len: 0,
         };
     }
@@ -132,9 +132,7 @@ impl<T> RedBlackTree<T> {
         if self.root.is_null() {
             None
         } else {
-            unsafe {
-                Some(NodeHandle::new(self.cid, (*self.root).nid, self.root))
-            }
+            unsafe { Some(NodeHandle::new(self.cid, (*self.root).nid, self.root)) }
         }
     }
 
@@ -167,11 +165,7 @@ impl<T> RedBlackTree<T> {
                 if (*ptr).left.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(
-                        self.cid,
-                        (*(*ptr).left).nid,
-                        (*ptr).left,
-                    ))
+                    Some(NodeHandle::new(self.cid, (*(*ptr).left).nid, (*ptr).left))
                 }
             },
         }
@@ -198,11 +192,7 @@ impl<T> RedBlackTree<T> {
                 if (*ptr).right.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(
-                        self.cid,
-                        (*(*ptr).right).nid,
-                        (*ptr).right,
-                    ))
+                    Some(NodeHandle::new(self.cid, (*(*ptr).right).nid, (*ptr).right))
                 }
             },
         }
@@ -219,7 +209,7 @@ impl<T> RedBlackTree<T> {
                 } else {
                     unsafe { Some(&(*parent_ptr).val) }
                 }
-            },
+            }
         }
     }
 
@@ -231,11 +221,9 @@ impl<T> RedBlackTree<T> {
                 if parent_ptr.is_null() {
                     None
                 } else {
-                    unsafe {
-                        Some(NodeHandle::new(self.cid, (*parent_ptr).nid, parent_ptr))
-                    }
+                    unsafe { Some(NodeHandle::new(self.cid, (*parent_ptr).nid, parent_ptr)) }
                 }
-            },
+            }
         }
     }
 
@@ -275,7 +263,7 @@ impl<T> RedBlackTree<T> {
                 drop(node_value);
             }
         }
-        
+
         // Reset tree state
         self.root = std::ptr::null_mut();
         self.len = 0;
@@ -467,7 +455,7 @@ where
         }
 
         let mut current = self.root;
-        
+
         unsafe {
             while !current.is_null() {
                 if val < (*current).val {
@@ -480,7 +468,7 @@ where
                 }
             }
         }
-        
+
         None
     }
 
@@ -536,11 +524,10 @@ where
                 } else {
                     unsafe { Some(&mut (*parent_ptr).val) }
                 }
-            },
+            }
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1356,7 +1343,7 @@ mod tests {
     fn test_navigation_methods() {
         // Test all navigation methods
         let mut tree = RedBlackTree::new();
-        
+
         // Build a small tree: insert 2, 1, 3 which should result in root=2, left=1, right=3
         let handle2 = tree.insert(2);
         let handle1 = tree.insert(1);
@@ -1370,10 +1357,10 @@ mod tests {
         // Test navigation from root
         assert_eq!(tree.left(&root_handle), Some(&1));
         assert_eq!(tree.right(&root_handle), Some(&3));
-        
+
         let left_handle = tree.left_node(&root_handle).unwrap();
         let right_handle = tree.right_node(&root_handle).unwrap();
-        
+
         assert_eq!(tree.val(&left_handle), Some(&1));
         assert_eq!(tree.val(&right_handle), Some(&3));
 
@@ -1418,11 +1405,11 @@ mod tests {
         let handle = tree.insert(42);
         assert_eq!(tree.root(), Some(&42));
         assert_eq!(tree.root_node().unwrap().ptr, handle.ptr);
-        
+
         // Test mutable root access
         *tree.root_mut().unwrap() = 100;
         assert_eq!(tree.root(), Some(&100));
-        
+
         // Test root after tree modifications
         tree.insert(20);
         tree.insert(80);
@@ -1445,7 +1432,7 @@ mod tests {
         // Test mutable value access
         *tree.val_mut(&handle1).unwrap() = 15;
         assert_eq!(tree.val(&handle1), Some(&15));
-        
+
         *tree.val_mut(&handle2).unwrap() = 25;
         assert_eq!(tree.val(&handle2), Some(&25));
 
@@ -1456,7 +1443,7 @@ mod tests {
     #[test]
     fn test_left_child_navigation_methods() {
         let mut tree = RedBlackTree::new();
-        
+
         // Create a tree structure:  50
         //                          /  \
         //                        25    75
@@ -1469,27 +1456,27 @@ mod tests {
         tree.insert(30);
 
         let root_handle = tree.root_node().unwrap();
-        
+
         // Test left navigation from root
         assert_eq!(tree.left(&root_handle), Some(&25));
         let left_handle = tree.left_node(&root_handle).unwrap();
         assert_eq!(tree.val(&left_handle), Some(&25));
-        
+
         // Test left navigation from left child
         assert_eq!(tree.left(&left_handle), Some(&10));
         let left_left_handle = tree.left_node(&left_handle).unwrap();
         assert_eq!(tree.val(&left_left_handle), Some(&10));
-        
+
         // Test mutable left access
         *tree.left_mut(&root_handle).unwrap() = 35;
         assert_eq!(tree.left(&root_handle), Some(&35));
         *tree.left_mut(&root_handle).unwrap() = 25; // Reset
-        
+
         // Test leaf nodes have no left children
         assert_eq!(tree.left(&left_left_handle), None);
         assert_eq!(tree.left_node(&left_left_handle), None);
         assert_eq!(tree.left_mut(&left_left_handle), None);
-        
+
         // Test right node with no left child
         let right_handle = tree.right_node(&root_handle).unwrap();
         assert_eq!(tree.left(&right_handle), None);
@@ -1500,7 +1487,7 @@ mod tests {
     #[test]
     fn test_right_child_navigation_methods() {
         let mut tree = RedBlackTree::new();
-        
+
         // Create a tree structure:  50
         //                          /  \
         //                        25    75
@@ -1513,27 +1500,27 @@ mod tests {
         tree.insert(90);
 
         let root_handle = tree.root_node().unwrap();
-        
+
         // Test right navigation from root
         assert_eq!(tree.right(&root_handle), Some(&75));
         let right_handle = tree.right_node(&root_handle).unwrap();
         assert_eq!(tree.val(&right_handle), Some(&75));
-        
+
         // Test right navigation from right child
         assert_eq!(tree.right(&right_handle), Some(&90));
         let right_right_handle = tree.right_node(&right_handle).unwrap();
         assert_eq!(tree.val(&right_right_handle), Some(&90));
-        
+
         // Test mutable right access
         *tree.right_mut(&root_handle).unwrap() = 85;
         assert_eq!(tree.right(&root_handle), Some(&85));
         *tree.right_mut(&root_handle).unwrap() = 75; // Reset
-        
+
         // Test leaf nodes have no right children
         assert_eq!(tree.right(&right_right_handle), None);
         assert_eq!(tree.right_node(&right_right_handle), None);
         assert_eq!(tree.right_mut(&right_right_handle), None);
-        
+
         // Test left node with no right child
         let left_handle = tree.left_node(&root_handle).unwrap();
         assert_eq!(tree.right(&left_handle), None);
@@ -1544,7 +1531,7 @@ mod tests {
     #[test]
     fn test_parent_navigation_methods() {
         let mut tree = RedBlackTree::new();
-        
+
         // Create a tree structure:  50
         //                          /  \
         //                        25    75
@@ -1561,31 +1548,33 @@ mod tests {
         let root_handle = tree.root_node().unwrap();
         let left_handle = tree.left_node(&root_handle).unwrap();
         let right_handle = tree.right_node(&root_handle).unwrap();
-        
+
         // Test parent navigation - root has no parent
         assert_eq!(tree.parent(&root_handle), None);
         assert_eq!(tree.parent_node(&root_handle), None);
         assert_eq!(tree.parent_mut(&root_handle), None);
-        
+
         // Test parent navigation from children
         assert_eq!(tree.parent(&left_handle), Some(&50));
         assert_eq!(tree.parent(&right_handle), Some(&50));
-        
+
         let parent_from_left = tree.parent_node(&left_handle).unwrap();
         let parent_from_right = tree.parent_node(&right_handle).unwrap();
         assert_eq!(tree.val(&parent_from_left), Some(&50));
         assert_eq!(tree.val(&parent_from_right), Some(&50));
         assert_eq!(parent_from_left, parent_from_right);
-        
+
         // Test mutable parent access
         *tree.parent_mut(&left_handle).unwrap() = 55;
         assert_eq!(tree.parent(&left_handle), Some(&55));
         assert_eq!(tree.root(), Some(&55));
         *tree.parent_mut(&left_handle).unwrap() = 50; // Reset
-        
+
         // Test grandchildren pointing to grandparent
         let left_left_handle = tree.left_node(&left_handle).unwrap();
-        let grandparent = tree.parent_node(&tree.parent_node(&left_left_handle).unwrap()).unwrap();
+        let grandparent = tree
+            .parent_node(&tree.parent_node(&left_left_handle).unwrap())
+            .unwrap();
         assert_eq!(tree.val(&grandparent), Some(&50));
     }
 
@@ -1593,14 +1582,14 @@ mod tests {
     fn test_invalid_handle_scenarios() {
         let mut tree1 = RedBlackTree::new();
         let mut tree2 = RedBlackTree::new();
-        
+
         tree1.insert(10);
         tree1.insert(20);
         let handle1 = tree1.insert(30);
-        
+
         tree2.insert(40);
         let handle2 = tree2.insert(50);
-        
+
         // Test cross-tree handle usage (different cid)
         assert_eq!(tree1.val(&handle2), None);
         assert_eq!(tree1.left(&handle2), None);
@@ -1609,16 +1598,16 @@ mod tests {
         assert_eq!(tree1.left_node(&handle2), None);
         assert_eq!(tree1.right_node(&handle2), None);
         assert_eq!(tree1.parent_node(&handle2), None);
-        
+
         assert_eq!(tree1.val_mut(&handle2), None);
         assert_eq!(tree1.left_mut(&handle2), None);
         assert_eq!(tree1.right_mut(&handle2), None);
         assert_eq!(tree1.parent_mut(&handle2), None);
-        
+
         // Test valid handle from same tree
         assert_eq!(tree1.val(&handle1), Some(&30));
         assert_eq!(tree2.val(&handle2), Some(&50));
-        
+
         // Test with empty tree handles
         let empty_tree = RedBlackTree::<i32>::new();
         assert_eq!(empty_tree.val(&handle1), None);
@@ -1628,32 +1617,32 @@ mod tests {
     #[test]
     fn test_navigation_after_rotations() {
         let mut tree = RedBlackTree::new();
-        
+
         // Insert sequence that causes rotations
         let h1 = tree.insert(1);
-        let h2 = tree.insert(2);  
+        let h2 = tree.insert(2);
         let h3 = tree.insert(3);
-        
+
         // After rotations, tree should be: 2 (root), 1 (left), 3 (right)
         let root = tree.root_node().unwrap();
         assert_eq!(tree.val(&root), Some(&2));
-        
+
         let left = tree.left_node(&root).unwrap();
         let right = tree.right_node(&root).unwrap();
-        
+
         assert_eq!(tree.val(&left), Some(&1));
         assert_eq!(tree.val(&right), Some(&3));
-        
+
         // Test parent relationships after rotation
         assert_eq!(tree.parent(&left), Some(&2));
         assert_eq!(tree.parent(&right), Some(&2));
         assert_eq!(tree.parent(&root), None);
-        
+
         // Original handles should still work
         assert_eq!(tree.val(&h1), Some(&1));
         assert_eq!(tree.val(&h2), Some(&2));
         assert_eq!(tree.val(&h3), Some(&3));
-        
+
         // Verify tree properties
         assert!(tree.verify_rb_properties());
     }
@@ -1661,10 +1650,10 @@ mod tests {
     #[test]
     fn test_get_method() {
         let mut tree = RedBlackTree::new();
-        
+
         // Test get on empty tree
         assert_eq!(tree.get(42), None);
-        
+
         // Insert values and test get
         let h1 = tree.insert(50);
         let h2 = tree.insert(25);
@@ -1673,7 +1662,7 @@ mod tests {
         let h5 = tree.insert(30);
         let h6 = tree.insert(60);
         let h7 = tree.insert(90);
-        
+
         // Test successful gets
         let found1 = tree.get(50).unwrap();
         let found2 = tree.get(25).unwrap();
@@ -1682,7 +1671,7 @@ mod tests {
         let found5 = tree.get(30).unwrap();
         let found6 = tree.get(60).unwrap();
         let found7 = tree.get(90).unwrap();
-        
+
         // Verify returned handles point to correct values
         assert_eq!(tree.val(&found1), Some(&50));
         assert_eq!(tree.val(&found2), Some(&25));
@@ -1691,7 +1680,7 @@ mod tests {
         assert_eq!(tree.val(&found5), Some(&30));
         assert_eq!(tree.val(&found6), Some(&60));
         assert_eq!(tree.val(&found7), Some(&90));
-        
+
         // Test that returned handles match original insertion handles
         assert_eq!(found1.ptr, h1.ptr);
         assert_eq!(found2.ptr, h2.ptr);
@@ -1700,19 +1689,19 @@ mod tests {
         assert_eq!(found5.ptr, h5.ptr);
         assert_eq!(found6.ptr, h6.ptr);
         assert_eq!(found7.ptr, h7.ptr);
-        
+
         // Test unsuccessful gets
-        assert_eq!(tree.get(5), None);    // Smaller than any value
-        assert_eq!(tree.get(95), None);   // Larger than any value
-        assert_eq!(tree.get(35), None);   // Between existing values
-        assert_eq!(tree.get(55), None);   // Between existing values
-        
+        assert_eq!(tree.get(5), None); // Smaller than any value
+        assert_eq!(tree.get(95), None); // Larger than any value
+        assert_eq!(tree.get(35), None); // Between existing values
+        assert_eq!(tree.get(55), None); // Between existing values
+
         // Test get after tree modifications (rotations)
         let mut simple_tree = RedBlackTree::new();
         simple_tree.insert(1);
         simple_tree.insert(2);
         simple_tree.insert(3); // This should trigger rotations
-        
+
         // Should still be able to find all values after rotations
         assert!(simple_tree.get(1).is_some());
         assert!(simple_tree.get(2).is_some());
@@ -1723,13 +1712,13 @@ mod tests {
     #[test]
     fn test_clear_method() {
         let mut tree = RedBlackTree::new();
-        
+
         // Test clear on empty tree
         tree.clear();
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
         assert_eq!(tree.root_node(), None);
-        
+
         // Insert multiple values
         tree.insert(50);
         tree.insert(25);
@@ -1738,19 +1727,19 @@ mod tests {
         tree.insert(30);
         tree.insert(60);
         tree.insert(90);
-        
+
         assert_eq!(tree.len, 7);
         assert!(tree.root().is_some());
         assert!(tree.verify_rb_properties());
-        
+
         // Clear the tree
         tree.clear();
-        
+
         // Verify tree is empty
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
         assert_eq!(tree.root_node(), None);
-        
+
         // Verify we can't find any of the old values
         assert_eq!(tree.get(50), None);
         assert_eq!(tree.get(25), None);
@@ -1759,14 +1748,14 @@ mod tests {
         assert_eq!(tree.get(30), None);
         assert_eq!(tree.get(60), None);
         assert_eq!(tree.get(90), None);
-        
+
         // Verify we can insert new values after clear
         let handle = tree.insert(100);
         assert_eq!(tree.len, 1);
         assert_eq!(tree.root(), Some(&100));
         assert_eq!(tree.val(&handle), Some(&100));
         assert!(tree.verify_rb_properties());
-        
+
         // Clear again
         tree.clear();
         assert_eq!(tree.len, 0);
@@ -1824,69 +1813,68 @@ mod tests {
     #[test]
     fn test_clear_drops_elements_correctly() {
         let drop_count = Arc::new(AtomicUsize::new(0));
-        
+
         {
             let mut tree = RedBlackTree::new();
-            
+
             // Insert elements that track when they're dropped
             let values = vec![50, 25, 75, 10, 30, 60, 90, 5, 15, 27, 35];
             for val in values {
                 let counter = DropCounter::new(val, drop_count.clone());
                 tree.insert(counter);
             }
-            
+
             assert_eq!(tree.len, 11);
             assert_eq!(drop_count.load(Ordering::SeqCst), 0); // No drops yet
-            
+
             // Clear the tree
             tree.clear();
-            
+
             // All elements should have been dropped
             assert_eq!(drop_count.load(Ordering::SeqCst), 11);
             assert_eq!(tree.len, 0);
             assert_eq!(tree.root(), None);
-            
+
             // Insert a new element to verify tree still works
             let new_counter = DropCounter::new(999, drop_count.clone());
             tree.insert(new_counter);
             assert_eq!(tree.len, 1);
             assert_eq!(drop_count.load(Ordering::SeqCst), 11); // Still 11, new element not dropped
-            
         } // Tree goes out of scope here
-        
+
         // The remaining element should be dropped when tree is destroyed
         assert_eq!(drop_count.load(Ordering::SeqCst), 12);
     }
 
-    #[test] 
+    #[test]
     fn test_clear_with_complex_tree_structure() {
         let mut tree = RedBlackTree::new();
-        
+
         // Build a complex tree that will have multiple rotations
         for i in 1..=15 {
             tree.insert(i);
         }
-        
+
         assert_eq!(tree.len, 15);
         assert!(tree.verify_rb_properties());
-        
+
         // Store some handles before clearing
         let handle_5 = tree.get(5);
         let handle_10 = tree.get(10);
         assert!(handle_5.is_some());
         assert!(handle_10.is_some());
-        
+
         // Clear the tree
         tree.clear();
-        
+
         // Verify tree state
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
-        
+
         // Old handles should no longer work (values don't exist)
         assert_eq!(tree.get(5), None);
         assert_eq!(tree.get(10), None);
-        
+
         // Build new tree to verify functionality
         tree.insert(42);
         tree.insert(21);
@@ -1898,25 +1886,25 @@ mod tests {
     #[test]
     fn test_multiple_clear_operations() {
         let mut tree = RedBlackTree::new();
-        
+
         for cycle in 0..3 {
             // Fill tree
             for i in 1..=5 {
                 tree.insert(i + cycle * 10);
             }
             assert_eq!(tree.len, 5);
-            
+
             // Clear tree
             tree.clear();
             assert_eq!(tree.len, 0);
             assert_eq!(tree.root(), None);
-            
+
             // Verify empty state
             for i in 1..=5 {
                 assert_eq!(tree.get(i + cycle * 10), None);
             }
         }
-        
+
         // Final verification
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
@@ -1925,22 +1913,22 @@ mod tests {
     #[test]
     fn test_clear_large_tree_no_stack_overflow() {
         let mut tree = RedBlackTree::new();
-        
+
         // Insert a large number of elements to create a deep tree
         // This would cause stack overflow with recursive approach
         for i in 0..10000 {
             tree.insert(i);
         }
-        
+
         assert_eq!(tree.len, 10000);
         assert!(tree.verify_rb_properties());
-        
+
         // Clear should complete without stack overflow
         tree.clear();
-        
+
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
-        
+
         // Verify tree can still be used
         tree.insert(42);
         assert_eq!(tree.len, 1);
@@ -1950,38 +1938,37 @@ mod tests {
     #[test]
     fn test_clear_preserves_free_list_functionality() {
         let drop_count = Arc::new(AtomicUsize::new(0));
-        
+
         {
             let mut tree = RedBlackTree::new();
-            
+
             // Fill tree with trackable elements
             for i in 0..100 {
                 let counter = DropCounter::new(i, drop_count.clone());
                 tree.insert(counter);
             }
-            
+
             assert_eq!(tree.len, 100);
             let initial_drop_count = drop_count.load(Ordering::SeqCst);
-            
+
             // Clear tree
             tree.clear();
-            
+
             // All 100 elements should be dropped
             assert_eq!(drop_count.load(Ordering::SeqCst), initial_drop_count + 100);
             assert_eq!(tree.len, 0);
-            
+
             // Free list should still work - insert new elements
             for i in 100..150 {
                 let counter = DropCounter::new(i, drop_count.clone());
                 tree.insert(counter);
             }
-            
+
             assert_eq!(tree.len, 50);
             // No additional drops from inserting (reusing freed nodes)
             assert_eq!(drop_count.load(Ordering::SeqCst), initial_drop_count + 100);
-            
         } // Tree destructor should drop remaining 50 elements
-        
+
         assert_eq!(drop_count.load(Ordering::SeqCst), 150);
     }
 
@@ -1997,52 +1984,65 @@ mod tests {
             (1000, "large tree"),
             (10000, "very large tree"),
         ];
-        
+
         for (size, description) in test_cases {
             let mut tree = RedBlackTree::new();
-            
+
             // Insert elements
             for i in 0..size {
                 tree.insert(i);
             }
-            
-            assert_eq!(tree.len, size, "Failed to insert {} elements for {}", size, description);
-            
+
+            assert_eq!(
+                tree.len, size,
+                "Failed to insert {} elements for {}",
+                size, description
+            );
+
             // Clear should complete efficiently without reallocating stack
             tree.clear();
-            
+
             assert_eq!(tree.len, 0, "Clear failed for {}", description);
-            assert_eq!(tree.root(), None, "Root not null after clear for {}", description);
-            
+            assert_eq!(
+                tree.root(),
+                None,
+                "Root not null after clear for {}",
+                description
+            );
+
             // Verify tree can still be used
             tree.insert(42);
-            assert_eq!(tree.len, 1, "Cannot reuse tree after clear for {}", description);
+            assert_eq!(
+                tree.len, 1,
+                "Cannot reuse tree after clear for {}",
+                description
+            );
         }
     }
 
-    #[test] 
+    #[test]
     fn test_clear_capacity_calculation_bounds() {
         let mut tree = RedBlackTree::new();
-        
+
         // Test small tree case
         tree.insert(1);
         tree.insert(2);
         tree.clear(); // Should use len for stack capacity (2)
-        
-        // Test medium tree case  
+
+        // Test medium tree case
         for i in 0..100 {
             tree.insert(i);
         }
         assert_eq!(tree.len, 100);
         tree.clear(); // Should calculate appropriate capacity
-        
+
         // Test very large tree case
         for i in 0..5000 {
             tree.insert(i);
         }
         assert_eq!(tree.len, 5000);
         tree.clear(); // Should handle large trees efficiently
-        
+
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
     }
@@ -2051,27 +2051,33 @@ mod tests {
     fn test_clear_stack_memory_efficiency() {
         // Verify that depth-first stack approach uses significantly less memory than breadth-first
         let mut tree = RedBlackTree::new();
-        
+
         // Create a tree with 1000 nodes
         for i in 0..1000 {
             tree.insert(i);
         }
-        
+
         // For depth-first: stack capacity = height ≤ 2*log₂(n+1) + buffer
         // For 1000 nodes: height ≤ 2*log₂(1001) ≈ 2*10 = 20, plus buffer ≈ 24
         let expected_height_bound = (2.0 * ((1000 + 1) as f64).log2()).ceil() as usize;
         let expected_stack_capacity = (expected_height_bound + 4).max(8);
-        
+
         // For breadth-first (previous): queue capacity would be much larger
         // Max level width ≈ 500+ nodes vs stack depth ≈ 24 nodes
-        
+
         println!("Tree with 1000 nodes:");
-        println!("Expected stack capacity (depth-first): ~{}", expected_stack_capacity);
+        println!(
+            "Expected stack capacity (depth-first): ~{}",
+            expected_stack_capacity
+        );
         println!("Previous queue capacity (breadth-first) would be: ~500+");
-        
+
         // The depth-first approach should use much less memory
-        assert!(expected_stack_capacity < 50, "Stack capacity should be much smaller than breadth-first");
-        
+        assert!(
+            expected_stack_capacity < 50,
+            "Stack capacity should be much smaller than breadth-first"
+        );
+
         tree.clear();
         assert_eq!(tree.len, 0);
         assert_eq!(tree.root(), None);
@@ -2080,33 +2086,33 @@ mod tests {
     #[test]
     fn test_len_and_is_empty() {
         let mut tree = RedBlackTree::new();
-        
+
         // Test empty tree
         assert_eq!(tree.len(), 0);
         assert!(tree.is_empty());
-        
+
         // Test single insertion
         tree.insert(42);
         assert_eq!(tree.len(), 1);
         assert!(!tree.is_empty());
-        
+
         // Test multiple insertions
         tree.insert(10);
         tree.insert(50);
         tree.insert(25);
         assert_eq!(tree.len(), 4);
         assert!(!tree.is_empty());
-        
+
         // Test duplicate insertion (should not increase len)
         tree.insert(42);
         assert_eq!(tree.len(), 4);
         assert!(!tree.is_empty());
-        
+
         // Test clear
         tree.clear();
         assert_eq!(tree.len(), 0);
         assert!(tree.is_empty());
-        
+
         // Test after clear
         tree.insert(100);
         assert_eq!(tree.len(), 1);
@@ -2118,15 +2124,15 @@ mod tests {
         // Test default capacity
         let tree1 = RedBlackTree::<i32>::new();
         assert_eq!(tree1.capacity(), 8);
-        
+
         // Test custom capacity
         let tree2 = RedBlackTree::<i32>::with_capacity(100);
         assert_eq!(tree2.capacity(), 100);
-        
+
         // Capacity should not change with insertions
         let mut tree3 = RedBlackTree::new();
         assert_eq!(tree3.capacity(), 8);
-        
+
         tree3.insert(1);
         tree3.insert(2);
         tree3.insert(3);
