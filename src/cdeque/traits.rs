@@ -64,12 +64,8 @@ use crate::cdeque::{IntoIter, Iter, IterMut};
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
-use std::io::{BufRead, Read, Result as IoResult, Write};
 use std::iter::{Extend, FromIterator};
-use std::ops::Index;
-use std::ops::IndexMut;
-
-extern crate alloc;
+use std::ops::{Index, IndexMut};
 
 impl<T> Index<usize> for CircularDeque<T> {
     type Output = T;
@@ -937,11 +933,13 @@ impl<T> Drop for CircularDeque<T> {
         self.clear();
 
         // Then deallocate the memory if we have any allocated
-        if self.capacity > 0 {
+        if self.capacity > 0 && !self.ptr.is_null() {
             unsafe {
-                use alloc::alloc::{dealloc, Layout};
-                let layout = Layout::array::<T>(self.capacity).unwrap();
-                dealloc(self.p_idxz as *mut u8, layout);
+                use std::alloc::{dealloc, Layout};
+                if let Ok(layout) = Layout::array::<T>(self.capacity) {
+                    dealloc(self.ptr as *mut u8, layout);
+                }
+                // If layout creation fails, we leak memory rather than panic during cleanup
             }
         }
     }

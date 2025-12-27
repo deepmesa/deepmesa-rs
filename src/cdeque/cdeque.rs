@@ -16,7 +16,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-extern crate alloc;
 use crate::cdeque::macros::*;
 use crate::cdeque::Drain;
 use crate::cdeque::Iter;
@@ -24,12 +23,9 @@ use crate::cdeque::IterMut;
 use crate::ErrorCode;
 use crate::TryAllocError;
 use crate::TryReserveError;
-use alloc::alloc::alloc_zeroed;
-use alloc::alloc::dealloc;
-use alloc::alloc::Layout;
-use core::ptr;
+use std::alloc::{alloc_zeroed, dealloc, Layout};
 use std::fmt::Debug;
-use std::ptr::null_mut;
+use std::ptr::{self, null_mut};
 
 /// A circular double-ended queue (deque) implemented with a growable ring buffer.
 ///
@@ -55,17 +51,19 @@ use std::ptr::null_mut;
 /// ```
 pub struct CircularDeque<T> {
     pub(in crate::cdeque) len: usize,
+    /// Capacity is always a power of 2 to enable fast modulo via bitmask
     pub(in crate::cdeque) capacity: usize,
-    pub(in crate::cdeque) p_idxz: *mut T,
-    pub(in crate::cdeque) p_idxc: *mut T,
-    pub(in crate::cdeque) p_head: *mut T,
-    pub(in crate::cdeque) p_tail: *mut T,
+    /// Base pointer to the allocated memory
+    pub(in crate::cdeque) ptr: *mut T,
+    /// Index of the head element (first element in the queue)
+    pub(in crate::cdeque) head: usize,
+    /// Index of the tail (empty slot after the last element)
+    pub(in crate::cdeque) tail: usize,
 }
 
 /*
-Head: Head points to the element that is at the front of the queue
-Tail: Tail points to the first empty element in the queue. i.e. the
-(empty) element after the last element in the queue.
+Head: Index of the element at the front of the queue
+Tail: Index of the first empty slot in the queue (after the last element)
 
 push_back(): push_tail: write the element and increment tail
 pop_front(): pop_head:  read the element and increment head
@@ -73,74 +71,60 @@ pop_front(): pop_head:  read the element and increment head
 push_front(): push_head: decrement head and write element
 pop_back(): pop_tail: decrement tail and read element
 
-tail: *mut T points to an empty slot
-head: *mut T points to the first element in the queue
+INDEXES with POWER-OF-2 CAPACITY:
+By ensuring capacity is always a power of 2, we can use a bitmask
+(capacity - 1) for wrapping instead of modulo. This is branchless
+and faster than pointer-based wrapping which requires a comparison.
 
-first element of the allocation: queue
-last element of the allocation: queue.add(capacity)
-
-// POINTERS vs INDEXES: If we store usize indexes then on every push we
-have to do one addition to find the index to write to, Then a second
-addition to increment the index.
-
-If we store pointers then we have to do only one addition to update the pointer
-
-BlogPost: the Devil is in the details - a post about how the details
-matter ex: the circular buffer in a contiguous deque
+increment: index = (index + 1) & mask
+decrement: index = (index - 1) & mask  // wraps correctly due to unsigned arithmetic
 
 Rules:
-
-1. if the queue is empty: p_head == p_tail
-2. else if the queue is full:  p_head == p_tail
-3. else p_tail = p_head + len
-4. ALWAYS: p_idxc = p_idxz + cap - 1
+1. if the queue is empty: head == tail && len == 0
+2. else if the queue is full: head == tail && len == capacity
+3. else tail = (head + len) & mask
 */
 
-macro_rules! dec_ptr {
-    ($self:ident, $ptr:expr) => {
-        if $ptr == $self.p_idxz {
-            $ptr = $self.p_idxc;
-        } else {
-            unsafe {
-                $ptr = $ptr.sub(1);
-            }
-        }
+/// Mask for wrapping indexes (capacity - 1)
+macro_rules! mask {
+    ($self:ident) => {
+        $self.capacity.wrapping_sub(1)
     };
 }
 
-macro_rules! inc_ptr {
-    ($self:ident, $ptr:expr) => {
-        if $ptr == $self.p_idxc {
-            $ptr = $self.p_idxz;
-        } else {
-            unsafe {
-                $ptr = $ptr.add(1);
-            }
-        }
+macro_rules! inc_idx {
+    ($self:ident, $idx:expr) => {
+        $idx = ($idx + 1) & mask!($self);
+    };
+}
+
+macro_rules! dec_idx {
+    ($self:ident, $idx:expr) => {
+        $idx = $idx.wrapping_sub(1) & mask!($self);
     };
 }
 
 macro_rules! inc_head {
     ($self:ident) => {
-        inc_ptr!($self, $self.p_head);
+        inc_idx!($self, $self.head);
     };
 }
 
 macro_rules! dec_head {
     ($self:ident) => {
-        dec_ptr!($self, $self.p_head);
+        dec_idx!($self, $self.head);
     };
 }
 
 macro_rules! inc_tail {
     ($self:ident) => {
-        inc_ptr!($self, $self.p_tail);
+        inc_idx!($self, $self.tail);
     };
 }
 
 macro_rules! dec_tail {
     ($self:ident) => {
-        dec_ptr!($self, $self.p_tail);
+        dec_idx!($self, $self.tail);
     };
 }
 
@@ -170,35 +154,7 @@ impl<T> CircularDeque<T> {
     where
         R: std::ops::RangeBounds<usize>,
     {
-        use std::ops::Bound;
-
-        let start = match range.start_bound() {
-            Bound::Included(&n) => n,
-            Bound::Excluded(&n) => n + 1,
-            Bound::Unbounded => 0,
-        };
-
-        let end = match range.end_bound() {
-            Bound::Included(&n) => n + 1,
-            Bound::Excluded(&n) => n,
-            Bound::Unbounded => self.len(),
-        };
-
-        if start > end {
-            panic!(
-                "range start is greater than end: start={}, end={}",
-                start, end
-            );
-        }
-
-        if end > self.len() {
-            panic!(
-                "range end is greater than length: end={}, len={}",
-                end,
-                self.len()
-            );
-        }
-
+        let (start, end) = self.parse_range_bounds(range);
         Iter::new_range(self, start, end)
     }
 
@@ -231,6 +187,19 @@ impl<T> CircularDeque<T> {
     where
         R: std::ops::RangeBounds<usize>,
     {
+        let (start, end) = self.parse_range_bounds(range);
+        IterMut::new_range(self, start, end)
+    }
+
+    /// Parses range bounds and validates them against the deque length.
+    /// Returns (start, end) indices.
+    ///
+    /// # Panics
+    /// Panics if start > end or end > len.
+    fn parse_range_bounds<R>(&self, range: R) -> (usize, usize)
+    where
+        R: std::ops::RangeBounds<usize>,
+    {
         use std::ops::Bound;
 
         let start = match range.start_bound() {
@@ -260,7 +229,7 @@ impl<T> CircularDeque<T> {
             );
         }
 
-        IterMut::new_range(self, start, end)
+        (start, end)
     }
 
     /// Shrinks the capacity of the deque as much as possible.
@@ -318,21 +287,19 @@ impl<T> CircularDeque<T> {
     /// ```
     ///
     pub fn shrink_to_fit(&mut self) {
-        if self.capacity > self.len {
-            let new_capacity = if self.len == 0 { 0 } else { self.len };
-
-            if new_capacity == 0 {
-                // If length is 0, deallocate completely
-                if self.capacity > 0 {
-                    Self::dealloc(self.p_idxz, self.capacity);
-                    self.capacity = 0;
-                    self.p_idxz = ptr::null_mut();
-                    self.p_idxc = ptr::null_mut();
-                    self.p_head = ptr::null_mut();
-                    self.p_tail = ptr::null_mut();
-                }
-            } else {
-                // Reallocate with smaller capacity
+        if self.len == 0 {
+            // If length is 0, deallocate completely
+            if self.capacity > 0 {
+                Self::dealloc(self.ptr, self.capacity);
+                self.capacity = 0;
+                self.ptr = ptr::null_mut();
+                self.head = 0;
+                self.tail = 0;
+            }
+        } else {
+            // Round up to next power of 2
+            let new_capacity = Self::next_power_of_two(self.len);
+            if new_capacity < self.capacity {
                 let new_mem = Self::alloc(new_capacity);
                 unsafe {
                     self.rebase(new_mem, new_capacity);
@@ -429,21 +396,21 @@ impl<T> CircularDeque<T> {
     /// ```
     ///
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        let new_capacity = std::cmp::max(self.len, min_capacity);
+        let target = std::cmp::max(self.len, min_capacity);
 
-        if self.capacity > new_capacity {
-            if new_capacity == 0 {
-                // If new capacity is 0, deallocate completely
-                if self.capacity > 0 {
-                    Self::dealloc(self.p_idxz, self.capacity);
-                    self.capacity = 0;
-                    self.p_idxz = ptr::null_mut();
-                    self.p_idxc = ptr::null_mut();
-                    self.p_head = ptr::null_mut();
-                    self.p_tail = ptr::null_mut();
-                }
-            } else {
-                // Reallocate with smaller capacity
+        if target == 0 {
+            // If target is 0, deallocate completely
+            if self.capacity > 0 {
+                Self::dealloc(self.ptr, self.capacity);
+                self.capacity = 0;
+                self.ptr = ptr::null_mut();
+                self.head = 0;
+                self.tail = 0;
+            }
+        } else {
+            // Round up to next power of 2
+            let new_capacity = Self::next_power_of_two(target);
+            if new_capacity < self.capacity {
                 let new_mem = Self::alloc(new_capacity);
                 unsafe {
                     self.rebase(new_mem, new_capacity);
@@ -845,26 +812,29 @@ impl<T> CircularDeque<T> {
     /// assert!(deque.is_empty());
     /// ```
     pub fn new() -> CircularDeque<T> {
-        return CircularDeque {
+        CircularDeque {
             len: 0,
             capacity: 0,
-            // Pointer to the first item of the allocated capacity
-            // (index zero)
-            p_idxz: null_mut(),
-            // Pointer to the last item of the allocated capacity
-            // (index capacity - 1)
-            p_idxc: null_mut(),
-            // Pointer to the head of the queue
-            p_head: null_mut(),
-            // Pointer to the tail of the queue
-            p_tail: null_mut(),
-        };
+            ptr: null_mut(),
+            head: 0,
+            tail: 0,
+        }
     }
 
-    /// Creates a new empty circular deque with the specified capacity.
+    /// Rounds up to the next power of two.
+    /// Returns 1 for 0, and handles the case where n is already a power of 2.
+    #[inline]
+    fn next_power_of_two(n: usize) -> usize {
+        if n == 0 {
+            return 1;
+        }
+        n.next_power_of_two()
+    }
+
+    /// Creates a new empty circular deque with at least the specified capacity.
     ///
-    /// This pre-allocates memory for the given capacity. The deque will
-    /// not need to allocate memory until the capacity is exceeded.
+    /// The actual capacity will be rounded up to the next power of two
+    /// for efficient index wrapping using bitmask operations.
     ///
     /// # Examples
     ///
@@ -872,20 +842,19 @@ impl<T> CircularDeque<T> {
     /// # use deepmesa_collections::CircularDeque;
     /// let deque = CircularDeque::<i32>::with_capacity(10);
     /// assert_eq!(deque.len(), 0);
-    /// assert_eq!(deque.capacity(), 10);
+    /// // Capacity is rounded up to the next power of 2 (16)
+    /// assert_eq!(deque.capacity(), 16);
     /// assert!(deque.is_empty());
     /// ```
     pub fn with_capacity(capacity: usize) -> CircularDeque<T> {
-        let p_idxz = Self::alloc(capacity);
-        unsafe {
-            return CircularDeque {
-                len: 0,
-                capacity,
-                p_idxz,
-                p_idxc: p_idxz.add(capacity - 1),
-                p_head: p_idxz,
-                p_tail: p_idxz,
-            };
+        let actual_capacity = Self::next_power_of_two(capacity);
+        let ptr = Self::alloc(actual_capacity);
+        CircularDeque {
+            len: 0,
+            capacity: actual_capacity,
+            ptr,
+            head: 0,
+            tail: 0,
         }
     }
 
@@ -902,7 +871,7 @@ impl<T> CircularDeque<T> {
     /// assert!(!deque.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        return self.len == 0;
+        self.len == 0
     }
 
     /// Returns `true` if the deque is at capacity.
@@ -921,7 +890,7 @@ impl<T> CircularDeque<T> {
     /// assert!(deque.is_full());
     /// ```
     pub fn is_full(&self) -> bool {
-        return self.len == self.capacity;
+        self.len == self.capacity
     }
 
     /// Returns the number of elements in the deque.
@@ -938,23 +907,25 @@ impl<T> CircularDeque<T> {
     /// assert_eq!(deque.len(), 2);
     /// ```
     pub fn len(&self) -> usize {
-        return self.len;
+        self.len
     }
 
     /// Returns the capacity of the deque.
     ///
     /// This is the maximum number of elements the deque can hold
-    /// without reallocating memory.
+    /// without reallocating memory. Note that capacity is always
+    /// rounded up to the next power of 2.
     ///
     /// # Examples
     ///
     /// ```
     /// # use deepmesa_collections::CircularDeque;
     /// let deque = CircularDeque::<i32>::with_capacity(10);
-    /// assert_eq!(deque.capacity(), 10);
+    /// // Capacity is rounded up to the next power of 2
+    /// assert_eq!(deque.capacity(), 16);
     /// ```
     pub fn capacity(&self) -> usize {
-        return self.capacity;
+        self.capacity
     }
 
     /// Appends an element to the back of the deque.
@@ -1063,11 +1034,9 @@ impl<T> CircularDeque<T> {
     /// ```
     pub fn front(&self) -> Option<&T> {
         len_zero_none!(self);
-
-        unsafe {
-            return Some(&(*(self.p_head)));
-        }
+        unsafe { Some(&*self.ptr.add(self.head)) }
     }
+
     /// Returns a mutable reference to the first element of the deque.
     ///
     /// Returns `None` if the deque is empty.
@@ -1089,9 +1058,7 @@ impl<T> CircularDeque<T> {
     /// ```
     pub fn front_mut(&mut self) -> Option<&mut T> {
         len_zero_none!(self);
-        unsafe {
-            return Some(&mut (*(self.p_head)));
-        }
+        unsafe { Some(&mut *self.ptr.add(self.head)) }
     }
 
     /// Returns a reference to the last element of the deque.
@@ -1111,11 +1078,8 @@ impl<T> CircularDeque<T> {
     /// ```
     pub fn back(&self) -> Option<&T> {
         len_zero_none!(self);
-        unsafe {
-            let mut p_last = self.p_tail;
-            dec_ptr!(self, p_last);
-            return Some(&(*p_last));
-        }
+        let last_idx = self.tail.wrapping_sub(1) & mask!(self);
+        unsafe { Some(&*self.ptr.add(last_idx)) }
     }
 
     /// Returns a mutable reference to the last element of the deque.
@@ -1139,11 +1103,8 @@ impl<T> CircularDeque<T> {
     /// ```
     pub fn back_mut(&mut self) -> Option<&mut T> {
         len_zero_none!(self);
-        unsafe {
-            let mut p_last = self.p_tail;
-            dec_ptr!(self, p_last);
-            return Some(&mut (*p_last));
-        }
+        let last_idx = self.tail.wrapping_sub(1) & mask!(self);
+        unsafe { Some(&mut *self.ptr.add(last_idx)) }
     }
 
     /// Returns a reference to the element at the given index.
@@ -1272,24 +1233,24 @@ impl<T> CircularDeque<T> {
             self.grow(0);
         }
 
-        let ptr = self.ptr_at(index);
-        let mut cur = self.p_tail;
-        //TODO: Break up this loop into len and back_n
+        let target_physical = self.physical_index(index);
+
+        // Shift elements from tail backwards to make room
+        let mut cur_idx = self.tail;
         loop {
-            if cur == ptr {
+            if cur_idx == target_physical {
                 break;
             }
-
-            let mut prev = cur;
-            dec_ptr!(self, prev);
+            let prev_idx = cur_idx.wrapping_sub(1) & mask!(self);
             unsafe {
-                let val = ptr::read(prev);
-                ptr::write(cur, val);
-                cur = prev;
+                let val = ptr::read(self.ptr.add(prev_idx));
+                ptr::write(self.ptr.add(cur_idx), val);
             }
+            cur_idx = prev_idx;
         }
+
         unsafe {
-            ptr::write(ptr, value);
+            ptr::write(self.ptr.add(target_physical), value);
         }
         inc_tail!(self);
         self.len += 1;
@@ -1320,45 +1281,38 @@ impl<T> CircularDeque<T> {
     pub fn remove(&mut self, index: usize) -> Option<T> {
         len_zero_none!(self);
         bounds_check_none!(self, index);
-        unsafe {
-            let ptr = self.ptr_at(index);
-            let val = ptr::read(ptr);
-            let mut idx: usize = index;
-            let mut p_dst = ptr;
-            let mut p_src = ptr;
-            if index > self.len - index {
-                inc_ptr!(self, p_src);
-                //move the elements from the tail one back
-                loop {
-                    if idx >= self.len {
-                        break;
-                    }
-                    self.move_elem(p_src, p_dst);
-                    inc_ptr!(self, p_src);
-                    inc_ptr!(self, p_dst);
-                    idx += 1;
-                }
 
+        unsafe {
+            let physical = self.physical_index(index);
+            let val = ptr::read(self.ptr.add(physical));
+
+            // Decide whether to shift elements towards head or tail
+            if index > self.len - 1 - index {
+                // Shift elements from index+1..len backwards (towards head)
+                let mut src_idx = (physical + 1) & mask!(self);
+                let mut dst_idx = physical;
+                for _ in index + 1..self.len {
+                    let src = ptr::read(self.ptr.add(src_idx));
+                    ptr::write(self.ptr.add(dst_idx), src);
+                    dst_idx = src_idx;
+                    src_idx = (src_idx + 1) & mask!(self);
+                }
                 dec_tail!(self);
             } else {
-                dec_ptr!(self, p_src);
-                //move the elements from the head one forward
-                loop {
-                    if idx <= 0 {
-                        break;
-                    }
-                    self.move_elem(p_src, p_dst);
-                    dec_ptr!(self, p_src);
-                    dec_ptr!(self, p_dst);
-
-                    idx -= 1;
+                // Shift elements from 0..index forwards (towards tail)
+                let mut src_idx = physical.wrapping_sub(1) & mask!(self);
+                let mut dst_idx = physical;
+                for _ in 0..index {
+                    let src = ptr::read(self.ptr.add(src_idx));
+                    ptr::write(self.ptr.add(dst_idx), src);
+                    dst_idx = src_idx;
+                    src_idx = src_idx.wrapping_sub(1) & mask!(self);
                 }
-
                 inc_head!(self);
             }
 
             self.len -= 1;
-            return Some(val);
+            Some(val)
         }
     }
 
@@ -1383,9 +1337,11 @@ impl<T> CircularDeque<T> {
             return;
         }
 
-        let new_mem = Self::alloc(new_len);
+        // Round up to next power of 2 (capacity must always be power of 2)
+        let new_capacity = Self::next_power_of_two(new_len);
+        let new_mem = Self::alloc(new_capacity);
         unsafe {
-            self.rebase(new_mem, new_len);
+            self.rebase(new_mem, new_capacity);
         }
     }
 
@@ -1420,16 +1376,17 @@ impl<T> CircularDeque<T> {
             return Ok(());
         }
 
-        match Self::try_alloc(new_len) {
+        // Round up to next power of 2 (capacity must always be power of 2)
+        let new_capacity = Self::next_power_of_two(new_len);
+
+        match Self::try_alloc(new_capacity) {
             Ok(p_mem) => {
                 unsafe {
-                    self.rebase(p_mem, new_len);
+                    self.rebase(p_mem, new_capacity);
                 }
-                return Ok(());
+                Ok(())
             }
-            Err(e) => {
-                return Err(TryReserveError::new(e.code, e.msg));
-            }
+            Err(e) => Err(TryReserveError::new(e.code, e.msg)),
         }
     }
 
@@ -1439,27 +1396,17 @@ impl<T> CircularDeque<T> {
             return Ok(());
         }
 
-        let mut new_capacity = 0;
-        if self.capacity == 0 {
-            new_capacity = 1;
-        } else {
-            new_capacity = 2 * self.capacity;
-        }
-
-        if new_len > new_capacity {
-            new_capacity = new_len;
-        }
+        // Round up to next power of 2
+        let new_capacity = Self::next_power_of_two(new_len);
 
         match Self::try_alloc(new_capacity) {
             Ok(p_mem) => {
                 unsafe {
                     self.rebase(p_mem, new_capacity);
                 }
-                return Ok(());
+                Ok(())
             }
-            Err(e) => {
-                return Err(TryReserveError::new(e.code, e.msg));
-            }
+            Err(e) => Err(TryReserveError::new(e.code, e.msg)),
         }
     }
 
@@ -1473,10 +1420,12 @@ impl<T> CircularDeque<T> {
         unsafe {
             let ptr = self.ptr_at(index);
             let val = ptr::read(ptr);
-            self.move_elem(self.p_head, ptr);
+            // Move head element to the removed position
+            let head_val: T = ptr::read(self.ptr.add(self.head));
+            ptr::write(ptr, head_val);
             inc_head!(self);
             self.len -= 1;
-            return Some(val);
+            Some(val)
         }
     }
 
@@ -1490,11 +1439,13 @@ impl<T> CircularDeque<T> {
         unsafe {
             let ptr = self.ptr_at(index);
             let val = ptr::read(ptr);
+            // Move last element to the removed position
             let p_last = self.ptr_at(self.len - 1);
-            self.move_elem(p_last, ptr);
+            let last_val: T = ptr::read(p_last);
+            ptr::write(ptr, last_val);
             dec_tail!(self);
             self.len -= 1;
-            return Some(val);
+            Some(val)
         }
     }
 
@@ -1610,24 +1561,30 @@ impl<T> CircularDeque<T> {
 
     fn slice_ptrs(&self) -> (*mut [T], *mut [T]) {
         unsafe {
+            let head_ptr = self.ptr.add(self.head);
+
             if self.len == 0 {
                 return (
-                    ptr::slice_from_raw_parts_mut(self.p_head, 0),
-                    ptr::slice_from_raw_parts_mut(self.p_idxz, 0),
+                    ptr::slice_from_raw_parts_mut(head_ptr, 0),
+                    ptr::slice_from_raw_parts_mut(self.ptr, 0),
                 );
             }
 
-            let f_len = (self.p_idxc.offset_from(self.p_head) + 1) as usize;
-            if f_len >= self.len {
-                return (
-                    ptr::slice_from_raw_parts_mut(self.p_head, self.len),
-                    ptr::slice_from_raw_parts_mut(self.p_idxz, 0),
-                );
+            // Number of elements from head to end of buffer
+            let first_len = self.capacity - self.head;
+
+            if first_len >= self.len {
+                // No wrap-around: all elements fit in first segment
+                (
+                    ptr::slice_from_raw_parts_mut(head_ptr, self.len),
+                    ptr::slice_from_raw_parts_mut(self.ptr, 0),
+                )
             } else {
-                return (
-                    ptr::slice_from_raw_parts_mut(self.p_head, f_len),
-                    ptr::slice_from_raw_parts_mut(self.p_idxz, self.len - f_len),
-                );
+                // Wrap-around: elements span from head to end, then from start to tail
+                (
+                    ptr::slice_from_raw_parts_mut(head_ptr, first_len),
+                    ptr::slice_from_raw_parts_mut(self.ptr, self.len - first_len),
+                )
             }
         }
     }
@@ -1663,7 +1620,7 @@ impl<T> CircularDeque<T> {
     where
         F: FnMut(&mut T) -> bool,
     {
-        //Index of the current item to examine
+        // Logical index of the current item to examine
         let mut idx_c = 0;
         let mut idx_d = 0;
         let mut d_ct = 0;
@@ -1676,7 +1633,7 @@ impl<T> CircularDeque<T> {
                 let ptr_c = self.ptr_at(idx_c);
                 if f(&mut *ptr_c) {
                     if idx_c != idx_d {
-                        //move the item from idx_c to idx_d
+                        // Move the item from idx_c to idx_d
                         let ptr_d = self.ptr_at(idx_d);
                         let val = ptr::read(ptr_c);
                         ptr::write(ptr_d, val);
@@ -1689,7 +1646,8 @@ impl<T> CircularDeque<T> {
             }
             idx_c += 1;
         }
-        self.p_tail = self.ptr_at(idx_d);
+        // Update tail to new position (physical index for logical index idx_d)
+        self.tail = self.physical_index(idx_d);
         self.len -= d_ct;
     }
 }
@@ -1771,45 +1729,47 @@ impl<T> CircularDeque<T> {
     pub fn make_contiguous(&mut self) -> &mut [T] {
         if self.len == 0 {
             unsafe {
-                return (&mut *(ptr::slice_from_raw_parts_mut(self.p_head, 0)));
+                return &mut *ptr::slice_from_raw_parts_mut(self.ptr.add(self.head), 0);
             }
         }
 
-        // Check if already contiguous The queue is contiguous if
-        // p_head < p_tail (no wraparound) OR if p_head == p_tail and
-        // p_head == p_idxz (full queue starting at buffer beginning).
-        // Other cases with p_head == p_tail are wrapped full queues.
-        if self.p_head < self.p_tail || (self.p_head == self.p_tail && self.p_head == self.p_idxz) {
+        // Check if already contiguous: elements don't wrap around
+        // This is true when head + len <= capacity
+        let first_len = self.capacity - self.head;
+        if first_len >= self.len {
             unsafe {
-                return (&mut *(ptr::slice_from_raw_parts_mut(self.p_head, self.len)));
+                return &mut *ptr::slice_from_raw_parts_mut(self.ptr.add(self.head), self.len);
             }
         }
 
         // Calculate key metrics for determining which case applies
         unsafe {
-            let front_len = (self.p_idxc.offset_from(self.p_head) + 1) as usize;
-            let back_len = self.p_tail.offset_from(self.p_idxz) as usize;
+            let front_len = first_len; // Elements from head to end of buffer
+            let back_len = self.tail;  // Elements from start of buffer to tail
             let gap_len = self.capacity - self.len;
 
             // Case 1: Gap is big enough to fit the front segment
             if gap_len >= front_len {
                 // Copy back segment over by front_len elements
-                ptr::copy(self.p_idxz, self.p_idxz.add(front_len), back_len);
+                ptr::copy(self.ptr, self.ptr.add(front_len), back_len);
                 // Copy front segment before back
-                ptr::copy_nonoverlapping(self.p_head, self.p_idxz, front_len);
+                ptr::copy_nonoverlapping(self.ptr.add(self.head), self.ptr, front_len);
             }
             // Case 2: Gap is big enough to fit the back segment
             else if gap_len >= back_len {
+                let new_head = self.head - back_len;
                 // Shift front segment left by back_len
-                ptr::copy(self.p_head, self.p_head.sub(back_len), front_len);
+                ptr::copy(self.ptr.add(self.head), self.ptr.add(new_head), front_len);
                 // Copy back segment after front
                 ptr::copy_nonoverlapping(
-                    self.p_idxz,
-                    self.p_head.sub(back_len).add(front_len),
+                    self.ptr,
+                    self.ptr.add(new_head + front_len),
                     back_len,
                 );
-                // Update head pointer for this case
-                self.p_head = self.p_head.sub(back_len);
+                // Update head for this case
+                self.head = new_head;
+                self.tail = self.head + self.len;
+                return &mut *ptr::slice_from_raw_parts_mut(self.ptr.add(self.head), self.len);
             }
             // Cases 3 & 4: Gap too small for either segment
             else {
@@ -1817,30 +1777,31 @@ impl<T> CircularDeque<T> {
                 if front_len <= back_len {
                     // If gap != 0 then copy front to make the two segments adjacent
                     if gap_len != 0 {
-                        ptr::copy(self.p_head, self.p_tail, front_len);
+                        ptr::copy(self.ptr.add(self.head), self.ptr.add(self.tail), front_len);
                     }
                     // Use slice.rotate_right to make the elements contiguous
-                    let slice = ptr::slice_from_raw_parts_mut(self.p_idxz, self.len);
+                    let slice = ptr::slice_from_raw_parts_mut(self.ptr, self.len);
                     (&mut *slice).rotate_right(front_len);
                 }
                 // Case 4: Back is smaller than front
                 else {
                     // If gap != 0 then copy back to make the two segments adjacent
                     if gap_len != 0 {
-                        ptr::copy(self.p_idxz, self.p_head.sub(back_len), back_len);
+                        let new_back_start = self.head - back_len;
+                        ptr::copy(self.ptr, self.ptr.add(new_back_start), back_len);
                     }
                     // Use slice.rotate_left to make the elements contiguous
-                    let slice = ptr::slice_from_raw_parts_mut(self.p_idxz, self.len);
+                    let slice = ptr::slice_from_raw_parts_mut(self.ptr, self.len);
                     (&mut *slice).rotate_left(back_len);
                 }
             }
 
-            // Update pointers after rearrangement
-            self.p_head = self.p_idxz;
-            self.p_tail = self.p_idxz.add(self.len);
+            // Update indexes after rearrangement
+            self.head = 0;
+            self.tail = self.len;
 
             // Return the contiguous slice
-            return (&mut *(ptr::slice_from_raw_parts_mut(self.p_head, self.len)));
+            &mut *ptr::slice_from_raw_parts_mut(self.ptr, self.len)
         }
     }
 
@@ -1854,18 +1815,19 @@ impl<T> CircularDeque<T> {
         }
 
         if self.len == self.capacity {
-            self.p_head = self.ptr_at(self.len - n);
-            self.p_tail = self.p_head;
+            // No gaps - just update the indexes
+            self.head = self.physical_index(self.len - n);
+            self.tail = self.head;
         } else {
             let len_f = n;
             let len_b = self.len - n;
             if len_f <= len_b {
-                for i in 0..len_f {
+                for _ in 0..len_f {
                     let val = self.pop_back_unchecked();
                     self.push_front_unchecked(val);
                 }
             } else {
-                for i in 0..len_b {
+                for _ in 0..len_b {
                     let val = self.pop_front_unchecked();
                     self.push_back_unchecked(val);
                 }
@@ -1882,24 +1844,23 @@ impl<T> CircularDeque<T> {
             panic!("n={:?} cannot be greater than len = {:?}", n, self.len);
         }
 
-        // If the len equals the capacity then there are no gaps and we
-        // can simply update the pointers without actually moving any
-        // elements.
+        // If len equals capacity, there are no gaps and we can simply
+        // update the indexes without actually moving any elements.
         if self.len == self.capacity {
-            self.p_head = self.ptr_at(n);
-            self.p_tail = self.p_head;
+            self.head = self.physical_index(n);
+            self.tail = self.head;
         } else {
             // len_b is the length of the part of the array that will not be rotated.
             let len_b = self.len - n;
             if n <= len_b {
                 // Move the first n elements to the back (fewer moves)
-                for i in 0..n {
+                for _ in 0..n {
                     let val = self.pop_front_unchecked();
                     self.push_back_unchecked(val);
                 }
             } else {
                 // Move the last len_b elements to the front (fewer moves)
-                for i in 0..len_b {
+                for _ in 0..len_b {
                     let val = self.pop_back_unchecked();
                     self.push_front_unchecked(val);
                 }
@@ -1940,25 +1901,24 @@ impl<T> CircularDeque<T> {
         dec_tail!(self);
         let val: T;
         unsafe {
-            val = ptr::read(self.p_tail);
+            val = ptr::read(self.ptr.add(self.tail));
         }
         self.len -= 1;
-        return val;
+        val
     }
 
     fn push_front_unchecked(&mut self, val: T) {
         dec_head!(self);
         unsafe {
-            ptr::write(self.p_head, val);
+            ptr::write(self.ptr.add(self.head), val);
         }
         self.len += 1;
     }
 
     fn push_back_unchecked(&mut self, val: T) {
         unsafe {
-            ptr::write(self.p_tail, val);
+            ptr::write(self.ptr.add(self.tail), val);
         }
-
         inc_tail!(self);
         self.len += 1;
     }
@@ -1966,25 +1926,22 @@ impl<T> CircularDeque<T> {
     fn pop_front_unchecked(&mut self) -> T {
         let val: T;
         unsafe {
-            val = ptr::read(self.p_head);
+            val = ptr::read(self.ptr.add(self.head));
         }
-
         inc_head!(self);
         self.len -= 1;
-        return val;
+        val
     }
 
     fn grow(&mut self, min_capacity: usize) {
-        let mut new_capacity = 0;
-        if self.capacity == 0 {
-            new_capacity = 1;
-        } else {
-            new_capacity = 2 * self.capacity;
-        }
+        // Since capacity is always power of 2, doubling maintains this property
+        let doubled = if self.capacity == 0 { 1 } else { 2 * self.capacity };
 
-        if min_capacity > new_capacity {
-            new_capacity = min_capacity;
-        }
+        let new_capacity = if min_capacity > doubled {
+            Self::next_power_of_two(min_capacity)
+        } else {
+            doubled
+        };
 
         let new_mem = Self::alloc(new_capacity);
         unsafe {
@@ -1992,111 +1949,84 @@ impl<T> CircularDeque<T> {
         }
     }
 
-    //Move an element from the location p_src to the location
-    // p_dst. p_src may or may not be overwritten / changed
-    fn move_elem(&mut self, p_src: *mut T, p_dst: *mut T) {
-        unsafe {
-            let val: T = ptr::read(p_src);
-            ptr::write(p_dst, val);
+    // Copies the data from the old memory to new memory and deallocates old.
+    // After rebase, elements are contiguous starting at index 0.
+    unsafe fn rebase(&mut self, p_new: *mut T, new_capacity: usize) {
+        debug_assert!(self.len <= new_capacity);
+
+        // Copy elements from old buffer to new buffer contiguously
+        let mut src_idx = self.head;
+        for dst_idx in 0..self.len {
+            let val: T = ptr::read(self.ptr.add(src_idx));
+            ptr::write(p_new.add(dst_idx), val);
+            src_idx = (src_idx + 1) & mask!(self);
+        }
+
+        let old_ptr = self.ptr;
+        let old_capacity = self.capacity;
+
+        // Update to new allocation
+        self.ptr = p_new;
+        self.capacity = new_capacity;
+        self.head = 0;
+        self.tail = self.len;
+
+        // Deallocate old memory
+        if !old_ptr.is_null() && old_capacity > 0 {
+            Self::dealloc(old_ptr, old_capacity);
         }
     }
 
-    //Copies the data from the old to the new memory allocated and
-    // drops the old memory.
-    unsafe fn rebase(&mut self, p_new: *mut T, alloc_size: usize) {
-        debug_assert!(self.len <= alloc_size);
-        let mut cur: *mut T = self.p_head;
-        let mut idx: usize = 0;
-        let mut p_dst = p_new;
-        loop {
-            if idx >= self.len {
-                break;
+    fn dealloc(ptr: *mut T, capacity: usize) {
+        // Safety: capacity should always be valid since it was used for allocation.
+        // If Layout::array fails here, it indicates a serious bug in our code.
+        if let Ok(layout) = Layout::array::<T>(capacity) {
+            unsafe {
+                dealloc(ptr as *mut u8, layout);
             }
-            self.move_elem(cur, p_dst);
-            inc_ptr!(self, cur);
-            p_dst = p_dst.add(1);
-            idx += 1;
         }
-
-        self.capacity = alloc_size;
-        let p_old = self.p_idxz;
-        self.p_idxz = p_new;
-        self.p_idxc = self.p_idxz.add(self.capacity - 1);
-        self.p_head = p_new;
-        self.p_tail = self.p_head.add(self.len);
-
-        Self::dealloc(p_old, self.len);
+        // If layout creation fails, we leak memory rather than panic during cleanup
     }
 
-    fn dealloc(ptr: *mut T, len: usize) {
-        //TODO: Remove this unwrap: check that len < isize::MAX
-        let layout = Layout::array::<T>(len).unwrap();
-        unsafe {
-            dealloc(ptr as *mut u8, layout);
-        }
-    }
-
-    fn try_alloc(len: usize) -> Result<*mut T, TryAllocError> {
-        unsafe {
-            match Layout::array::<T>(len) {
-                Ok(layout) => {
-                    let arr = alloc_zeroed(layout) as *mut T;
-                    if arr.is_null() {
-                        return Err(TryAllocError::new(
-                            ErrorCode::AllocError,
-                            "Memory Allocation Failed".to_string(),
-                        ));
-                    }
-                    return Ok(arr);
-                }
-                Err(_) => {
-                    return Err(TryAllocError::new(
-                        ErrorCode::CapacityOverflow,
-                        "Memory Allocation Failed: Capacity Overflow".to_string(),
-                    ));
+    fn try_alloc(capacity: usize) -> Result<*mut T, TryAllocError> {
+        match Layout::array::<T>(capacity) {
+            Ok(layout) => {
+                let arr = unsafe { alloc_zeroed(layout) as *mut T };
+                if arr.is_null() {
+                    Err(TryAllocError::new(
+                        ErrorCode::AllocError,
+                        "Memory Allocation Failed".to_string(),
+                    ))
+                } else {
+                    Ok(arr)
                 }
             }
+            Err(_) => Err(TryAllocError::new(
+                ErrorCode::CapacityOverflow,
+                "Memory Allocation Failed: Capacity Overflow".to_string(),
+            )),
         }
     }
 
-    fn alloc(len: usize) -> *mut T {
-        unsafe {
-            //TODO: remove this unwrap and handle the error
-            let layout = Layout::array::<T>(len).unwrap();
-            let arr = alloc_zeroed(layout) as *mut T;
-            if arr.is_null() {
-                panic!("memory allocation failed!");
-            }
-            return arr;
+    fn alloc(capacity: usize) -> *mut T {
+        match Self::try_alloc(capacity) {
+            Ok(ptr) => ptr,
+            Err(e) => panic!("{}", e.msg),
         }
     }
 
-    // Returns the pointer for the given index (between 0 and len)
+    // Returns the physical index for the given logical index
+    #[inline]
+    fn physical_index(&self, logical_index: usize) -> usize {
+        (self.head + logical_index) & (self.capacity.wrapping_sub(1))
+    }
+
+    // Returns the pointer for the given logical index (between 0 and len)
     // starting at the head of the deque. If the index is greater than
     // or equal to len then the behavior is undefined
+    #[inline]
     pub(in crate::cdeque) fn ptr_at(&self, index: usize) -> *mut T {
-        unsafe {
-            let dist = self.p_idxc.offset_from(self.p_head) as usize;
-            if dist < index {
-                return self.p_idxz.add(index - dist - 1);
-            } else {
-                return self.p_head.add(index);
-            }
-        }
-    }
-
-    //Returns the index from the head to the end of the buffer
-    fn head2end(&self) -> usize {
-        unsafe {
-            return self.p_idxc.offset_from(self.p_head) as usize;
-        }
-    }
-
-    //Returns the index from the beginning of the buffer to tail.
-    fn start2tail(&self) -> usize {
-        unsafe {
-            return self.p_tail.offset_from(self.p_idxz) as usize;
-        }
+        unsafe { self.ptr.add(self.physical_index(index)) }
     }
 }
 
@@ -2121,53 +2051,15 @@ where
     /// assert!(!deque.contains(&4));
     /// ```
     pub fn contains(&self, x: &T) -> bool {
-        let mut idx: usize = 0;
-        loop {
-            if idx >= self.len() {
-                break;
-            }
-
+        for idx in 0..self.len() {
             unsafe {
                 let val = &*self.ptr_at(idx);
                 if val.eq(x) {
                     return true;
                 }
-                idx += 1;
             }
         }
-        return false;
-    }
-}
-
-impl<T: Debug> CircularDeque<T> {
-    //TODO: Remove
-    fn print_mem(&self) {
-        let mut cur = self.p_idxz;
-        for i in 0..self.capacity {
-            unsafe {
-                let mut s = String::with_capacity(32);
-                if cur == self.p_head {
-                    s.push_str(&format!(" p_head [{}]", i));
-                }
-                if cur == self.p_tail {
-                    s.push_str(&format!(" p_tail [{}]", i));
-                }
-                if cur == self.p_idxz {
-                    s.push_str(&format!(" p_idxz [{}]", i));
-                }
-                if cur == self.p_idxc {
-                    s.push_str(&format!(" p_idxc [{}]", i));
-                }
-
-                println!("[{:}]: {:?} = {:?} <-- {:}", i, cur, *cur, s);
-                cur = cur.add(1);
-            }
-        }
-        println!("len: {:?}", self.len);
-        println!("p_head: {:?}", self.p_head);
-        println!("p_tail: {:?}", self.p_tail);
-        println!("p_idxz: {:?}", self.p_idxz);
-        println!("p_idxc: {:?}", self.p_idxc);
+        false
     }
 }
 
@@ -2249,14 +2141,16 @@ mod tests {
     use super::CircularDeque;
     use crate::cdeque::cdq;
 
-    macro_rules! assert_ptrs {
+    macro_rules! assert_indexes {
         ($cdq:ident) => {
             if $cdq.is_empty() {
-                assert_eq!($cdq.p_head, $cdq.p_tail);
+                assert_eq!($cdq.head, $cdq.tail);
             } else if $cdq.is_full() {
-                assert_eq!($cdq.p_head, $cdq.p_tail);
-            } else {
-                unsafe { assert_eq!($cdq.p_idxc, $cdq.p_idxz.add($cdq.capacity - 1)) }
+                assert_eq!($cdq.head, $cdq.tail);
+            }
+            // Verify capacity is power of 2 (or 0)
+            if $cdq.capacity > 0 {
+                assert!($cdq.capacity.is_power_of_two());
             }
         };
     }
@@ -2295,7 +2189,7 @@ mod tests {
     #[test]
     fn test_remove() {
         let mut cdq = cdq!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
         assert_eq!(cdq.len(), 10);
         let val = cdq.remove(3);
         assert_eq!(val, Some(4u8));
@@ -2367,24 +2261,23 @@ mod tests {
         let mut cdq = CircularDeque::<u8>::with_capacity(5);
 
         assert_eq!(cdq.len(), 0);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        assert_eq!(cdq.p_head, cdq.p_tail);
+        // Capacity is rounded up to power of 2
+        assert_eq!(cdq.capacity(), 8);
+        assert!(!cdq.ptr.is_null());
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 0);
+
         for i in 0u8..5 {
             cdq.push_back(i);
-            assert_ptrs!(cdq);
+            assert_indexes!(cdq);
         }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
 
         assert_eq!(cdq.len(), 5);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        assert_eq!(cdq.p_tail, cdq.p_idxz);
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 5);
+        assert_indexes!(cdq);
 
         for i in 0u8..3 {
             match cdq.pop_front() {
@@ -2393,90 +2286,75 @@ mod tests {
                 }
                 Some(v) => {
                     assert_eq!(v, i);
-                    assert_ptrs!(cdq);
+                    assert_indexes!(cdq);
                 }
             }
         }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
 
         assert_eq!(cdq.len(), 2);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_head, cdq.p_idxz.add(3));
-        }
-        assert_eq!(cdq.p_tail, cdq.p_idxz);
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_eq!(cdq.head, 3);
+        assert_eq!(cdq.tail, 5);
+        assert_indexes!(cdq);
 
         cdq.push_back(9);
         assert_eq!(cdq.len(), 3);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_head, cdq.p_idxz.add(3));
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(1));
-        }
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_eq!(cdq.head, 3);
+        assert_eq!(cdq.tail, 6);
+        assert_indexes!(cdq);
 
         cdq.push_back(10);
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
         cdq.push_back(11);
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
         assert_eq!(cdq.len(), 5);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_head, cdq.p_idxz.add(3));
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(3));
-        }
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
 
-        //now grow it
-        cdq.push_back(1);
-        assert_eq!(cdq.len(), 6);
-        assert_eq!(cdq.capacity(), 10);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(cdq.len()));
-        }
-        assert_ptrs!(cdq);
+        // Fill to capacity
+        cdq.push_back(12);
+        cdq.push_back(13);
+        cdq.push_back(14);
+        assert_eq!(cdq.len(), 8);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
+
+        // Now grow it
+        cdq.push_back(15);
+        assert_eq!(cdq.len(), 9);
+        assert_eq!(cdq.capacity(), 16);
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 9);
+        assert_indexes!(cdq);
     }
 
     #[test]
     fn test_front2back() {
         let mut cdq = CircularDeque::<u8>::with_capacity(5);
         assert_eq!(cdq.len(), 0);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        assert_eq!(cdq.p_head, cdq.p_tail);
-        assert_ptrs!(cdq);
+        // Capacity is rounded up to power of 2
+        assert_eq!(cdq.capacity(), 8);
+        assert!(!cdq.ptr.is_null());
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 0);
+        assert_indexes!(cdq);
 
         cdq.push_front(0);
         assert_eq!(cdq.len(), 1);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxc);
-        assert_eq!(cdq.p_tail, cdq.p_idxz);
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        // push_front decrements head (wraps to capacity-1)
+        assert_eq!(cdq.head, 7);
+        assert_eq!(cdq.tail, 0);
+        assert_indexes!(cdq);
 
         for i in 1u8..5 {
             cdq.push_front(i);
         }
         assert_eq!(cdq.len(), 5);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        assert_eq!(cdq.p_tail, cdq.p_idxz);
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
 
         for i in 0u8..3 {
             match cdq.pop_back() {
@@ -2485,55 +2363,40 @@ mod tests {
                 }
                 Some(v) => {
                     assert_eq!(v, i);
-                    assert_ptrs!(cdq);
+                    assert_indexes!(cdq);
                 }
             }
         }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
         assert_eq!(cdq.len(), 2);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(2));
-        }
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
 
         cdq.push_front(9);
         assert_eq!(cdq.len(), 3);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(2));
-            assert_eq!(cdq.p_head, cdq.p_idxc);
-        }
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
 
         cdq.push_front(10);
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
         cdq.push_front(11);
         assert_eq!(cdq.len(), 5);
-        assert_eq!(cdq.capacity(), 5);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        unsafe {
-            assert_eq!(cdq.p_head, cdq.p_idxz.add(2));
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(2));
-        }
-        assert_ptrs!(cdq);
-        //now grow it
-        cdq.push_front(1);
-        assert_eq!(cdq.len(), 6);
-        assert_eq!(cdq.capacity(), 10);
-        assert!(!cdq.p_head.is_null());
-        assert!(!cdq.p_tail.is_null());
-        assert_eq!(cdq.p_head, cdq.p_idxc);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_idxz.add(cdq.len() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
+
+        // Fill to capacity
+        cdq.push_front(12);
+        cdq.push_front(13);
+        cdq.push_front(14);
+        assert_eq!(cdq.len(), 8);
+        assert_eq!(cdq.capacity(), 8);
+        assert_indexes!(cdq);
+
+        // Now grow it
+        cdq.push_front(15);
+        assert_eq!(cdq.len(), 9);
+        assert_eq!(cdq.capacity(), 16);
+        assert_indexes!(cdq);
     }
 
     #[test]
@@ -2541,68 +2404,46 @@ mod tests {
         let mut cdq = CircularDeque::<u8>::new();
         assert_eq!(cdq.len(), 0);
         assert_eq!(cdq.capacity(), 0);
-        assert!(cdq.p_head.is_null());
-        assert!(cdq.p_tail.is_null());
-        assert!(cdq.p_idxz.is_null());
-        assert!(cdq.p_idxc.is_null());
-        assert_ptrs!(cdq);
+        assert!(cdq.ptr.is_null());
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 0);
+        assert_indexes!(cdq);
 
         cdq.push_back(0);
         assert_eq!(cdq.len(), 1);
         assert_eq!(cdq.capacity(), 1);
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_head);
-            assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert!(!cdq.ptr.is_null());
+        assert_indexes!(cdq);
 
         cdq.push_back(1);
         assert_eq!(cdq.len(), 2);
         assert_eq!(cdq.capacity(), 2);
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_head);
-            assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
 
         cdq.push_back(2);
         assert_eq!(cdq.len(), 3);
         assert_eq!(cdq.capacity(), 4);
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_idxc);
-            assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
 
         cdq.push_back(3);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_head);
-            assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert_indexes!(cdq);
 
         cdq.push_back(4);
         assert_eq!(cdq.len(), 5);
         assert_eq!(cdq.capacity(), 8);
-        assert_eq!(cdq.p_head, cdq.p_idxz);
-        unsafe {
-            assert_eq!(cdq.p_tail, cdq.p_head.add(cdq.len()));
-            assert_eq!(cdq.p_idxc, cdq.p_idxz.add(cdq.capacity() - 1));
-        }
-        assert_ptrs!(cdq);
+        assert_eq!(cdq.head, 0);
+        assert_eq!(cdq.tail, 5);
+        assert_indexes!(cdq);
     }
 
     #[test]
     fn test_swap() {
         let mut cdq = CircularDeque::<u8>::with_capacity(10);
         assert_eq!(cdq.len(), 0);
-        assert_eq!(cdq.capacity(), 10);
+        // Capacity rounded up to power of 2
+        assert_eq!(cdq.capacity(), 16);
 
         cdq.push_front(4);
         cdq.push_front(3);
@@ -2649,7 +2490,8 @@ mod tests {
         cdq.reserve(8);
         assert_eq!(cdq, cdq!(1, 2, 3, 4));
         assert_eq!(cdq.len, 4);
-        assert_eq!(cdq.capacity, 12);
+        // Capacity is rounded up to next power of 2 (4+8=12 -> 16)
+        assert_eq!(cdq.capacity, 16);
     }
 
     #[test]
@@ -2660,7 +2502,8 @@ mod tests {
         cdq.reserve_exact(2);
         assert_eq!(cdq, cdq!(1, 2, 3, 4));
         assert_eq!(cdq.len, 4);
-        assert_eq!(cdq.capacity, 6);
+        // reserve_exact also rounds up to next power of 2 (4+2=6 -> 8)
+        assert_eq!(cdq.capacity, 8);
     }
 
     #[test]
@@ -2879,85 +2722,84 @@ mod tests {
         assert_eq!(wrapped_cdq.back(), Some(&6));
 
         // Test 5: Edge case - queue is full (len=capacity) and already contiguous
-        let mut full_contiguous_cdq = CircularDeque::with_capacity(5);
-        for i in 1..=5 {
+        let mut full_contiguous_cdq = CircularDeque::with_capacity(8);
+        for i in 1..=8 {
             full_contiguous_cdq.push_back(i);
         }
-        // At this point: len=5, capacity=5, elements are contiguous [1,2,3,4,5]
-        assert_eq!(full_contiguous_cdq.len(), 5);
-        assert_eq!(full_contiguous_cdq.capacity(), 5);
+        // At this point: len=8, capacity=8, elements are contiguous [1,2,3,4,5,6,7,8]
+        assert_eq!(full_contiguous_cdq.len(), 8);
+        assert_eq!(full_contiguous_cdq.capacity(), 8);
         assert_eq!(full_contiguous_cdq.is_full(), true);
 
         // Verify elements are already contiguous
         let (first_slice, second_slice) = full_contiguous_cdq.as_slices();
-        assert_eq!(first_slice, &[1, 2, 3, 4, 5]);
+        assert_eq!(first_slice, &[1, 2, 3, 4, 5, 6, 7, 8]);
         assert_eq!(second_slice, &[]);
 
         // Now call make_contiguous on the full, already contiguous deque
         let contiguous_slice = full_contiguous_cdq.make_contiguous();
 
         // Should return the same contiguous slice
-        assert_eq!(contiguous_slice, &[1, 2, 3, 4, 5]);
-        assert_eq!(full_contiguous_cdq.len(), 5);
-        assert_eq!(full_contiguous_cdq.capacity(), 5);
+        assert_eq!(contiguous_slice, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(full_contiguous_cdq.len(), 8);
+        assert_eq!(full_contiguous_cdq.capacity(), 8);
 
         // Verify the deque still works correctly
         assert_eq!(full_contiguous_cdq.front(), Some(&1));
-        assert_eq!(full_contiguous_cdq.back(), Some(&5));
+        assert_eq!(full_contiguous_cdq.back(), Some(&8));
         assert_eq!(full_contiguous_cdq.get(0), Some(&1));
         assert_eq!(full_contiguous_cdq.get(4), Some(&5));
 
         // Test 6: Edge case - queue is full (len=capacity) and NOT contiguous
-        let mut full_wrapped_cdq = CircularDeque::with_capacity(5);
+        let mut full_wrapped_cdq = CircularDeque::with_capacity(8);
 
         // First fill normally to create some elements
-        full_wrapped_cdq.push_back(3);
-        full_wrapped_cdq.push_back(4);
-        full_wrapped_cdq.push_back(5);
+        for i in 5..=8 {
+            full_wrapped_cdq.push_back(i);
+        }
 
         // Now add to front to create wraparound and fill to capacity
-        full_wrapped_cdq.push_front(2);
-        full_wrapped_cdq.push_front(1);
+        for i in (1..=4).rev() {
+            full_wrapped_cdq.push_front(i);
+        }
 
-        // At this point: len=5, capacity=5, elements wrap around [1,2,3,4,5]
-        assert_eq!(full_wrapped_cdq.len(), 5);
-        assert_eq!(full_wrapped_cdq.capacity(), 5);
+        // At this point: len=8, capacity=8, elements wrap around [1,2,3,4,5,6,7,8]
+        assert_eq!(full_wrapped_cdq.len(), 8);
+        assert_eq!(full_wrapped_cdq.capacity(), 8);
         assert_eq!(full_wrapped_cdq.is_full(), true);
 
         // Verify elements are NOT contiguous (they wrap around)
         let (first_slice, second_slice) = full_wrapped_cdq.as_slices();
-        // The exact split depends on internal pointer positions, but both slices should be non-empty
+        // The exact split depends on internal index positions, but both slices should be non-empty
         assert!(
             !first_slice.is_empty() && !second_slice.is_empty(),
             "Expected non-contiguous layout with both slices non-empty"
         );
 
         // Verify logical order is correct
-        assert_eq!(full_wrapped_cdq.get(0), Some(&1));
-        assert_eq!(full_wrapped_cdq.get(1), Some(&2));
-        assert_eq!(full_wrapped_cdq.get(2), Some(&3));
-        assert_eq!(full_wrapped_cdq.get(3), Some(&4));
-        assert_eq!(full_wrapped_cdq.get(4), Some(&5));
+        for i in 0..8 {
+            assert_eq!(full_wrapped_cdq.get(i), Some(&((i + 1) as i32)));
+        }
 
         // Now call make_contiguous on the full, non-contiguous deque
         let contiguous_slice = full_wrapped_cdq.make_contiguous();
 
         // Should return the contiguous slice in logical order
-        assert_eq!(contiguous_slice, &[1, 2, 3, 4, 5]);
+        assert_eq!(contiguous_slice, &[1, 2, 3, 4, 5, 6, 7, 8]);
 
-        assert_eq!(full_wrapped_cdq.len(), 5);
-        assert_eq!(full_wrapped_cdq.capacity(), 5);
+        assert_eq!(full_wrapped_cdq.len(), 8);
+        assert_eq!(full_wrapped_cdq.capacity(), 8);
 
         // Verify the deque still works correctly after make_contiguous
         assert_eq!(full_wrapped_cdq.front(), Some(&1));
-        assert_eq!(full_wrapped_cdq.back(), Some(&5));
+        assert_eq!(full_wrapped_cdq.back(), Some(&8));
         assert_eq!(full_wrapped_cdq.get(0), Some(&1));
-        assert_eq!(full_wrapped_cdq.get(4), Some(&5));
+        assert_eq!(full_wrapped_cdq.get(7), Some(&8));
 
         // Verify it's now contiguous
         let (first_slice_after, second_slice_after) = full_wrapped_cdq.as_slices();
-        assert_eq!(first_slice_after, &[1, 2, 3, 4, 5]);
-        assert_eq!(second_slice_after, &[]);
+        assert_eq!(first_slice_after, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(second_slice_after, &[] as &[i32]);
     }
 
     #[test]
@@ -3265,9 +3107,10 @@ mod tests {
         // Reserve extra capacity
         cdq.reserve(8);
         assert_eq!(cdq.len(), 4);
-        assert_eq!(cdq.capacity(), 12);
+        // Capacity rounded to power of 2: 4+8=12 -> 16
+        assert_eq!(cdq.capacity(), 16);
 
-        // Shrink to fit
+        // Shrink to fit (rounded to power of 2: 4 is already power of 2)
         cdq.shrink_to_fit();
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
@@ -3277,17 +3120,20 @@ mod tests {
         let mut empty_cdq: CircularDeque<i32> = CircularDeque::new();
         empty_cdq.reserve(10);
         assert_eq!(empty_cdq.len(), 0);
-        assert_eq!(empty_cdq.capacity(), 10);
+        // Reserve 10 rounds to 16
+        assert_eq!(empty_cdq.capacity(), 16);
 
         empty_cdq.shrink_to_fit();
         assert_eq!(empty_cdq.len(), 0);
         assert_eq!(empty_cdq.capacity(), 0);
 
-        // Test when capacity already equals length
+        // Test when capacity already equals power of 2 for length
         let mut cdq2 = cdq!(5, 6, 7);
-        let original_capacity = cdq2.capacity();
+        // 3 elements rounds up to capacity 4
+        assert_eq!(cdq2.capacity(), 4);
         cdq2.shrink_to_fit();
-        assert_eq!(cdq2.capacity(), original_capacity);
+        // Shrink to fit: 3 rounds to 4
+        assert_eq!(cdq2.capacity(), 4);
         assert_eq!(cdq2, cdq!(5, 6, 7));
     }
 
@@ -3298,12 +3144,12 @@ mod tests {
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 4);
 
-        // Reserve extra capacity
+        // Reserve extra capacity (4+12=16, already power of 2)
         cdq.reserve(12);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 16);
 
-        // Shrink to 8 (larger than length)
+        // Shrink to 8 (larger than length, already power of 2)
         cdq.shrink_to(8);
         assert_eq!(cdq.len(), 4);
         assert_eq!(cdq.capacity(), 8);
@@ -3312,6 +3158,7 @@ mod tests {
         // Test shrinking to capacity smaller than length (should use length)
         cdq.shrink_to(2);
         assert_eq!(cdq.len(), 4);
+        // Length 4 rounds to 4
         assert_eq!(cdq.capacity(), 4);
         assert_eq!(cdq, cdq!(1, 2, 3, 4));
 
@@ -3319,11 +3166,13 @@ mod tests {
         let mut empty_cdq: CircularDeque<i32> = CircularDeque::new();
         empty_cdq.reserve(20);
         assert_eq!(empty_cdq.len(), 0);
-        assert_eq!(empty_cdq.capacity(), 20);
+        // 20 rounds to 32
+        assert_eq!(empty_cdq.capacity(), 32);
 
+        // shrink_to(5) -> 5 rounds to 8
         empty_cdq.shrink_to(5);
         assert_eq!(empty_cdq.len(), 0);
-        assert_eq!(empty_cdq.capacity(), 5);
+        assert_eq!(empty_cdq.capacity(), 8);
 
         // Test shrinking empty deque to 0
         empty_cdq.shrink_to(0);
@@ -3332,8 +3181,11 @@ mod tests {
 
         // Test when current capacity is already less than or equal to min_capacity (no-op)
         let mut cdq2 = cdq!(10, 20, 30);
+        // 3 elements rounds to 4
         let original_capacity = cdq2.capacity();
+        assert_eq!(original_capacity, 4);
         cdq2.shrink_to(10);
+        // 10 rounds to 16, which is > 4, so no-op
         assert_eq!(cdq2.capacity(), original_capacity);
         assert_eq!(cdq2, cdq!(10, 20, 30));
 

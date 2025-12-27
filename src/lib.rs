@@ -6,7 +6,7 @@ pub mod lhmap;
 pub mod linkedlist;
 mod stack;
 pub mod tree;
-mod vector;
+// mod vector; // Module removed
 
 /// Error type returned when a memory allocation operation fails.
 ///

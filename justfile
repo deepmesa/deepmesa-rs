@@ -19,7 +19,7 @@ build:
 #    cargo test --doc --package deepmesa-collections map::lhmap::LinkedHashMap
 #
 test $RUST_BACKTRACE="1":
-     cargo test --package deepmesa-collections tree::rb::rbtree::tests -- --nocapture
+     cargo test --package deepmesa-collections cdeque::cdeque::tests -- --nocapture
 
 doc:
     cargo doc --no-deps --all

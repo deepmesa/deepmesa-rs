@@ -383,7 +383,6 @@ impl<'a, T> Drop for Drain<'a, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 pub struct IntoIter<T> {
     deque: CircularDeque<T>,
-    index: usize,
 }
 
 impl<T> IntoIter<T> {
@@ -391,7 +390,7 @@ impl<T> IntoIter<T> {
     ///
     /// This method is used internally by the `IntoIterator` implementation.
     pub(crate) fn new(deque: CircularDeque<T>) -> Self {
-        IntoIter { deque, index: 0 }
+        IntoIter { deque }
     }
 }
 
@@ -399,15 +398,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.deque.len() {
-            return None;
-        }
-
-        // Remove the element at the front (index 0) each time
-        // This maintains the order while consuming the deque
-        let item = self.deque.pop_front();
-        // Note: We don't increment index because we're removing from the front
-        item
+        self.deque.pop_front()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
