@@ -6,9 +6,6 @@ use std::ptr;
 pub mod rbtree;
 pub mod traits;
 
-crate::fl::slfreelist::fl_struct!(SLFreeList, TreeNode);
-crate::fl::slfreelist::fl_impl!(SLFreeList, TreeNode, right, val);
-
 pub const RED: usize = 1;
 pub const BLACK: usize = 0;
 
@@ -104,8 +101,6 @@ pub(crate) use set_red;
 
 pub struct TreeNode<T> {
     pub(crate) val: T,
-    pub(crate) nid: usize,
-    pub(crate) fl_node: bool,
     pub(crate) parent: *mut TreeNode<T>,
     pub(crate) left: *mut TreeNode<T>,
     pub(crate) right: *mut TreeNode<T>,
@@ -114,20 +109,24 @@ pub struct TreeNode<T> {
 #[derive(Debug, PartialEq)]
 pub struct NodeHandle<T> {
     pub(super) cid: usize,
-    pub(super) nid: usize,
+    pub(super) gen_id: u32,
     pub(super) ptr: *mut TreeNode<T>,
 }
 
 impl<T> TreeNode<T> {
-    pub(super) fn new(val: T, nid: usize) -> TreeNode<T> {
+    pub(super) fn new(val: T) -> TreeNode<T> {
         TreeNode {
             val,
-            fl_node: false,
-            nid,
             parent: ptr::null_mut(),
             left: ptr::null_mut(),
             right: ptr::null_mut(),
         }
+    }
+}
+
+impl<T> NodeHandle<T> {
+    pub(super) fn new(cid: usize, gen_id: u32, ptr: *mut TreeNode<T>) -> NodeHandle<T> {
+        NodeHandle { cid, gen_id, ptr }
     }
 }
 
@@ -144,8 +143,3 @@ where
     }
 }
 
-impl<T> NodeHandle<T> {
-    pub(super) fn new(cid: usize, nid: usize, ptr: *mut TreeNode<T>) -> NodeHandle<T> {
-        return NodeHandle { cid, nid, ptr };
-    }
-}

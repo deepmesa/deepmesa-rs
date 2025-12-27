@@ -1,6 +1,6 @@
-pub(crate) mod cfl;
+pub mod cfl;
 pub(crate) mod nfl;
-pub(crate) mod sfl;
+pub mod sfl;
 pub(crate) mod slfreelist;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -13,7 +13,7 @@ pub(crate) fn next_cid() -> usize {
 
 macro_rules! fl_node {
     ($name:ident, $next:ty) => {
-        pub(crate) struct $name<T> {
+        pub struct $name<T> {
             pub(crate) val: MaybeUninit<T>,
             pub(crate) next: $next,
             pub(crate) is_free: bool,
@@ -26,8 +26,8 @@ pub(crate) use fl_node;
 
 const NONE: usize = usize::MAX;
 
-pub(crate) trait FreeList<T> {
-    type FlNode;
+pub trait FreeList<T> {
+    type FlNode: FlNode;
 
     fn new(capacity: usize) -> Self;
     fn acquire(&mut self, val: T) -> *mut Self::FlNode;
@@ -35,6 +35,18 @@ pub(crate) trait FreeList<T> {
     fn capacity(&self) -> usize;
     fn len(&self) -> usize;
     fn cid(&self) -> usize;
+
+    /// Get pointer to inner value from node pointer
+    fn val_ptr(node: *mut Self::FlNode) -> *mut T;
+
+    /// Get node pointer from inner value pointer
+    fn node_from_val_ptr(val_ptr: *mut T) -> *mut Self::FlNode;
+}
+
+/// Trait for freelist node types to expose gen_id for handle validation
+pub trait FlNode {
+    fn gen_id(&self) -> u32;
+    fn is_free(&self) -> bool;
 }
 
 macro_rules! fn_capacity {

@@ -117,6 +117,25 @@ impl<T> FreeList<T> for ContiguousFreeList<T> {
             val
         }
     }
+
+    fn val_ptr(node: *mut Self::FlNode) -> *mut T {
+        unsafe { (*node).val.as_mut_ptr() }
+    }
+
+    fn node_from_val_ptr(val_ptr: *mut T) -> *mut Self::FlNode {
+        let offset = std::mem::offset_of!(CflNode<T>, val);
+        unsafe { (val_ptr as *mut u8).sub(offset) as *mut Self::FlNode }
+    }
+}
+
+impl<T> crate::fl::FlNode for CflNode<T> {
+    fn gen_id(&self) -> u32 {
+        self.gen_id
+    }
+
+    fn is_free(&self) -> bool {
+        self.is_free
+    }
 }
 
 impl<T> Drop for ContiguousFreeList<T> {

@@ -1,42 +1,28 @@
 use super::NodeHandle;
-use crate::tree::rb::SLFreeList;
+use crate::fl::FreeList;
 use crate::tree::rb::TreeNode;
 use crate::tree::rb::{BLACK, RED};
 use std::fmt;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ptr;
 
 // Import the red-black tree macros
 use super::{color_str, get_parent, is_black, is_red, set_black, set_parent, set_red};
+use crate::fl::sfl::SegmentedFreeList;
+use crate::fl::FlNode;
 
-macro_rules! nid_inc {
-    ($nid: expr) => {{
-        let nid = $nid;
-        $nid += 1;
-        nid
-    }};
-}
-
-pub struct RedBlackTree<T> {
-    cid: usize,
-    nid: usize,
-    fl: SLFreeList<T>,
-    capacity: usize,
+pub struct RedBlackTree<T, FL: FreeList<TreeNode<T>> = SegmentedFreeList<TreeNode<T>>> {
+    fl: FL,
     root: *mut TreeNode<T>,
     len: usize,
+    _marker: PhantomData<T>,
 }
 
-fn inc_cid() -> usize {
-    unsafe {
-        static mut TREE_COUNTER: usize = 0;
-        TREE_COUNTER += 1;
-        return TREE_COUNTER;
-    }
-}
-
-impl<T> Debug for RedBlackTree<T>
+impl<T, FL> Debug for RedBlackTree<T, FL>
 where
     T: Debug,
+    FL: FreeList<TreeNode<T>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.root.is_null() {
@@ -52,9 +38,10 @@ where
     }
 }
 
-impl<T> RedBlackTree<T>
+impl<T, FL> RedBlackTree<T, FL>
 where
     T: Debug,
+    FL: FreeList<TreeNode<T>>,
 {
     unsafe fn write_node(&self, f: &mut fmt::Formatter<'_>, ptr: *mut TreeNode<T>) -> fmt::Result {
         if ptr.is_null() {
@@ -63,35 +50,28 @@ where
         write!(f, "{:?} -> {:?}\n", ptr, *ptr)?;
         self.write_node(f, (*ptr).left)?;
         self.write_node(f, (*ptr).right)?;
-        return Ok(());
+        Ok(())
     }
 }
 
-impl<T> RedBlackTree<T> {
-    pub fn new() -> RedBlackTree<T> {
-        return RedBlackTree {
-            cid: inc_cid(),
-            nid: 0,
-            capacity: 8,
-            root: ptr::null_mut(),
-            fl: SLFreeList::new(8),
-            len: 0,
-        };
+const DEFAULT_CAPACITY: usize = 8;
+
+impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
+    pub fn new() -> RedBlackTree<T, FL> {
+        Self::with_capacity(DEFAULT_CAPACITY)
     }
 
-    pub fn with_capacity(capacity: usize) -> RedBlackTree<T> {
-        return RedBlackTree {
-            cid: inc_cid(),
-            nid: 0,
-            capacity,
+    pub fn with_capacity(capacity: usize) -> RedBlackTree<T, FL> {
+        RedBlackTree {
+            fl: FL::new(capacity),
             root: ptr::null_mut(),
-            fl: SLFreeList::new(capacity),
             len: 0,
-        };
+            _marker: PhantomData,
+        }
     }
 
     pub fn capacity(&self) -> usize {
-        return self.capacity;
+        self.fl.capacity()
     }
 
     pub fn len(&self) -> usize {
@@ -102,21 +82,30 @@ impl<T> RedBlackTree<T> {
         self.len == 0
     }
 
+    // Helper to get gen_id from a TreeNode pointer via the freelist node
+    fn get_gen_id(ptr: *mut TreeNode<T>) -> u32 {
+        unsafe {
+            let fl_node = FL::node_from_val_ptr(ptr);
+            (*fl_node).gen_id()
+        }
+    }
+
     // Helper function to validate and get node pointer
-    fn node_ptr(&self, node: &NodeHandle<T>) -> Option<*mut TreeNode<T>> {
-        if node.cid != self.cid {
+    fn node_ptr(&self, handle: &NodeHandle<T>) -> Option<*mut TreeNode<T>> {
+        if handle.cid != self.fl.cid() {
             return None;
         }
         unsafe {
-            if (*node.ptr).fl_node {
+            let fl_node = FL::node_from_val_ptr(handle.ptr);
+            if (*fl_node).is_free() {
                 return None;
             }
-            if (*node.ptr).nid != node.nid {
+            if (*fl_node).gen_id() != handle.gen_id {
                 return None;
             }
         }
 
-        return Some(node.ptr);
+        Some(handle.ptr)
     }
 
     // Root access methods
@@ -132,7 +121,7 @@ impl<T> RedBlackTree<T> {
         if self.root.is_null() {
             None
         } else {
-            unsafe { Some(NodeHandle::new(self.cid, (*self.root).nid, self.root)) }
+            unsafe { Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(self.root), self.root)) }
         }
     }
 
@@ -165,7 +154,7 @@ impl<T> RedBlackTree<T> {
                 if (*ptr).left.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(self.cid, (*(*ptr).left).nid, (*ptr).left))
+                    Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id((*ptr).left), (*ptr).left))
                 }
             },
         }
@@ -192,7 +181,7 @@ impl<T> RedBlackTree<T> {
                 if (*ptr).right.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(self.cid, (*(*ptr).right).nid, (*ptr).right))
+                    Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id((*ptr).right), (*ptr).right))
                 }
             },
         }
@@ -221,7 +210,7 @@ impl<T> RedBlackTree<T> {
                 if parent_ptr.is_null() {
                     None
                 } else {
-                    unsafe { Some(NodeHandle::new(self.cid, (*parent_ptr).nid, parent_ptr)) }
+                    unsafe { Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(parent_ptr), parent_ptr)) }
                 }
             }
         }
@@ -229,28 +218,22 @@ impl<T> RedBlackTree<T> {
 
     pub fn clear(&mut self) {
         if self.root.is_null() {
-            return; // Tree is already empty
+            return;
         }
 
-        // Calculate stack capacity based on tree height
-        // For a red-black tree: height ≤ 2*log₂(n+1)
-        // We need stack capacity equal to the maximum height
+        // Stack capacity based on RB tree height bound: h ≤ 2*log₂(n+1)
         let stack_capacity = if self.len <= 4 {
             self.len
         } else {
-            // Red-black tree height bound: h ≤ 2*log₂(n+1)
             let height_bound = (2.0 * ((self.len + 1) as f64).log2()).ceil() as usize;
-            // Add some buffer for safety, but much smaller than breadth-first approach
             (height_bound + 4).max(8)
         };
 
-        // Use iterative depth-first approach with stack to avoid recursion
         let mut stack = crate::CircularDeque::with_capacity(stack_capacity);
         stack.push_back(self.root);
 
         while let Some(node) = stack.pop_back() {
             unsafe {
-                // Push children to stack before processing current node (right first for left-to-right processing)
                 if !(*node).right.is_null() {
                     stack.push_back((*node).right);
                 }
@@ -258,21 +241,20 @@ impl<T> RedBlackTree<T> {
                     stack.push_back((*node).left);
                 }
 
-                // Release node back to free list and explicitly drop the returned value
-                let node_value = self.fl.release(node);
-                drop(node_value);
+                let fl_node = FL::node_from_val_ptr(node);
+                drop(self.fl.release(fl_node));
             }
         }
 
-        // Reset tree state
         self.root = std::ptr::null_mut();
         self.len = 0;
     }
 }
 
-impl<T> RedBlackTree<T>
+impl<T, FL> RedBlackTree<T, FL>
 where
     T: Ord,
+    FL: FreeList<TreeNode<T>>,
 {
     fn rotate_left(&mut self, node: *mut TreeNode<T>) {
         let right = unsafe { (*node).right };
@@ -351,46 +333,45 @@ where
 
                     // Case 1: Uncle is red - recolor and move up
                     if is_red!(uncle) {
-                        set_black!(parent); // Parent becomes black
-                        set_black!(uncle); // Uncle becomes black
-                        set_red!(grandparent); // Grandparent becomes red
+                        set_black!(parent);
+                        set_black!(uncle);
+                        set_red!(grandparent);
                         node = grandparent; // Move violation up the tree
                     } else {
                         // Case 2: Uncle is black, node is right child - left rotation needed
                         if node == (*parent).right {
-                            node = parent; // Move to parent for rotation
+                            node = parent;
                             self.rotate_left(node); // Convert to case 3
                         }
                         // Case 3: Uncle is black, node is left child - right rotation
-                        let parent: *mut TreeNode<T> = get_parent!(node); // Refresh parent after potential rotation
-                        let grandparent: *mut TreeNode<T> = get_parent!(parent); // Refresh grandparent
-                        set_black!(parent); // Parent becomes black
-                        set_red!(grandparent); // Grandparent becomes red
-                        self.rotate_right(grandparent); // Final rotation to fix violation
+                        let parent: *mut TreeNode<T> = get_parent!(node);
+                        let grandparent: *mut TreeNode<T> = get_parent!(parent);
+                        set_black!(parent);
+                        set_red!(grandparent);
+                        self.rotate_right(grandparent);
                     }
                 } else {
                     // Mirror cases: parent is right child of grandparent
                     let uncle = (*grandparent).left;
 
-                    // Case 4: Uncle is red - recolor and move up
+                    // Case 1: Uncle is red - recolor and move up
                     if is_red!(uncle) {
                         set_black!(parent);
                         set_black!(uncle);
                         set_red!(grandparent);
-                        // Move violation up the tree
-                        node = grandparent;
+                        node = grandparent; // Move violation up the tree
                     } else {
-                        // Case 5: Uncle is black, node is left child - right rotation needed
+                        // Case 2: Uncle is black, node is left child - right rotation needed
                         if node == (*parent).left {
-                            node = parent; // Move to parent for rotation
-                            self.rotate_right(node); // Convert to case 6
+                            node = parent;
+                            self.rotate_right(node); // Convert to case 3
                         }
-                        // Case 6: Uncle is black, node is right child - left rotation
-                        let parent: *mut TreeNode<T> = get_parent!(node); // Refresh parent after potential rotation
-                        let grandparent: *mut TreeNode<T> = get_parent!(parent); // Refresh grandparent
-                        set_black!(parent); // Parent becomes black
-                        set_red!(grandparent); // Grandparent becomes red
-                        self.rotate_left(grandparent); // Final rotation to fix violation
+                        // Case 3: Uncle is black, node is right child - left rotation
+                        let parent: *mut TreeNode<T> = get_parent!(node);
+                        let grandparent: *mut TreeNode<T> = get_parent!(parent);
+                        set_black!(parent);
+                        set_red!(grandparent);
+                        self.rotate_left(grandparent);
                     }
                 }
             }
@@ -400,53 +381,54 @@ where
     }
 
     pub fn insert(&mut self, val: T) -> NodeHandle<T> {
-        let nid = nid_inc!(self.nid); // Generate unique node ID
-
         // Handle empty tree case
         if self.root.is_null() {
-            let t_node = self.fl.acquire(val, nid); // Get node from free list
-            self.root = t_node; // Set as root
+            let tree_node = TreeNode::new(val);
+            let fl_node = self.fl.acquire(tree_node);
+            let t_node = FL::val_ptr(fl_node);
+            self.root = t_node;
             set_black!(t_node); // Root must be black
-            self.len += 1; // Increment tree size
-            return NodeHandle::new(self.cid, nid, t_node);
+            self.len += 1;
+            return NodeHandle::new(self.fl.cid(), Self::get_gen_id(t_node), t_node);
         }
 
-        let mut current = self.root; // Start traversal from root
-        let mut parent = std::ptr::null_mut(); // Track parent for insertion
+        let mut current = self.root;
+        let mut parent = std::ptr::null_mut();
 
         let t_node = unsafe {
             // Standard BST insertion - find correct position
             while !current.is_null() {
-                parent = current; // Remember parent before moving
+                parent = current;
                 if val < (*current).val {
-                    current = (*current).left; // Go left for smaller values
+                    current = (*current).left;
                 } else if val > (*current).val {
-                    current = (*current).right; // Go right for larger values
+                    current = (*current).right;
                 } else {
                     // Duplicate found - return existing node
-                    return NodeHandle::new(self.cid, (*current).nid, current);
+                    return NodeHandle::new(self.fl.cid(), Self::get_gen_id(current), current);
                 }
             }
 
-            // Now we know where to insert, acquire the node
-            let t_node = self.fl.acquire(val, nid); // Get node from free list
+            let tree_node = TreeNode::new(val);
+            let fl_node = self.fl.acquire(tree_node);
+            let t_node = FL::val_ptr(fl_node);
 
-            // Insert new node as child of parent
-            set_parent!(t_node, parent); // Set parent relationship
+            // Link new node to parent
+            set_parent!(t_node, parent);
             if (*t_node).val < (*parent).val {
-                (*parent).left = t_node; // Insert as left child
+                (*parent).left = t_node;
             } else {
-                (*parent).right = t_node; // Insert as right child
+                (*parent).right = t_node;
             }
 
             set_red!(t_node); // New nodes start as red
-            self.insert_fixup(t_node); // Fix any red-black tree violations
+            self.insert_fixup(t_node);
 
             t_node
         };
 
-        self.len += 1; // Increment tree size
-        return NodeHandle::new(self.cid, nid, t_node);
+        self.len += 1;
+        NodeHandle::new(self.fl.cid(), Self::get_gen_id(t_node), t_node)
     }
 
     pub fn get(&self, val: T) -> Option<NodeHandle<T>> {
@@ -464,7 +446,7 @@ where
                     current = (*current).right;
                 } else {
                     // Found matching value
-                    return Some(NodeHandle::new(self.cid, (*current).nid, current));
+                    return Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(current), current));
                 }
             }
         }
@@ -532,10 +514,15 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fl::sfl::SegmentedFreeList;
 
-    impl<T> RedBlackTree<T>
+    // Type alias for tests using SegmentedFreeList
+    type RBTree<T> = RedBlackTree<T, SegmentedFreeList<TreeNode<T>>>;
+
+    impl<T, FL> RedBlackTree<T, FL>
     where
         T: Ord + std::fmt::Debug,
+        FL: FreeList<TreeNode<T>>,
     {
         // Helper function to verify red-black tree properties
         fn verify_rb_properties(&self) -> bool {
@@ -665,7 +652,7 @@ mod tests {
 
     #[test]
     fn print_tree() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(1);
         tree.insert(2);
         tree.insert(3);
@@ -677,7 +664,7 @@ mod tests {
 
     #[test]
     fn test_insert_empty_tree() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let handle = tree.insert(42);
 
         assert_eq!(tree.len, 1);
@@ -692,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_insert_duplicate() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let handle1 = tree.insert(42);
         let handle2 = tree.insert(42);
 
@@ -703,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_insert_multiple_values() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let values = vec![50, 25, 75, 10, 30, 60, 80];
 
         for val in values {
@@ -716,7 +703,7 @@ mod tests {
 
     #[test]
     fn test_insert_ascending_sequence() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         for i in 1..=10 {
             tree.insert(i);
@@ -728,7 +715,7 @@ mod tests {
 
     #[test]
     fn test_insert_descending_sequence() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         for i in (1..=10).rev() {
             tree.insert(i);
@@ -740,7 +727,7 @@ mod tests {
 
     #[test]
     fn test_rb_tree_balancing() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert values that would create an unbalanced BST
         let values = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -758,7 +745,7 @@ mod tests {
 
     #[test]
     fn test_large_insertion() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let n = 100;
 
         // Insert values in a pattern that tests various rebalancing scenarios
@@ -779,7 +766,7 @@ mod tests {
     fn test_left_left_rotation() {
         // This sequence triggers a right rotation (LL case)
         // Insert 3, 2, 1 creates imbalance requiring right rotation at root
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(3);
         tree.insert(2);
         tree.insert(1);
@@ -799,7 +786,7 @@ mod tests {
     fn test_right_right_rotation() {
         // This sequence triggers a left rotation (RR case)
         // Insert 1, 2, 3 creates imbalance requiring left rotation at root
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(1);
         tree.insert(2);
         tree.insert(3);
@@ -819,7 +806,7 @@ mod tests {
     fn test_left_right_rotation() {
         // This sequence triggers left-right rotation (LR case)
         // Insert 3, 1, 2 requires left rotation on 1, then right rotation on 3
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(3);
         tree.insert(1);
         tree.insert(2);
@@ -839,7 +826,7 @@ mod tests {
     fn test_right_left_rotation() {
         // This sequence triggers right-left rotation (RL case)
         // Insert 1, 3, 2 requires right rotation on 3, then left rotation on 1
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(1);
         tree.insert(3);
         tree.insert(2);
@@ -858,7 +845,7 @@ mod tests {
     #[test]
     fn test_complex_rotation_sequence() {
         // Test a sequence that triggers multiple different rotations
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let sequence = vec![10, 5, 15, 2, 7, 12, 20, 1, 3, 6, 8];
 
         for val in sequence {
@@ -873,7 +860,7 @@ mod tests {
     fn test_deep_left_chain() {
         // Create a sequence that would form a deep left chain in BST
         // Tests multiple cascading rotations
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         for i in (1..=7).rev() {
             tree.insert(i);
             assert!(tree.verify_rb_properties());
@@ -892,7 +879,7 @@ mod tests {
     fn test_deep_right_chain() {
         // Create a sequence that would form a deep right chain in BST
         // Tests multiple cascading rotations
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         for i in 1..=7 {
             tree.insert(i);
             assert!(tree.verify_rb_properties());
@@ -913,7 +900,7 @@ mod tests {
     fn test_uncle_recoloring_cascade() {
         // Insert sequence that triggers uncle recoloring and cascading violations
         // This creates a scenario where multiple levels need recoloring
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Build a tree that will trigger uncle recoloring
         let sequence = vec![50, 25, 75, 10, 30, 60, 80, 5, 15, 27, 35];
@@ -933,7 +920,7 @@ mod tests {
     #[test]
     fn test_cascading_fixup_violations() {
         // Test sequence that causes violations to propagate up the tree
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert in a pattern that creates deep violations
         tree.insert(16);
@@ -956,7 +943,7 @@ mod tests {
     #[test]
     fn test_root_color_changes() {
         // Test sequences where root changes color during rebalancing
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         tree.insert(10);
         assert!(is_black!(tree.root)); // Root must be black
@@ -979,7 +966,7 @@ mod tests {
     #[test]
     fn test_complex_tree_restructuring() {
         // Test a complex scenario that requires multiple rotations and recoloring
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Build a moderately complex tree
         let initial_sequence = vec![64, 32, 96, 16, 48, 80, 112, 8, 24, 40, 56];
@@ -1000,7 +987,7 @@ mod tests {
     #[test]
     fn test_alternating_insertion_pattern() {
         // Test alternating high-low values to stress different rebalancing paths
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         let pairs = vec![
             (1, 100),
@@ -1025,7 +1012,7 @@ mod tests {
     #[test]
     fn test_fibonacci_sequence_insertion() {
         // Fibonacci sequence can create interesting tree structures
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let fib_sequence = vec![1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144];
 
         for val in fib_sequence {
@@ -1040,7 +1027,7 @@ mod tests {
     #[test]
     fn test_parent_pointer_consistency() {
         // Verify parent pointers remain consistent through all rotations
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let sequence = vec![50, 30, 70, 20, 40, 60, 80, 10, 25, 35, 45];
 
         for val in sequence {
@@ -1056,7 +1043,7 @@ mod tests {
     #[test]
     fn test_free_list_capacity_exhaustion() {
         // Test inserting more nodes than initial free list capacity
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert more than the initial capacity of 10
         for i in 1..=20 {
@@ -1070,7 +1057,7 @@ mod tests {
     #[test]
     fn test_minimum_maximum_values() {
         // Test with boundary values for different integer types
-        let mut tree_i32 = RedBlackTree::<i32>::new();
+        let mut tree_i32 = RBTree::<i32>::with_capacity(8);
 
         tree_i32.insert(i32::MIN);
         tree_i32.insert(i32::MAX);
@@ -1082,7 +1069,7 @@ mod tests {
         assert!(tree_i32.verify_rb_properties());
 
         // Test with i8 to cover smaller boundary values
-        let mut tree_i8 = RedBlackTree::<i8>::new();
+        let mut tree_i8 = RBTree::<i8>::with_capacity(8);
         tree_i8.insert(i8::MIN); // -128
         tree_i8.insert(i8::MAX); // 127
         tree_i8.insert(0);
@@ -1094,7 +1081,7 @@ mod tests {
     #[test]
     fn test_negative_values() {
         // Test tree with only negative values
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let negatives = vec![-50, -25, -75, -10, -30, -60, -80, -5, -15];
 
         for val in negatives {
@@ -1108,7 +1095,7 @@ mod tests {
     #[test]
     fn test_zero_and_around_zero() {
         // Test insertions around zero
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let around_zero = vec![0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5];
 
         for val in around_zero {
@@ -1122,7 +1109,7 @@ mod tests {
     #[test]
     fn test_single_value_tree() {
         // Edge case: tree with only one value
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(42);
 
         assert_eq!(tree.len, 1);
@@ -1140,7 +1127,7 @@ mod tests {
     #[test]
     fn test_two_value_tree() {
         // Edge case: tree with only two values
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         tree.insert(10);
         tree.insert(20);
 
@@ -1158,7 +1145,7 @@ mod tests {
     #[test]
     fn test_node_handle_stability() {
         // Verify that node handles remain valid through tree restructuring
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         let handle1 = tree.insert(50);
         let handle2 = tree.insert(25);
@@ -1184,7 +1171,7 @@ mod tests {
     #[test]
     fn test_large_sequential_insertion() {
         // Stress test with large number of sequential insertions
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let n = 1000;
 
         for i in 1..=n {
@@ -1202,7 +1189,7 @@ mod tests {
     #[test]
     fn test_large_reverse_insertion() {
         // Stress test with large number of reverse sequential insertions
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let n = 1000;
 
         for i in (1..=n).rev() {
@@ -1220,7 +1207,7 @@ mod tests {
     #[test]
     fn test_random_insertion_pattern() {
         // Test with pseudo-random insertion pattern
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Simple pseudo-random sequence (Linear Congruential Generator)
         let mut seed = 12345u64;
@@ -1239,7 +1226,7 @@ mod tests {
     #[test]
     fn test_pathological_sequence() {
         // Test sequences designed to stress specific rebalancing scenarios
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Alternating pattern that can cause maximum rotations
         let pattern1 = (1..=50).step_by(2).collect::<Vec<_>>(); // 1, 3, 5, ...
@@ -1259,7 +1246,7 @@ mod tests {
     #[test]
     fn test_duplicate_heavy_insertion() {
         // Test with many duplicate attempts
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let base_values = vec![10, 20, 30, 40, 50];
 
         // Insert each value multiple times
@@ -1277,7 +1264,7 @@ mod tests {
     #[test]
     fn test_tree_height_bounds() {
         // Verify that tree height stays within red-black tree bounds
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let n = 255; // 2^8 - 1 for nice height calculations
 
         for i in 1..=n {
@@ -1302,7 +1289,7 @@ mod tests {
     #[test]
     fn test_black_height_consistency() {
         // Enhanced test for black height consistency across all paths
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert values in a pattern that creates various subtree shapes
         let values = vec![50, 25, 75, 12, 37, 62, 87, 6, 18, 31, 43, 56, 68, 81, 93];
@@ -1319,14 +1306,14 @@ mod tests {
     #[test]
     fn test_memory_efficiency() {
         // Test that free list is working efficiently
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert many values to expand free list
         for i in 1..=100 {
             tree.insert(i);
         }
 
-        let initial_capacity = tree.fl.capacity;
+        let initial_capacity = tree.fl.capacity();
 
         // Insert more values - this should trigger free list growth
         for i in 101..=200 {
@@ -1334,7 +1321,7 @@ mod tests {
         }
 
         // Capacity should have grown (doubled from initial 10)
-        assert!(tree.fl.capacity >= initial_capacity);
+        assert!(tree.fl.capacity() >= initial_capacity);
         assert_eq!(tree.len, 200);
         assert!(tree.verify_rb_properties());
     }
@@ -1342,7 +1329,7 @@ mod tests {
     #[test]
     fn test_navigation_methods() {
         // Test all navigation methods
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Build a small tree: insert 2, 1, 3 which should result in root=2, left=1, right=3
         let handle2 = tree.insert(2);
@@ -1396,7 +1383,7 @@ mod tests {
     #[test]
     fn test_root_access_methods() {
         // Test empty tree
-        let mut tree = RedBlackTree::<i32>::new();
+        let mut tree = RBTree::<i32>::with_capacity(8);
         assert_eq!(tree.root(), None);
         assert_eq!(tree.root_mut(), None);
         assert_eq!(tree.root_node(), None);
@@ -1419,7 +1406,7 @@ mod tests {
 
     #[test]
     fn test_node_value_access_methods() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
         let handle1 = tree.insert(10);
         let handle2 = tree.insert(20);
         let handle3 = tree.insert(5);
@@ -1442,7 +1429,7 @@ mod tests {
 
     #[test]
     fn test_left_child_navigation_methods() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Create a tree structure:  50
         //                          /  \
@@ -1486,7 +1473,7 @@ mod tests {
 
     #[test]
     fn test_right_child_navigation_methods() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Create a tree structure:  50
         //                          /  \
@@ -1530,7 +1517,7 @@ mod tests {
 
     #[test]
     fn test_parent_navigation_methods() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Create a tree structure:  50
         //                          /  \
@@ -1580,8 +1567,8 @@ mod tests {
 
     #[test]
     fn test_invalid_handle_scenarios() {
-        let mut tree1 = RedBlackTree::new();
-        let mut tree2 = RedBlackTree::new();
+        let mut tree1 = RBTree::with_capacity(8);
+        let mut tree2 = RBTree::with_capacity(8);
 
         tree1.insert(10);
         tree1.insert(20);
@@ -1609,14 +1596,77 @@ mod tests {
         assert_eq!(tree2.val(&handle2), Some(&50));
 
         // Test with empty tree handles
-        let empty_tree = RedBlackTree::<i32>::new();
+        let empty_tree = RBTree::<i32>::with_capacity(8);
         assert_eq!(empty_tree.val(&handle1), None);
         assert_eq!(empty_tree.val(&handle2), None);
     }
 
     #[test]
+    fn test_aba_problem_detection() {
+        // Test that stale handles are detected after node release and slot reuse
+        let mut tree = RBTree::with_capacity(8);
+
+        // Insert a node and get its handle
+        let old_handle = tree.insert(42);
+        assert_eq!(tree.val(&old_handle), Some(&42));
+
+        // Remember the gen_id from the old handle
+        let old_gen_id = old_handle.gen_id;
+
+        // Clear the tree - releases all nodes back to freelist
+        tree.clear();
+        assert!(tree.is_empty());
+
+        // Old handle should now be invalid (node is free)
+        assert_eq!(tree.val(&old_handle), None);
+
+        // Insert a new node - this should reuse the same slot
+        // but with an incremented gen_id
+        let new_handle = tree.insert(99);
+        assert_eq!(tree.val(&new_handle), Some(&99));
+
+        // The gen_id should have changed
+        assert_ne!(old_gen_id, new_handle.gen_id);
+
+        // Old handle should still be invalid even though slot is reused
+        // (gen_id mismatch protects against ABA problem)
+        assert_eq!(tree.val(&old_handle), None);
+        assert_eq!(tree.left(&old_handle), None);
+        assert_eq!(tree.right(&old_handle), None);
+        assert_eq!(tree.parent(&old_handle), None);
+
+        // New handle should work fine
+        assert_eq!(tree.val(&new_handle), Some(&99));
+    }
+
+    #[test]
+    fn test_aba_multiple_generations() {
+        // Test that gen_id properly increments across multiple reuse cycles
+        let mut tree = RBTree::with_capacity(8);
+
+        let mut previous_gen_ids = Vec::new();
+
+        for i in 0..5 {
+            let handle = tree.insert(i);
+            let gen_id = handle.gen_id;
+
+            // Each gen_id should be unique (different from all previous)
+            assert!(
+                !previous_gen_ids.contains(&gen_id),
+                "gen_id {} was reused at iteration {}",
+                gen_id,
+                i
+            );
+            previous_gen_ids.push(gen_id);
+
+            // Clear to release node back to freelist
+            tree.clear();
+        }
+    }
+
+    #[test]
     fn test_navigation_after_rotations() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert sequence that causes rotations
         let h1 = tree.insert(1);
@@ -1649,7 +1699,7 @@ mod tests {
 
     #[test]
     fn test_get_method() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Test get on empty tree
         assert_eq!(tree.get(42), None);
@@ -1697,7 +1747,7 @@ mod tests {
         assert_eq!(tree.get(55), None); // Between existing values
 
         // Test get after tree modifications (rotations)
-        let mut simple_tree = RedBlackTree::new();
+        let mut simple_tree = RBTree::with_capacity(8);
         simple_tree.insert(1);
         simple_tree.insert(2);
         simple_tree.insert(3); // This should trigger rotations
@@ -1711,7 +1761,7 @@ mod tests {
 
     #[test]
     fn test_clear_method() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Test clear on empty tree
         tree.clear();
@@ -1815,7 +1865,7 @@ mod tests {
         let drop_count = Arc::new(AtomicUsize::new(0));
 
         {
-            let mut tree = RedBlackTree::new();
+            let mut tree = RBTree::with_capacity(8);
 
             // Insert elements that track when they're dropped
             let values = vec![50, 25, 75, 10, 30, 60, 90, 5, 15, 27, 35];
@@ -1848,7 +1898,7 @@ mod tests {
 
     #[test]
     fn test_clear_with_complex_tree_structure() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Build a complex tree that will have multiple rotations
         for i in 1..=15 {
@@ -1885,7 +1935,7 @@ mod tests {
 
     #[test]
     fn test_multiple_clear_operations() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         for cycle in 0..3 {
             // Fill tree
@@ -1912,7 +1962,7 @@ mod tests {
 
     #[test]
     fn test_clear_large_tree_no_stack_overflow() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Insert a large number of elements to create a deep tree
         // This would cause stack overflow with recursive approach
@@ -1940,7 +1990,7 @@ mod tests {
         let drop_count = Arc::new(AtomicUsize::new(0));
 
         {
-            let mut tree = RedBlackTree::new();
+            let mut tree = RBTree::with_capacity(8);
 
             // Fill tree with trackable elements
             for i in 0..100 {
@@ -1986,7 +2036,7 @@ mod tests {
         ];
 
         for (size, description) in test_cases {
-            let mut tree = RedBlackTree::new();
+            let mut tree = RBTree::with_capacity(8);
 
             // Insert elements
             for i in 0..size {
@@ -2022,7 +2072,7 @@ mod tests {
 
     #[test]
     fn test_clear_capacity_calculation_bounds() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Test small tree case
         tree.insert(1);
@@ -2050,7 +2100,7 @@ mod tests {
     #[test]
     fn test_clear_stack_memory_efficiency() {
         // Verify that depth-first stack approach uses significantly less memory than breadth-first
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Create a tree with 1000 nodes
         for i in 0..1000 {
@@ -2085,7 +2135,7 @@ mod tests {
 
     #[test]
     fn test_len_and_is_empty() {
-        let mut tree = RedBlackTree::new();
+        let mut tree = RBTree::with_capacity(8);
 
         // Test empty tree
         assert_eq!(tree.len(), 0);
@@ -2121,21 +2171,22 @@ mod tests {
 
     #[test]
     fn test_capacity_method() {
-        // Test default capacity
-        let tree1 = RedBlackTree::<i32>::new();
-        assert_eq!(tree1.capacity(), 8);
+        // SegmentedFreeList rounds up capacity to segment size (256)
+        // Test that capacity is at least what was requested
+        let tree1 = RBTree::<i32>::with_capacity(8);
+        assert!(tree1.capacity() >= 8);
 
         // Test custom capacity
-        let tree2 = RedBlackTree::<i32>::with_capacity(100);
-        assert_eq!(tree2.capacity(), 100);
+        let tree2 = RBTree::<i32>::with_capacity(100);
+        assert!(tree2.capacity() >= 100);
 
-        // Capacity should not change with insertions
-        let mut tree3 = RedBlackTree::new();
-        assert_eq!(tree3.capacity(), 8);
+        // Capacity should not decrease with insertions within capacity
+        let mut tree3 = RBTree::with_capacity(8);
+        let initial_capacity = tree3.capacity();
 
         tree3.insert(1);
         tree3.insert(2);
         tree3.insert(3);
-        assert_eq!(tree3.capacity(), 8);
+        assert!(tree3.capacity() >= initial_capacity);
     }
 }
