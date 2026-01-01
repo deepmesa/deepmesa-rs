@@ -173,13 +173,6 @@ impl<T> FreeList<T> for SegmentedFreeList<T> {
     fn val_ptr(node: *mut Self::FlNode) -> *mut T {
         unsafe { (*node).val.as_mut_ptr() }
     }
-
-    fn node_from_val_ptr(val_ptr: *mut T) -> *mut Self::FlNode {
-        // val is the first field in SflNode, so offset is 0
-        // Use offset_of! for safety in case layout changes
-        let offset = std::mem::offset_of!(SflNode<T>, val);
-        unsafe { (val_ptr as *mut u8).sub(offset) as *mut Self::FlNode }
-    }
 }
 
 impl<T> crate::fl::FlNode for SflNode<T> {

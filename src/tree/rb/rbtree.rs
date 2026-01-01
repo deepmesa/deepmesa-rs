@@ -82,30 +82,21 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
         self.len == 0
     }
 
-    // Helper to get gen_id from a TreeNode pointer via the freelist node
-    fn get_gen_id(ptr: *mut TreeNode<T>) -> u32 {
-        unsafe {
-            let fl_node = FL::node_from_val_ptr(ptr);
-            (*fl_node).gen_id()
-        }
-    }
-
-    // Helper function to validate and get node pointer
-    fn node_ptr(&self, handle: &NodeHandle<T>) -> Option<*mut TreeNode<T>> {
+    // Helper function to validate handle and get TreeNode pointer
+    fn node_ptr(&self, handle: &NodeHandle<T, FL>) -> Option<*mut TreeNode<T>> {
         if handle.cid != self.fl.cid() {
             return None;
         }
         unsafe {
-            let fl_node = FL::node_from_val_ptr(handle.ptr);
+            let fl_node = handle.ptr;
             if (*fl_node).is_free() {
                 return None;
             }
             if (*fl_node).gen_id() != handle.gen_id {
                 return None;
             }
+            Some(FL::val_ptr(fl_node))
         }
-
-        Some(handle.ptr)
     }
 
     // Root access methods
@@ -117,16 +108,19 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
         }
     }
 
-    pub fn root_node(&self) -> Option<NodeHandle<T>> {
+    pub fn root_node(&self) -> Option<NodeHandle<T, FL>> {
         if self.root.is_null() {
             None
         } else {
-            unsafe { Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(self.root), self.root)) }
+            unsafe {
+                let fl_node = (*self.root).fl_node as *mut FL::FlNode;
+                Some(NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node))
+            }
         }
     }
 
     // Node value access methods
-    pub fn val(&self, handle: &NodeHandle<T>) -> Option<&T> {
+    pub fn val(&self, handle: &NodeHandle<T, FL>) -> Option<&T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe { Some(&(*ptr).val) },
@@ -134,7 +128,7 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
     }
 
     // Left child navigation methods
-    pub fn left(&self, handle: &NodeHandle<T>) -> Option<&T> {
+    pub fn left(&self, handle: &NodeHandle<T, FL>) -> Option<&T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
@@ -147,21 +141,23 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
         }
     }
 
-    pub fn left_node(&self, handle: &NodeHandle<T>) -> Option<NodeHandle<T>> {
+    pub fn left_node(&self, handle: &NodeHandle<T, FL>) -> Option<NodeHandle<T, FL>> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
                 if (*ptr).left.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id((*ptr).left), (*ptr).left))
+                    let child = (*ptr).left;
+                    let fl_node = (*child).fl_node as *mut FL::FlNode;
+                    Some(NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node))
                 }
             },
         }
     }
 
     // Right child navigation methods
-    pub fn right(&self, handle: &NodeHandle<T>) -> Option<&T> {
+    pub fn right(&self, handle: &NodeHandle<T, FL>) -> Option<&T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
@@ -174,21 +170,23 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
         }
     }
 
-    pub fn right_node(&self, handle: &NodeHandle<T>) -> Option<NodeHandle<T>> {
+    pub fn right_node(&self, handle: &NodeHandle<T, FL>) -> Option<NodeHandle<T, FL>> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
                 if (*ptr).right.is_null() {
                     None
                 } else {
-                    Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id((*ptr).right), (*ptr).right))
+                    let child = (*ptr).right;
+                    let fl_node = (*child).fl_node as *mut FL::FlNode;
+                    Some(NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node))
                 }
             },
         }
     }
 
     // Parent navigation methods
-    pub fn parent(&self, handle: &NodeHandle<T>) -> Option<&T> {
+    pub fn parent(&self, handle: &NodeHandle<T, FL>) -> Option<&T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => {
@@ -202,7 +200,7 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
         }
     }
 
-    pub fn parent_node(&self, handle: &NodeHandle<T>) -> Option<NodeHandle<T>> {
+    pub fn parent_node(&self, handle: &NodeHandle<T, FL>) -> Option<NodeHandle<T, FL>> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => {
@@ -210,7 +208,10 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
                 if parent_ptr.is_null() {
                     None
                 } else {
-                    unsafe { Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(parent_ptr), parent_ptr)) }
+                    unsafe {
+                        let fl_node = (*parent_ptr).fl_node as *mut FL::FlNode;
+                        Some(NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node))
+                    }
                 }
             }
         }
@@ -241,7 +242,7 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
                     stack.push_back((*node).left);
                 }
 
-                let fl_node = FL::node_from_val_ptr(node);
+                let fl_node = (*node).fl_node as *mut FL::FlNode;
                 drop(self.fl.release(fl_node));
             }
         }
@@ -380,22 +381,25 @@ where
         set_black!(self.root); // Root must always be black
     }
 
-    pub fn insert(&mut self, val: T) -> NodeHandle<T> {
+    pub fn insert(&mut self, val: T) -> NodeHandle<T, FL> {
         // Handle empty tree case
         if self.root.is_null() {
             let tree_node = TreeNode::new(val);
             let fl_node = self.fl.acquire(tree_node);
             let t_node = FL::val_ptr(fl_node);
+            unsafe {
+                (*t_node).fl_node = fl_node as *mut ();
+            }
             self.root = t_node;
             set_black!(t_node); // Root must be black
             self.len += 1;
-            return NodeHandle::new(self.fl.cid(), Self::get_gen_id(t_node), t_node);
+            return unsafe { NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node) };
         }
 
         let mut current = self.root;
         let mut parent = std::ptr::null_mut();
 
-        let t_node = unsafe {
+        let fl_node = unsafe {
             // Standard BST insertion - find correct position
             while !current.is_null() {
                 parent = current;
@@ -405,13 +409,15 @@ where
                     current = (*current).right;
                 } else {
                     // Duplicate found - return existing node
-                    return NodeHandle::new(self.fl.cid(), Self::get_gen_id(current), current);
+                    let existing_fl_node = (*current).fl_node as *mut FL::FlNode;
+                    return NodeHandle::new(self.fl.cid(), (*existing_fl_node).gen_id(), existing_fl_node);
                 }
             }
 
             let tree_node = TreeNode::new(val);
             let fl_node = self.fl.acquire(tree_node);
             let t_node = FL::val_ptr(fl_node);
+            (*t_node).fl_node = fl_node as *mut ();
 
             // Link new node to parent
             set_parent!(t_node, parent);
@@ -424,14 +430,14 @@ where
             set_red!(t_node); // New nodes start as red
             self.insert_fixup(t_node);
 
-            t_node
+            fl_node
         };
 
         self.len += 1;
-        NodeHandle::new(self.fl.cid(), Self::get_gen_id(t_node), t_node)
+        unsafe { NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node) }
     }
 
-    pub fn get(&self, val: T) -> Option<NodeHandle<T>> {
+    pub fn get(&self, val: T) -> Option<NodeHandle<T, FL>> {
         if self.root.is_null() {
             return None;
         }
@@ -446,7 +452,8 @@ where
                     current = (*current).right;
                 } else {
                     // Found matching value
-                    return Some(NodeHandle::new(self.fl.cid(), Self::get_gen_id(current), current));
+                    let fl_node = (*current).fl_node as *mut FL::FlNode;
+                    return Some(NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node));
                 }
             }
         }
@@ -463,14 +470,14 @@ where
         }
     }
 
-    pub fn val_mut(&mut self, handle: &NodeHandle<T>) -> Option<&mut T> {
+    pub fn val_mut(&mut self, handle: &NodeHandle<T, FL>) -> Option<&mut T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe { Some(&mut (*ptr).val) },
         }
     }
 
-    pub fn left_mut(&mut self, handle: &NodeHandle<T>) -> Option<&mut T> {
+    pub fn left_mut(&mut self, handle: &NodeHandle<T, FL>) -> Option<&mut T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
@@ -483,7 +490,7 @@ where
         }
     }
 
-    pub fn right_mut(&mut self, handle: &NodeHandle<T>) -> Option<&mut T> {
+    pub fn right_mut(&mut self, handle: &NodeHandle<T, FL>) -> Option<&mut T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => unsafe {
@@ -496,7 +503,7 @@ where
         }
     }
 
-    pub fn parent_mut(&mut self, handle: &NodeHandle<T>) -> Option<&mut T> {
+    pub fn parent_mut(&mut self, handle: &NodeHandle<T, FL>) -> Option<&mut T> {
         match self.node_ptr(handle) {
             None => None,
             Some(ptr) => {
@@ -672,9 +679,7 @@ mod tests {
         assert!(is_black!(tree.root));
         assert!(tree.verify_rb_properties());
 
-        unsafe {
-            assert_eq!((*handle.ptr).val, 42);
-        }
+        assert_eq!(tree.val(&handle), Some(&42));
     }
 
     #[test]
@@ -1157,11 +1162,9 @@ mod tests {
         }
 
         // Original handles should still be valid
-        unsafe {
-            assert_eq!((*handle1.ptr).val, 50);
-            assert_eq!((*handle2.ptr).val, 25);
-            assert_eq!((*handle3.ptr).val, 75);
-        }
+        assert_eq!(tree.val(&handle1), Some(&50));
+        assert_eq!(tree.val(&handle2), Some(&25));
+        assert_eq!(tree.val(&handle3), Some(&75));
 
         assert!(tree.verify_rb_properties());
     }

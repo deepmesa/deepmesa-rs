@@ -2,6 +2,8 @@ use core::fmt;
 use std::fmt::Debug;
 use std::ptr;
 
+use crate::fl::FreeList;
+
 //mod.rs
 pub mod rbtree;
 pub mod traits;
@@ -104,13 +106,13 @@ pub struct TreeNode<T> {
     pub(crate) parent: *mut TreeNode<T>,
     pub(crate) left: *mut TreeNode<T>,
     pub(crate) right: *mut TreeNode<T>,
+    pub(crate) fl_node: *mut (), // Type-erased FlNode pointer
 }
 
-#[derive(Debug, PartialEq)]
-pub struct NodeHandle<T> {
+pub struct NodeHandle<T, FL: FreeList<TreeNode<T>>> {
     pub(super) cid: usize,
     pub(super) gen_id: u32,
-    pub(super) ptr: *mut TreeNode<T>,
+    pub(super) ptr: *mut FL::FlNode,
 }
 
 impl<T> TreeNode<T> {
@@ -120,13 +122,30 @@ impl<T> TreeNode<T> {
             parent: ptr::null_mut(),
             left: ptr::null_mut(),
             right: ptr::null_mut(),
+            fl_node: ptr::null_mut(),
         }
     }
 }
 
-impl<T> NodeHandle<T> {
-    pub(super) fn new(cid: usize, gen_id: u32, ptr: *mut TreeNode<T>) -> NodeHandle<T> {
+impl<T, FL: FreeList<TreeNode<T>>> NodeHandle<T, FL> {
+    pub(super) fn new(cid: usize, gen_id: u32, ptr: *mut FL::FlNode) -> NodeHandle<T, FL> {
         NodeHandle { cid, gen_id, ptr }
+    }
+}
+
+impl<T, FL: FreeList<TreeNode<T>>> Debug for NodeHandle<T, FL> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NodeHandle")
+            .field("cid", &self.cid)
+            .field("gen_id", &self.gen_id)
+            .field("ptr", &self.ptr)
+            .finish()
+    }
+}
+
+impl<T, FL: FreeList<TreeNode<T>>> PartialEq for NodeHandle<T, FL> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cid == other.cid && self.gen_id == other.gen_id && self.ptr == other.ptr
     }
 }
 

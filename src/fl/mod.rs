@@ -38,9 +38,6 @@ pub trait FreeList<T> {
 
     /// Get pointer to inner value from node pointer
     fn val_ptr(node: *mut Self::FlNode) -> *mut T;
-
-    /// Get node pointer from inner value pointer
-    fn node_from_val_ptr(val_ptr: *mut T) -> *mut Self::FlNode;
 }
 
 /// Trait for freelist node types to expose gen_id for handle validation
