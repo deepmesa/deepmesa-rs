@@ -95,7 +95,7 @@ impl<T, FL: FreeList<TreeNode<T>>> RedBlackTree<T, FL> {
             if (*fl_node).gen_id() != handle.gen_id {
                 return None;
             }
-            Some(FL::val_ptr(fl_node))
+            Some((*fl_node).val_ptr())
         }
     }
 
@@ -386,14 +386,14 @@ where
         if self.root.is_null() {
             let tree_node = TreeNode::new(val);
             let fl_node = self.fl.acquire(tree_node);
-            let t_node = FL::val_ptr(fl_node);
             unsafe {
+                let t_node = (*fl_node).val_ptr();
                 (*t_node).fl_node = fl_node as *mut ();
+                self.root = t_node;
+                set_black!(t_node); // Root must be black
+                self.len += 1;
+                return NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node);
             }
-            self.root = t_node;
-            set_black!(t_node); // Root must be black
-            self.len += 1;
-            return unsafe { NodeHandle::new(self.fl.cid(), (*fl_node).gen_id(), fl_node) };
         }
 
         let mut current = self.root;
@@ -416,7 +416,7 @@ where
 
             let tree_node = TreeNode::new(val);
             let fl_node = self.fl.acquire(tree_node);
-            let t_node = FL::val_ptr(fl_node);
+            let t_node = (*fl_node).val_ptr();
             (*t_node).fl_node = fl_node as *mut ();
 
             // Link new node to parent

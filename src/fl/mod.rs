@@ -27,7 +27,7 @@ pub(crate) use fl_node;
 const NONE: usize = usize::MAX;
 
 pub trait FreeList<T> {
-    type FlNode: FlNode;
+    type FlNode: FlNode<Value = T>;
 
     fn new(capacity: usize) -> Self;
     fn acquire(&mut self, val: T) -> *mut Self::FlNode;
@@ -35,15 +35,14 @@ pub trait FreeList<T> {
     fn capacity(&self) -> usize;
     fn len(&self) -> usize;
     fn cid(&self) -> usize;
-
-    /// Get pointer to inner value from node pointer
-    fn val_ptr(node: *mut Self::FlNode) -> *mut T;
 }
 
-/// Trait for freelist node types to expose gen_id for handle validation
+/// Trait for freelist node types
 pub trait FlNode {
+    type Value;
     fn gen_id(&self) -> u32;
     fn is_free(&self) -> bool;
+    fn val_ptr(&mut self) -> *mut Self::Value;
 }
 
 macro_rules! fn_capacity {

@@ -169,19 +169,21 @@ impl<T> FreeList<T> for SegmentedFreeList<T> {
     fn_capacity!();
     fn_len!();
     fn_cid!();
-
-    fn val_ptr(node: *mut Self::FlNode) -> *mut T {
-        unsafe { (*node).val.as_mut_ptr() }
-    }
 }
 
 impl<T> crate::fl::FlNode for SflNode<T> {
+    type Value = T;
+
     fn gen_id(&self) -> u32 {
         self.gen_id
     }
 
     fn is_free(&self) -> bool {
         self.is_free
+    }
+
+    fn val_ptr(&mut self) -> *mut Self::Value {
+        self.val.as_mut_ptr()
     }
 }
 
