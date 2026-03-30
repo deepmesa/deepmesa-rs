@@ -189,8 +189,8 @@ where
     pub(crate) map: HashMap<PtrKey<K>, NodeHandle<Entry<K, V>>>,
 }
 
-unsafe impl<K, V> Send for LinkedHashMap<K, V> where K: Hash + Eq {}
-unsafe impl<K, V> Sync for LinkedHashMap<K, V> where K: Hash + Eq {}
+unsafe impl<K, V> Send for LinkedHashMap<K, V> where K: Hash + Eq + Send, V: Send {}
+unsafe impl<K, V> Sync for LinkedHashMap<K, V> where K: Hash + Eq + Sync, V: Sync {}
 
 impl<'a, K, V> IntoIterator for &'a LinkedHashMap<K, V>
 where
@@ -1205,14 +1205,16 @@ where
 
     fn evict_eldest(&mut self) {
         if let Some(ee_fn) = self.evict_eldest {
-            if let Some(entry) = self.ll.head() {
+            while let Some(entry) = self.ll.head() {
                 if ee_fn(self.len(), self.cap, entry) {
-                    match self.ll.pop_head() {
-                        None => panic!("pop head unexpectedly returned None"),
-                        Some(entry) => {
-                            self.map.remove(&PtrKey::new(&entry.key));
-                        }
-                    }
+                    // head() returned Some, so pop_head() must succeed
+                    let entry = self
+                        .ll
+                        .pop_head()
+                        .expect("internal error: pop_head returned None after head returned Some");
+                    self.map.remove(&PtrKey::new(&entry.key));
+                } else {
+                    break;
                 }
             }
         }

@@ -1,7 +1,6 @@
 pub mod cfl;
 pub(crate) mod nfl;
 pub mod sfl;
-pub(crate) mod slfreelist;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 

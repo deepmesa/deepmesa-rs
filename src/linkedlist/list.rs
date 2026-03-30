@@ -232,11 +232,9 @@ pub struct LinkedList<T> {
 }
 
 fn inc_cid() -> usize {
-    unsafe {
-        static mut LL_COUNTER: usize = 0;
-        LL_COUNTER += 1;
-        return LL_COUNTER;
-    }
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static LL_COUNTER: AtomicUsize = AtomicUsize::new(0);
+    LL_COUNTER.fetch_add(1, Ordering::Relaxed) + 1
 }
 
 impl<T> LinkedList<T> {
